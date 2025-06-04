@@ -20,7 +20,7 @@ const moment       = require('moment-timezone');
 
 const CONNECTION   = 'pairing'; // qr atau pairing
 const OWNER_NAME   = 'Autoresbot';
-const NOMOR_BOT    = '6283173580189'; // 628xx nomor wa
+const NOMOR_BOT    = '6285124002197'; // 628xx nomor wa
 const DESTINATION  = 'group'; // group , private, both
 const APIKEY       = ''; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT   = 3000; // 3 detik/chat
