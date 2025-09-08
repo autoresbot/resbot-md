@@ -6,6 +6,7 @@ const path = require("path");
 const ApiAutoresbot = require("api-autoresbot");
 const config = require("@config");
 
+
 async function handle(sock, messageInfo) {
 
     const { remoteJid, message, type, isQuoted, content, prefix, command } = messageInfo;
@@ -48,12 +49,16 @@ async function handle(sock, messageInfo) {
         }
 
         const api = new ApiAutoresbot(config.APIKEY);
-        const upload = await uploadTmpFile(mediaPath);
+        const response = await api.tmpUpload(mediaPath);
 
-        if (upload.status) {
-            const url = upload.fileUrl;
+        if (!response || response.code !== 200) {
+        throw new Error("File upload gagal atau tidak ada URL.");
+        }
+        const url = response.data.url;
 
-            // Ambil buffer hasil API smeme
+        if (url) {
+           // Ambil buffer hasil API smeme
+
             const buffer = await api.getBuffer("/api/maker/smeme", {
                 text: smemeText1,
                 text2: smemeText2,

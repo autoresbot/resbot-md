@@ -26,19 +26,6 @@ async function handle(sock, messageInfo) {
     // Baca data user dari database atau file
     const dataUsers = await readUsers();
 
-    // Urutkan pengguna berdasarkan money (terbesar ke terkecil) dan ambil 10 teratas
-    const topUsers = Object.entries(dataUsers)
-      .sort(([, a], [, b]) => b.money - a.money) // Urutkan berdasarkan money
-      .slice(0, 10); // Ambil 10 pengguna teratas
-
-    // Format daftar pengguna
-    const memberList = topUsers
-      .map(
-        ([id, userData], index) =>
-          `┣ ⌬ @${id.split("@")[0]} - 💰 Money: ${userData.money}`
-      )
-      .join("\n");
-
     const aliasList = Object.entries(dataUsers)
       .map(([id, user]) => {
         if (
@@ -62,7 +49,7 @@ async function handle(sock, messageInfo) {
           alias = alias.split("@")[0]; // Ambil nomor sebelum @
         }
 
-        return `┣ ⌬ @${alias} - 💰 Money: ${user.money}`;
+        return `┣ ⌬ ${user.username} - 💰 Money: ${user.money}`;
       })
       .filter(Boolean)
       .join("\n");

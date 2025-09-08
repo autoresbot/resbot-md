@@ -1,101 +1,74 @@
 const { findUser, updateUser } = require("@lib/users");
-const { determineUser, extractNumber, sendMessageWithMention } = require("@lib/utils");
+const { sendMessageWithMention } = require("@lib/utils");
 
 async function handle(sock, messageInfo) {
-  const {
-    remoteJid,
-    message,
-    content,
-    sender,
-    mentionedJid,
-    isQuoted,
-    prefix,
-    command,
-    senderType
-  } = messageInfo;
+  const { remoteJid, message, content, prefix, command, senderType } =
+    messageInfo;
 
-  // Validasi input kosong
-  if (!content || content.trim() === "") {
-    return await sock.sendMessage(
+  // --- Validasi input ---
+  if (!content?.trim()) {
+    const tex =
+      `_⚠️ Format: *${prefix + command} username/id 30*_\n\n` +
+      `_💬 Contoh: *${prefix + command} azharicreative 50*_`;
+    return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
+  }
+
+  // Pisahkan target dan jumlah limit
+  const [rawNumber, rawLimit] = content.split(" ").map((s) => s.trim());
+
+  if (!rawNumber || !rawLimit) {
+    return sock.sendMessage(
       remoteJid,
       {
-        text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
+        text: `_Masukkan format yang benar_\n\n_Contoh: *${
           prefix + command
-        } 628xxx 10*_`,
+        } azharicreative 50*_`,
       },
       { quoted: message }
     );
   }
 
-  // Pisahkan nomor dan jumlah limit
-  const [rawNumber, rawLimit] = content.split(" ").map((item) => item.trim());
-
-  // Menentukan pengguna
-  const userToAction = determineUser(mentionedJid, isQuoted, rawNumber);
-  if (!userToAction) {
-    return await sock.sendMessage(
-      remoteJid,
-      {
-        text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-          prefix + command
-        } @NAME*_`,
-      },
-      { quoted: message }
-    );
-  }
-
-  if (!userToAction || !rawLimit) {
-    return await sock.sendMessage(
-      remoteJid,
-      {
-        text: `⚠️ _Masukkan format yang benar_\n\n_Contoh: *${
-          prefix + command
-        } 628xxx 50*_`,
-      },
-      { quoted: message }
-    );
-  }
-
-  // Validasi limit
+  // Validasi jumlah limit
   const limitToAdd = parseInt(rawLimit, 10);
   if (isNaN(limitToAdd) || limitToAdd <= 0) {
-    return await sock.sendMessage(
+    return sock.sendMessage(
       remoteJid,
       {
         text: `⚠️ _Jumlah limit harus berupa angka positif_\n\n_Contoh: *${
           prefix + command
-        } 628xxx 50*_`,
+        } username/id 5*_`,
       },
       { quoted: message }
     );
   }
 
-  // Ambil data pengguna
-  const dataUsers = await findUser(userToAction);
+  // --- Ambil data user ---
+  const dataUsers = await findUser(rawNumber);
   if (!dataUsers) {
-    return await sock.sendMessage(
+    return sock.sendMessage(
       remoteJid,
-      { text: `⚠️ _Pengguna dengan nomor ${rawNumber} tidak ditemukan._` },
+      {
+        text: `⚠️ _Pengguna dengan username/id ${rawNumber} tidak ditemukan._`,
+      },
       { quoted: message }
     );
   }
 
   const [docId, userData] = dataUsers;
 
-  // Update data pengguna
-  await updateUser(userToAction, {
-    limit: (userData.limit || 0) + limitToAdd, // Tambah limit
+  // --- Update data user ---
+  await updateUser(rawNumber, {
+    limit: (userData.limit || 0) + limitToAdd,
   });
 
-     // Kirim pesan dengan mention
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-       `✅ _Limit berhasil ditambah sebesar ${limitToAdd} untuk nomor ${rawNumber}._`,
-      message,
-      senderType
-    );
-    return
+  // --- Kirim pesan konfirmasi ---
+  await sendMessageWithMention(
+    sock,
+    remoteJid,
+    `✅ _Limit berhasil ditambah ${limitToAdd} untuk username/id ${rawNumber}._`,
+    message,
+    senderType
+  );
 }
 
 module.exports = {

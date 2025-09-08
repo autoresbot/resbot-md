@@ -1,81 +1,74 @@
 const { findUser, updateUser } = require("@lib/users");
-const { determineUser, extractNumber, sendMessageWithMention } = require("@lib/utils");
-
+const { sendMessageWithMention } = require("@lib/utils");
 
 async function handle(sock, messageInfo) {
-  const {
-    remoteJid,
-    message,
-    content,
-    sender,
-    mentionedJid,
-    isQuoted,
-    prefix,
-    command,
-    senderType
-  } = messageInfo;
+  const { remoteJid, message, content, prefix, command, senderType } =
+    messageInfo;
 
-  // Pisahkan nomor dan jumlah money
-  const [rawNumber, rawMoney] = content.split(" ").map((item) => item.trim());
+  // --- Validasi input ---
+  if (!content?.trim()) {
+    const tex =
+      `_⚠️ Format: *${prefix + command} username/id 50*_\n\n` +
+      `_💬 Contoh: *${prefix + command} azharicreative 50*_`;
+    return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
+  }
 
-  const userToAction = determineUser(mentionedJid, isQuoted, rawNumber);
+  // Pisahkan target & jumlah money
+  const [rawNumber, rawMoney] = content.split(" ").map((s) => s.trim());
 
-  if (!userToAction || !rawMoney) {
-    return await sock.sendMessage(
+  if (!rawNumber || !rawMoney) {
+    return sock.sendMessage(
       remoteJid,
       {
         text: `_Masukkan format yang benar_\n\n_Contoh: *${
           prefix + command
-        } 628xxx 50*_`,
+        } azharicreative 50*_`,
       },
       { quoted: message }
     );
   }
 
-  // Validasi money
+  // Validasi jumlah money
   const moneyToAdd = parseInt(rawMoney, 10);
   if (isNaN(moneyToAdd) || moneyToAdd <= 0) {
-    return await sock.sendMessage(
+    return sock.sendMessage(
       remoteJid,
       {
-        text: `_Jumlah money harus berupa angka positif_\n\n_Contoh: *${
+        text: `⚠️ _Jumlah money harus berupa angka positif_\n\n_Contoh: *${
           prefix + command
-        } 628xxx 50*_`,
+        } username/id 50*_`,
       },
       { quoted: message }
     );
   }
 
-  // Ambil data pengguna
-  const dataUsers = await findUser(userToAction);
+  // --- Ambil data user ---
+  const dataUsers = await findUser(rawNumber);
   if (!dataUsers) {
-    return await sock.sendMessage(
+    return sock.sendMessage(
       remoteJid,
-      { text: `Pengguna dengan nomor ${rawNumber} tidak ditemukan.` },
+      {
+        text: `⚠️ _Pengguna dengan username/id ${rawNumber} tidak ditemukan._`,
+      },
       { quoted: message }
     );
   }
 
   const [docId, userData] = dataUsers;
 
-  // Update data pengguna
-  await updateUser(userToAction, {
-    money: (userData.money || 0) + moneyToAdd, // Tambah money
+  // --- Update data user ---
+  await updateUser(rawNumber, {
+    money: (userData.money || 0) + moneyToAdd,
   });
 
-    const rawTagNumber = `@${extractNumber(userToAction)}`;
-
-   // Kirim pesan dengan mention
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-      `✅ _Money berhasil ditambah sebesar ${moneyToAdd} untuk nomor ${rawTagNumber}._`,
-      message,
-      senderType
-    );
-    return
-
-
+  // --- Kirim pesan konfirmasi ---
+  await sendMessageWithMention(
+    sock,
+    remoteJid,
+    `✅ _Money berhasil ditambah ${moneyToAdd} untuk username/id ${rawNumber}._`,
+    message,
+    senderType
+  );
 }
 
 module.exports = {

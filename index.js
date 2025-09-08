@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 4.3.0
+║ 📦 Version   : 4.3.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -46,18 +46,18 @@ const axios = require("axios");
   try {
     // Cek dan install semua module yang diperlukan
     await checkAndInstallModules([
-      "wa-sticker-formatter",
       "follow-redirects",
+      "jimp@1.6.0",
       "qrcode-reader",
-      "jimp",
-      "baileys@6.7.18",
+      "wa-sticker-formatter",
+      "baileys@6.7.19",
       "api-autoresbot@1.0.6",
     ]);
 
     const { start_app } = require("@lib/startup");
     await start_app();
   } catch (err) {
-    onsole.error("Error dalam proses start_app:", err.message);
+    console.error("Error dalam proses start_app:", err.message);
     await reportCrash("inactive");
     process.exit(1);
   }

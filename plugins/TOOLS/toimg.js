@@ -43,7 +43,7 @@ async function handle(sock, messageInfo) {
         } else {
             return await sock.sendMessage(
                 remoteJid,
-                { text:`⚠️ _Kirim/Balas gambar dengan caption *${prefix + command}*_` },
+                { text:`⚠️ _Kirim/Balas sticker dengan caption *${prefix + command}*_` },
                 { quoted: message }
             );
         }

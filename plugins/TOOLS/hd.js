@@ -61,7 +61,7 @@ async function handle(sock, messageInfo) {
     }
   } catch (error) {
     // Kirim pesan kesalahan yang lebih informatif
-    const errorMessage = `_Terjadi kesalahan saat memproses gambar._ \n\nERROR : ${error}`;
+    const errorMessage = `_Terjadi kesalahan saat memproses gambar._ \n_Periksa apikey anda ketik .apikey_\n\nERROR : ${error}`;
     await reply(m, errorMessage);
   }
 }

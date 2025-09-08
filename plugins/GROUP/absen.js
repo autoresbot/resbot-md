@@ -11,7 +11,7 @@ async function handle(sock, messageInfo) {
         if (data) { // Jika sudah ada absen
             // Cek apakah sender sudah absen
             if (data.member.includes(sender)) {
-                textNotif = '⚠️ _Anda sudah absen hari ini!_';
+                textNotif = '⚠️ _Absen aja terus_ _Anda sudah absen hari ini!_';
             } else {
                 // Tambahkan sender ke daftar member yang absen
                 const updateData = {

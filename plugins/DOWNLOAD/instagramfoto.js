@@ -55,18 +55,27 @@ async function handle(sock, messageInfo) {
       throw new Error("Tidak ada media yang ditemukan pada URL tersebut.");
     }
 
-    // Ambil media pertama dari respons
-    const firstMedia = response[0];
-    const urlMedia = firstMedia.url;
+    // Buat Set untuk filter URL unik
+    const seen = new Set();
 
-    // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(urlMedia, "mp4");
+    // Ambil hanya gambar unik, maksimal 4
+    const uniqueImages = response.filter(media => {
+      if (!media.url || seen.has(media.url)) return false;
+      seen.add(media.url);
+      return true;
+    }).slice(0, 4);
 
-    await sock.sendMessage(
-      remoteJid,
-      { image: audioBuffer, caption: mess.general.success },
-      { quoted: message }
-    );
+    // Loop kirim hanya 4 gambar unik
+    for (const media of uniqueImages) {
+      const urlMedia = media.url;
+      const buffer = await downloadToBuffer(urlMedia, "jpg"); // anggap image
+
+      await sock.sendMessage(
+        remoteJid,
+        { image: buffer, caption: mess.general.success }
+      );
+    }
+
   } catch (error) {
     console.error("Kesalahan saat memproses Instagram:", error);
     logCustom("info", content, `ERROR-COMMAND-${command}.txt`);

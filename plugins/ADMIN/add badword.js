@@ -10,7 +10,6 @@ async function handle(sock, messageInfo) {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
-    console.log("participants :", participants);
     const isAdmin = participants.some(
       (participant) => participant.id === sender && participant.admin
     );

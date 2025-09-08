@@ -16,27 +16,19 @@ async function handle(sock, messageInfo) {
 
   try {
     // Validasi input
-    if (!content || content.trim() === "") {
-      const tex = `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-        prefix + command
-      } 6285246154386 30*_`;
-      return await sock.sendMessage(
-        remoteJid,
-        { text: tex },
-        { quoted: message }
-      );
+    if (!content?.trim()) {
+      const tex =
+        `_⚠️ Format: *${prefix + command} username/id 30*_\n\n` +
+        `_💬 Contoh: *${prefix + command} azharicreative 30*_`;
+
+      return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
     let [nomorHp, jumlahHariPremium] = content.split(" ");
 
-    const userToAction = determineUser(mentionedJid, isQuoted, nomorHp);
-
-    // Hapus semua karakter selain angka dari nomorHp
-    nomorHp = userToAction.replace(/\D/g, "");
-
     // Validasi input lebih lanjut
     if (!nomorHp || !jumlahHariPremium || isNaN(jumlahHariPremium)) {
-      const tex = "⚠️ _Pastikan format yang benar : .addprem 6285246154386 30_";
+      const tex = "⚠️ _Pastikan format yang benar : .addprem username/id 30_";
       return await sock.sendMessage(
         remoteJid,
         { text: tex },
@@ -51,7 +43,9 @@ async function handle(sock, messageInfo) {
     if (!dataUsers) {
       return await sock.sendMessage(
         remoteJid,
-        { text: `⚠️ _Pengguna dengan nomor/tag tersebut tidak ditemukan._` },
+        {
+          text: `⚠️ _Pengguna dengan nomor/username tersebut tidak ditemukan._`,
+        },
         { quoted: message }
       );
     }
@@ -72,9 +66,7 @@ async function handle(sock, messageInfo) {
 
     // Tampilkan pesan bahwa premium sudah ditambahkan
     const premiumEndDate = new Date(addedPremiumTime);
-    const responseText = `_Masa Premium pengguna_ @${
-      nomorHp.split("@")[0]
-    } _telah diperpanjang hingga:_ ${premiumEndDate.toLocaleString()}`;
+    const responseText = `_Masa Premium pengguna_ ${nomorHp} _telah diperpanjang hingga:_ ${premiumEndDate.toLocaleString()}`;
 
     // Kirim pesan dengan mention
     await sendMessageWithMention(
