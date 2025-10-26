@@ -1,22 +1,22 @@
-const moment = require('moment-timezone');
+import moment from "moment-timezone";
 
 async function handle(sock, messageInfo) {
-    const { remoteJid, message } = messageInfo;
+  const { remoteJid, message } = messageInfo;
 
-    // Format waktu dan tanggal
-    const format = "DD-MM-YYYY HH:mm";
+  // Format waktu dan tanggal
+  const format = "DD-MM-YYYY HH:mm";
 
-    // Waktu Internasional (UTC)
-    const utcTime = moment().tz("UTC").format(format);
+  // Waktu Internasional (UTC)
+  const utcTime = moment().tz("UTC").format(format);
 
-    // Waktu Server (menggunakan waktu lokal dari sistem server)
-    const serverTime = moment().format(format);
+  // Waktu Server (menggunakan waktu lokal dari sistem server)
+  const serverTime = moment().format(format);
 
-    // Waktu WIB (Asia/Jakarta)
-    const jakartaTime = moment().tz("Asia/Jakarta").format(format);
+  // Waktu WIB (Asia/Jakarta)
+  const jakartaTime = moment().tz("Asia/Jakarta").format(format);
 
-    // Mengirim pesan dengan tiga zona waktu
-    const response = `⏰ Waktu Saat Ini:
+  // Mengirim pesan dengan tiga zona waktu
+  const response = `⏰ Waktu Saat Ini:
     
 🌍 UTC: 
 ${utcTime}
@@ -27,12 +27,16 @@ ${serverTime}
 🇮🇩 WIB: 
 ${jakartaTime}`;
 
-    return await sock.sendMessage(remoteJid, { text: response }, { quoted: message });
+  return await sock.sendMessage(
+    remoteJid,
+    { text: response },
+    { quoted: message }
+  );
 }
 
-module.exports = {
-    handle,
-    Commands: ["now"],
-    OnlyPremium: false,
-    OnlyOwner: false
+export default {
+  handle,
+  Commands: ["now"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

@@ -7,7 +7,7 @@ const DB_cak_lontong = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-    DB_cak_lontong[remoteJid] = data;
+  DB_cak_lontong[remoteJid] = data;
 }
 
 /**
@@ -15,7 +15,7 @@ function addUser(remoteJid, data) {
  * @param {string} remoteJid - ID pengguna (unik)
  */
 function removeUser(remoteJid) {
-    delete DB_cak_lontong[remoteJid];
+  delete DB_cak_lontong[remoteJid];
 }
 
 /**
@@ -24,7 +24,7 @@ function removeUser(remoteJid) {
  * @returns {object|null} - Data pengguna atau null jika tidak ditemukan
  */
 function getUser(remoteJid) {
-    return DB_cak_lontong[remoteJid] || null;
+  return DB_cak_lontong[remoteJid] || null;
 }
 
 /**
@@ -33,14 +33,8 @@ function getUser(remoteJid) {
  * @returns {boolean} - True jika pengguna ada di database, false jika tidak
  */
 function isUserPlaying(remoteJid) {
-    return Boolean(DB_cak_lontong[remoteJid]);
+  return Boolean(DB_cak_lontong[remoteJid]);
 }
 
 // Ekspor fungsi dan database
-module.exports = {
-    DB_cak_lontong,
-    addUser,
-    removeUser,
-    getUser,
-    isUserPlaying,
-};
+export { DB_cak_lontong, addUser, removeUser, getUser, isUserPlaying };

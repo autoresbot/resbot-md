@@ -1,7 +1,9 @@
-const { igdl } = require("btch-downloader");
-const mess = require("@mess");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+// const { igdl } = require("btch-downloader");
+import { igdl } from "btch-downloader";
+
+import mess from "../../strings.js";
+import { logCustom } from "../../lib/logger.js";
+import { downloadToBuffer } from "../../lib/utils.js";
 /**
  * Mengirim pesan dengan kutipan
  * @param {object} sock - Objek koneksi WebSocket
@@ -59,23 +61,24 @@ async function handle(sock, messageInfo) {
     const seen = new Set();
 
     // Ambil hanya gambar unik, maksimal 4
-    const uniqueImages = response.filter(media => {
-      if (!media.url || seen.has(media.url)) return false;
-      seen.add(media.url);
-      return true;
-    }).slice(0, 4);
+    const uniqueImages = response
+      .filter((media) => {
+        if (!media.url || seen.has(media.url)) return false;
+        seen.add(media.url);
+        return true;
+      })
+      .slice(0, 4);
 
     // Loop kirim hanya 4 gambar unik
     for (const media of uniqueImages) {
       const urlMedia = media.url;
       const buffer = await downloadToBuffer(urlMedia, "jpg"); // anggap image
 
-      await sock.sendMessage(
-        remoteJid,
-        { image: buffer, caption: mess.general.success }
-      );
+      await sock.sendMessage(remoteJid, {
+        image: buffer,
+        caption: mess.general.success,
+      });
     }
-
   } catch (error) {
     console.error("Kesalahan saat memproses Instagram:", error);
     logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
@@ -88,7 +91,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["igfoto", "instagramfoto"], // Perintah yang didukung oleh handler ini
   OnlyPremium: false,

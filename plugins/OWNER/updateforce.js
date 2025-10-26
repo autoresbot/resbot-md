@@ -1,13 +1,22 @@
-const fs = require("fs");
-const fsp = require("fs").promises;
-const path = require("path");
-const axios = require("axios");
-const fse = require("fs-extra");
-const config = require("@config");
-const { execSync } = require("child_process");
+import fs from "fs";
+import fsp from "fs/promises";
+import path from "path";
+import axios from "axios";
+import fse from "fs-extra";
+import config from "../../config.js";
+import { execSync } from "child_process";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content } = messageInfo;
+
+  await sock.sendMessage(
+    remoteJid,
+    {
+      text: `_⚠️Tidak tersedia, di beta version_ (tunggu update berikutnya)`,
+    },
+    { quoted: message }
+  );
+  return;
 
   async function checkWordInFile() {
     try {
@@ -155,7 +164,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["updateforce"],
   OnlyPremium: false,

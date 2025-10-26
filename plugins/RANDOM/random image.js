@@ -1,6 +1,7 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const mess = require("@mess");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import config from "../../config.js";
+import mess from "../../strings.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, command } = messageInfo;
@@ -18,19 +19,16 @@ async function handle(sock, messageInfo) {
       { quoted: message }
     );
   } catch (error) {
-    console.error("Error in handle function:", error.message);
-    const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\n*Detail Kesalahan:* ${
-      error.message || "Kesalahan tidak diketahui"
-    }`;
     await sock.sendMessage(
       remoteJid,
-      { text: errorMessage },
+      {
+        text: `_⚠️ Gagal: Periksa Apikey Anda! (.apikey)_`,
+      },
       { quoted: message }
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: [
     "aesthetic",

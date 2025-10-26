@@ -1,7 +1,7 @@
 async function handle(sock, messageInfo) {
-    const { remoteJid, message} = messageInfo;
+  const { remoteJid, message } = messageInfo;
 
-    const surah = `_*Surah dalam Al-Qur'an*_
+  const surah = `_*Surah dalam Al-Qur'an*_
 
 1. Al Fatihah (Pembuka): 7 Ayat
 
@@ -230,14 +230,13 @@ async function handle(sock, messageInfo) {
 113. Al-Falaq (Waktu Fajar): 5 Ayat
 
 114. An-Nas (Manusia): 6 Ayat
-`
-    await sock.sendMessage(remoteJid, { text: surah }, { quoted: message });
-
+`;
+  await sock.sendMessage(remoteJid, { text: surah }, { quoted: message });
 }
 
-module.exports = {
-    handle,
-    Commands    : ['listsurah', 'listsuroh'],
-    OnlyPremium : false, 
-    OnlyOwner   : false 
+export default {
+  handle,
+  Commands: ["listsurah", "listsuroh"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

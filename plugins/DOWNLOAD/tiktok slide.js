@@ -1,9 +1,12 @@
 const limit = 4; // jumlah gambar yang di kirim
 
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { extractLink } = require("@lib/utils");
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+
+import { extractLink } from "../../lib/utils.js";
+import { logCustom } from "../../lib/logger.js";
 
 function isTikTokUrl(url) {
   return /tiktok\.com/i.test(url);
@@ -69,7 +72,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["ttslide", "tiktokslide"], // Perintah yang didukung
   OnlyPremium: false,

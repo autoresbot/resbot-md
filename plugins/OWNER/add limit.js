@@ -1,5 +1,5 @@
-const { findUser, updateUser } = require("@lib/users");
-const { sendMessageWithMention } = require("@lib/utils");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention, convertToJid } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command, senderType } =
@@ -8,8 +8,8 @@ async function handle(sock, messageInfo) {
   // --- Validasi input ---
   if (!content?.trim()) {
     const tex =
-      `_⚠️ Format: *${prefix + command} username/id 30*_\n\n` +
-      `_💬 Contoh: *${prefix + command} azharicreative 50*_`;
+      `_⚠️ Format: *${prefix + command} tag 30*_\n\n` +
+      `_💬 Contoh: *${prefix + command} @tag 50*_`;
     return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
   }
 
@@ -22,7 +22,7 @@ async function handle(sock, messageInfo) {
       {
         text: `_Masukkan format yang benar_\n\n_Contoh: *${
           prefix + command
-        } azharicreative 50*_`,
+        } @tag 50*_`,
       },
       { quoted: message }
     );
@@ -43,12 +43,13 @@ async function handle(sock, messageInfo) {
   }
 
   // --- Ambil data user ---
-  const dataUsers = await findUser(rawNumber);
+  const r = await convertToJid(sock, rawNumber)
+  const dataUsers = await findUser(r);
   if (!dataUsers) {
     return sock.sendMessage(
       remoteJid,
       {
-        text: `⚠️ _Pengguna dengan username/id ${rawNumber} tidak ditemukan._`,
+        text: `⚠️ _Pengguna dengan username/id ${r} tidak ditemukan._`,
       },
       { quoted: message }
     );
@@ -57,7 +58,7 @@ async function handle(sock, messageInfo) {
   const [docId, userData] = dataUsers;
 
   // --- Update data user ---
-  await updateUser(rawNumber, {
+  await updateUser(r, {
     limit: (userData.limit || 0) + limitToAdd,
   });
 
@@ -65,13 +66,13 @@ async function handle(sock, messageInfo) {
   await sendMessageWithMention(
     sock,
     remoteJid,
-    `✅ _Limit berhasil ditambah ${limitToAdd} untuk username/id ${rawNumber}._`,
+    `✅ _Limit berhasil ditambahkan ${limitToAdd}_`,
     message,
     senderType
   );
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["addlimit"],
   OnlyPremium: false,

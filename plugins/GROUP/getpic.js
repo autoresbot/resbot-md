@@ -1,5 +1,5 @@
-const mess = require("@mess");
-const { getProfilePictureUrl } = require("@lib/cache");
+import mess from "../../strings.js";
+import { getProfilePictureUrl } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -53,7 +53,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["getpic"],
   OnlyPremium: false,

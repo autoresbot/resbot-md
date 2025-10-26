@@ -1,7 +1,7 @@
 // DEMOTE: Menurunkan admin ke user biasa
-const mess = require("@mess");
-const { sendMessageWithMention, determineUser } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import mess from "../../strings.js";
+import { sendMessageWithMention, determineUser } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -23,7 +23,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -70,7 +70,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["demote"],
   OnlyPremium: false,

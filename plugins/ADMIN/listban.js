@@ -1,7 +1,7 @@
-const mess = require("@mess");
-const { getUserBlockList } = require("@lib/group");
-const { getGroupMetadata } = require("@lib/cache");
-const { sendMessageWithMention } = require("@lib/utils");
+import mess from "../../strings.js";
+import { getUserBlockList } from "../../lib/group.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
@@ -12,7 +12,7 @@ async function handle(sock, messageInfo) {
   const groupMetadata = await getGroupMetadata(sock, remoteJid);
   const participants = groupMetadata.participants;
   const isAdmin = participants.some(
-    (participant) => participant.id === sender && participant.admin
+    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
   );
   if (!isAdmin) {
     await sock.sendMessage(
@@ -57,7 +57,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["listban"],
   OnlyPremium: false,

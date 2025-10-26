@@ -1,5 +1,5 @@
-const { getGroupMetadata, getProfilePictureUrl } = require("@lib/cache");
-const axios = require("axios");
+import { getGroupMetadata, getProfilePictureUrl } from "../../lib/cache.js";
+import axios from "axios";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, sender, message, pushName, content, prefix, command } =
@@ -178,7 +178,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["teswelcome"],
   OnlyPremium: false,

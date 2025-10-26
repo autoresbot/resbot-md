@@ -1,11 +1,11 @@
-const fs = require("fs");
-const path = require("path");
-const { textToAudio } = require("@lib/features");
-const {
+import fs from "fs";
+import path from "path";
+import { textToAudio } from "../../lib/features.js";
+import {
   convertAudioToCompatibleFormat,
   generateUniqueFilename,
-} = require("@lib/utils");
-const { sendMessageWithMention } = require("@lib/utils");
+  sendMessageWithMention,
+} from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -63,7 +63,7 @@ async function handle(sock, messageInfo) {
     } catch {}
     await sock.sendMessage(
       remoteJid,
-      { audio: { url: bufferOriginal }, mimetype: "audio/mp4", ptt: true },
+      { audio: { url: bufferOriginal }, mimetype: "audio/mp4" },
       { quoted: message }
     );
   } catch (error) {
@@ -77,8 +77,7 @@ async function handle(sock, messageInfo) {
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["bisakah"],
   OnlyPremium: false,

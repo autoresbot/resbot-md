@@ -1,4 +1,4 @@
-const { findUser, updateUser, addUser } = require("@lib/users");
+import { findUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender } = messageInfo;
@@ -9,11 +9,7 @@ async function handle(sock, messageInfo) {
 
     // Jika pengguna tidak ditemukan, tambahkan pengguna baru
     if (!dataUsers) {
-      return await sock.sendMessage(
-        remoteJid,
-        { text: `❗ Kamu belum terdaftar. Ketik *.register* dulu ya!` },
-        { quoted: message }
-      );
+      return;
     }
 
     const [docId, userData] = dataUsers;
@@ -53,8 +49,7 @@ async function handle(sock, messageInfo) {
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["cekprem", "cekpremium"],
   OnlyPremium: false,

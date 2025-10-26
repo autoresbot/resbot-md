@@ -1,9 +1,12 @@
-const { downloadQuotedMedia, downloadMedia, reply } = require("@lib/utils");
-const fs = require("fs");
-const path = require("path");
-const mess = require("@mess");
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import fs from "fs";
+import path from "path";
+import mess from "../../strings.js";
+import config from "../../config.js";
+
+import { downloadQuotedMedia, downloadMedia, reply } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { m, remoteJid, message, content, prefix, command, type, isQuoted } =
@@ -62,8 +65,7 @@ async function handle(sock, messageInfo) {
     await reply(m, errorMessage);
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["wanted"], // Perintah yang diproses oleh handler ini
   OnlyPremium: false,

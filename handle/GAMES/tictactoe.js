@@ -1,11 +1,10 @@
-const {
+import {
   removeUser,
   getUser,
   isUserPlaying,
   updateGame,
-} = require("@tmpDB/tictactoe");
-const { sendMessageWithMention } = require("@lib/utils");
-const TicTacToe = require("@games/tictactoe");
+} from "../../database/temporary_db/tictactoe.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 const SYMBOLS = {
   X: "❌",
@@ -140,8 +139,6 @@ Ketik angka 1-9 untuk bermain.
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
-  name: "Tictactoe",
-  priority: 10,
-  process,
-};
+export const name = "Tictactoe";
+export const priority = 10;
+export { process };

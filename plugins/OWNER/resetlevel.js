@@ -1,23 +1,32 @@
-const { resetLevel  }   = require('@lib/users');
+import { resetLevel } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
-    const { remoteJid, message } = messageInfo;
-    try {
-        await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
+  const { remoteJid, message } = messageInfo;
+  try {
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
 
-        await resetLevel();
-    
-        await sock.sendMessage(remoteJid, { text: '✅ _Semua Level Users telah direset_' }, { quoted: message });
+    await resetLevel();
 
-    } catch (error) {
-        console.error('Error during database reset:', error);
-        await sock.sendMessage(remoteJid, { text: '_❌ Maaf, terjadi kesalahan saat mereset data._' }, { quoted: message });
-    }
+    await sock.sendMessage(
+      remoteJid,
+      { text: "✅ _Semua Level Users telah direset_" },
+      { quoted: message }
+    );
+  } catch (error) {
+    console.error("Error during database reset:", error);
+    await sock.sendMessage(
+      remoteJid,
+      { text: "_❌ Maaf, terjadi kesalahan saat mereset data._" },
+      { quoted: message }
+    );
+  }
 }
 
-module.exports = {
-    handle,
-    Commands    : ['resetlevel'],
-    OnlyPremium : false,
-    OnlyOwner   : true
+export default {
+  handle,
+  Commands: ["resetlevel"],
+  OnlyPremium: false,
+  OnlyOwner: true,
 };

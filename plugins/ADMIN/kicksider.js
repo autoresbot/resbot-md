@@ -1,8 +1,8 @@
-const mess = require("@mess");
-const config = require("@config");
-const { getActiveUsers } = require("@lib/users");
-const { sendMessageWithMention } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import mess from "../../strings.js";
+import config from "../../config.js";
+import { getActiveUsers } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 const TOTAL_HARI_SIDER = 30; // total hari maksimum dianggap tidak aktif
 const DELAY_KICK = 3000;
@@ -17,7 +17,9 @@ async function handle(sock, messageInfo) {
   try {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
-    const isAdmin = participants.some((p) => p.id === sender && p.admin);
+    const isAdmin = participants.some(
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+    );
 
     if (!isAdmin) {
       await sock.sendMessage(
@@ -131,7 +133,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["kicksider"],
   OnlyPremium: false,

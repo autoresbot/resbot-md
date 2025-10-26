@@ -1,41 +1,73 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const mess = require("@mess");
-const { logCustom }     = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-async function handle(sock, messageInfo) {
-    const { remoteJid, message, content, prefix, command } = messageInfo;
-    try {
-        
-         // Validasi input konten
-         if (!content) {
-            await sock.sendMessage(remoteJid, {
-                text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} kucing*_`
-            }, { quoted: message });
-            return; // Hentikan eksekusi jika tidak ada konten
-        }
-        await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
+import config from "../../config.js";
 
-        const api = new ApiAutoresbot(config.APIKEY);
-        const buffer = await api.getBuffer(`/api/search/bingimage`, {
-            q: content
-        });
+import { getBuffer } from "../../lib/utils.js";
+import mess from "../../strings.js";
+import { logCustom } from "../../lib/logger.js";
 
-        await sock.sendMessage(
-            remoteJid,
-            { image: buffer, caption:  mess.general.success },
-            { quoted: message }
-        );
-    } catch (error) {
-        logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
-        console.error("Error in handle function:", error.message);
-    }
+async function sendMessageWithQuote(
+  sock,
+  remoteJid,
+  message,
+  text,
+  options = {}
+) {
+  await sock.sendMessage(remoteJid, { text }, { quoted: message, ...options });
 }
 
-module.exports = {
-    handle,
-    Commands    : ['image','img','googleimage'],
-    OnlyPremium : false,
-    OnlyOwner   : false,
-    limitDeduction  : 1, // Jumlah limit yang akan dikurangi
+async function handle(sock, messageInfo) {
+  const { remoteJid, message, content, prefix, command } = messageInfo;
+
+  try {
+    // Validasi input
+    if (!content.trim() || content.trim() == "") {
+      return sendMessageWithQuote(
+        sock,
+        remoteJid,
+        message,
+        `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
+          prefix + command
+        } kucing*_`
+      );
+    }
+
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
+
+    const api = new ApiAutoresbot(config.APIKEY);
+
+    const response = await api.get("/api/search/pinterest", { text: content });
+
+    if (response.code === 200 && response.data) {
+      const buffer = await getBuffer(response.data);
+      return await sock.sendMessage(
+        remoteJid,
+        { image: buffer, caption: mess.general.success },
+        { quoted: message }
+      );
+    } else {
+      logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+      const errorMessage =
+        response?.message ||
+        "Maaf, tidak ada respons dari server. Silakan coba lagi nanti.";
+      return await sendMessageWithQuote(sock, remoteJid, message, errorMessage);
+    }
+  } catch (error) {
+    logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+    const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\nDetail Error: ${
+      error.message || error
+    }`;
+    await sendMessageWithQuote(sock, remoteJid, message, errorMessage);
+  }
+}
+
+export default {
+  handle,
+  Commands: ["image", "img"],
+  OnlyPremium: false,
+  OnlyOwner: false,
+  limitDeduction: 1, // Jumlah limit yang akan dikurangi
 };

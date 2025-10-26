@@ -1,44 +1,70 @@
-const ApiAutoresbot = require('api-autoresbot');
-const config        = require("@config");
-const { logCustom }     = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+import { logCustom } from "../../lib/logger.js";
 
 async function handle(sock, messageInfo) {
-    const { remoteJid, message, command, content } = messageInfo;
+  const { remoteJid, message, command, content } = messageInfo;
 
-    try {
-        // Memberikan reaksi saat memproses
-        await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
+  try {
+    // Reaksi saat memproses
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
 
-        // Membuat instance API dengan API key dari konfigurasi
-        const api = new ApiAutoresbot(config.APIKEY);
+    // Instance API
+    const api = new ApiAutoresbot(config.APIKEY);
 
-        // Memanggil API berdasarkan perintah yang diberikan
-        const response = await api.get(`/api/news/${command}`);
-        
-        if (response && response.data && response.data.posts && response.data.posts.length > 0) {
-            const { link , title, description, thumbnail: image } = response.data.posts[0];
-            const fulltext = `${title} \n\n${description} \n${link}`;
+    // Panggil endpoint berita sesuai command
+    const response = await api.get(`/api/news/${command}`);
 
-            // Mengirim pesan dengan gambar dan keterangan jika data tersedia
-            await sock.sendMessage(remoteJid, { image: { url: image }, caption: fulltext }, { quoted: message });
-        } else {
-            // Mengirim pesan default jika respons data kosong atau tidak ada
-            logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
-            await sock.sendMessage(remoteJid, { text: "Maaf, tidak ada respons dari server." }, { quoted: message });
-        }
-    } catch (error) {
-        
-        logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
-        // Memberi tahu pengguna jika terjadi kesalahan
-        await sock.sendMessage(remoteJid, { text: `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\n${error}` }, { quoted: message });
+    const posts = response?.data?.posts;
+    if (!posts || posts.length === 0) {
+      logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+      return await sock.sendMessage(
+        remoteJid,
+        { text: "Maaf, tidak ada respons dari server." },
+        { quoted: message }
+      );
     }
+
+    const { title, description, link, thumbnail: image } = posts[0];
+    const caption = `${title}\n\n${description}\n${link}`;
+
+    // Kirim pesan dengan gambar jika ada, jika tidak hanya teks
+    const messagePayload = image
+      ? { image: { url: image }, caption }
+      : { text: caption };
+
+    await sock.sendMessage(remoteJid, messagePayload, { quoted: message });
+  } catch (error) {
+    console.error("Error handle news command:", error);
+    logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+
+    await sock.sendMessage(
+      remoteJid,
+      { text: "_⚠️ Gagal: Periksa Apikey Anda! (.apikey)_" },
+      { quoted: message }
+    );
+  }
 }
 
-module.exports = {
-    handle,
-    Commands        : ['antara','cnn', 'cnbc', 'jpnn','kumparan','merdeka','okezone','republika', 'sindonews','tempo', 'tribun'],
-    OnlyPremium     : false,
-    OnlyOwner       : false,
-    limitDeduction  : 1
+export default {
+  handle,
+  Commands: [
+    "antara",
+    "cnn",
+    "cnbc",
+    "jpnn",
+    "kumparan",
+    "merdeka",
+    "okezone",
+    "republika",
+    "sindonews",
+    "tempo",
+  ],
+  OnlyPremium: false,
+  OnlyOwner: false,
+  limitDeduction: 1,
 };
-

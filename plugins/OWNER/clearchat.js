@@ -1,4 +1,6 @@
-const { delay } = require("@lib/utils");
+async function delay(duration) {
+  return new Promise((resolve) => setTimeout(resolve, duration * 1000));
+}
 
 // Fungsi utama
 const clearAllChats = async (sock) => {
@@ -45,7 +47,7 @@ async function handle(sock, messageInfo) {
   });
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["clearchat"],
   OnlyPremium: false,

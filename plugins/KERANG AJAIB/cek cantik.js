@@ -1,5 +1,5 @@
-const config = require("@config");
-const { sendMessageWithMention, extractNumber } = require("@lib/utils");
+import config from "../../config.js";
+import { sendMessageWithMention, extractNumber } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -79,7 +79,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["cekcantik"],
   OnlyPremium: false,

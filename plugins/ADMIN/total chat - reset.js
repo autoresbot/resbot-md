@@ -1,7 +1,7 @@
-const mess = require("@mess");
-const { resetTotalChatPerGroup } = require("@lib/totalchat");
-const { sendMessageWithMention } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import mess from "../../strings.js";
+import { resetTotalChatPerGroup } from "../../lib/totalchat.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
@@ -12,7 +12,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -43,7 +43,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["resettotalchat"],
   OnlyPremium: false,

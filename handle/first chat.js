@@ -1,25 +1,25 @@
-const respondedSenders  = new Set();
-const { getGreeting }   = require('@lib/utils');
+const respondedSenders = new Set();
+import { getGreeting } from "../lib/utils.js";
 
 async function process(sock, messageInfo) {
-    const { sender, remoteJid, isGroup, message, pushName, fullText } = messageInfo;
+  const { sender, remoteJid, isGroup, message, pushName, fullText } =
+    messageInfo;
 
-    // KOMENTARI INI UNTUK MENGHIDUPKAN
-    return true;
+  // KOMENTARI INI UNTUK MENGHIDUPKAN
+  return true;
 
-    const salam = getGreeting();
-    if (isGroup) return true; // Abaikan jika pesan berasal dari grup
-    if(pushName == 'Unknown') return true;
-    if(!fullText) return true;
-    if (["batu", "kertas", "gunting"].includes(fullText.toLowerCase())) return;
-    
+  const salam = getGreeting();
+  if (isGroup) return true; // Abaikan jika pesan berasal dari grup
+  if (pushName == "Unknown") return true;
+  if (!fullText) return true;
+  if (["batu", "kertas", "gunting"].includes(fullText.toLowerCase())) return;
 
-    if(remoteJid == 'status@broadcast') return true; // abaikan story
+  if (remoteJid == "status@broadcast") return true; // abaikan story
 
-    // Cek apakah sender sudah pernah diberi respons
-    if (respondedSenders.has(sender)) return true;
+  // Cek apakah sender sudah pernah diberi respons
+  if (respondedSenders.has(sender)) return true;
 
-    const response = `🌟 _*Pesan Otomatis*_ 🌟 
+  const response = `🌟 _*Pesan Otomatis*_ 🌟 
 
 👋 _${salam}_ _Kak_ *${pushName}*, _Nomor ini adalah nomor bot yang tersedia untuk di sewa pada sebuah grub._
 
@@ -28,23 +28,23 @@ async function process(sock, messageInfo) {
 _*Informasi lebih lanjut*_
 📞 Owner : https://wa.me/6285246154386?text=sewabot+4.0
 💻 Website : https://autoresbot.com
-👉 Saluran : https://whatsapp.com/channel/0029VabMgUy9MF99bWrYja2Q`;
+👉 Saluran : https://www.whatsapp.com/channel/0029VaDSRuf05MUekJbazP1D`;
 
-    try {
-        // Kirim pesan balasan ke pengirim
-        await sock.sendMessage(sender, { text: response }, { quoted: message });
+  try {
+    // Kirim pesan balasan ke pengirim
+    await sock.sendMessage(sender, { text: response }, { quoted: message });
 
-        // Tandai pengirim sebagai sudah diberi respons
-        respondedSenders.add(sender);
-    } catch (error) {
-        console.error("Error in first chat process:", error);
-    }
+    // Tandai pengirim sebagai sudah diberi respons
+    respondedSenders.add(sender);
+  } catch (error) {
+    console.error("Error in first chat process:", error);
+  }
 
-    return true;
+  return true;
 }
 
-module.exports = {
-    name: "First Chat",
-    priority: 10,
-    process,
+export default {
+  name: "First Chat",
+  priority: 10,
+  process,
 };

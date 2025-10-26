@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 4.3.1
+║ 📦 Version   : 5.0.0
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -16,12 +16,12 @@ Script **Autoresbot** resmi menjadi **Open Source** dan dapat digunakan secara g
 🔗 https://autoresbot.com
 */
 
-const moment = require("moment-timezone");
+import moment from "moment-timezone";
 
 const CONNECTION = "pairing"; // qr atau pairing
 const OWNER_NAME = "Autoresbot";
-const NOMOR_BOT = "628xx"; // 628xx nomor wa
-const DESTINATION = "both"; // group , private, both
+const NOMOR_BOT = "628xxxxx"; // 628xx nomor wa
+const DESTINATION = "group"; // group , private, both
 const APIKEY = ""; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
 const SIMILARITY = true; // Pencarian kemiripan command (true, false)
@@ -31,7 +31,7 @@ const VERSION = global.version; // don't edit
 const EMAIL = "autoresbot@gmail.com";
 const REGION = "Indonesia";
 const WEBSITE = "autoresbot.com";
-const DATA_OWNER = ["23198888888888"];
+const DATA_OWNER = ["6282154365238"];
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
@@ -61,6 +61,9 @@ const SPAM_COULDOWN = 10; // Waktu cooldown dalam detik (10 detik)
 const SPAM_WARNING = 3; // Jumlah maksimum peringatan sebelum tindakan diambil
 const SPAM_ACTION = "both"; // tindakan setelah warning terpenuhi (kick, block, both)
 
+// More
+const STATUS_SCHEDULED = true;
+
 const config = {
   APIKEY,
   phone_number_bot: NOMOR_BOT,
@@ -88,6 +91,7 @@ const config = {
   typewelcome: TYPE_WELCOME,
   bgwelcome2: BG_WELCOME2,
   midnight_restart: MIDNIGHT_RESTART,
+  scheduled: STATUS_SCHEDULED,
   PANEL: {
     URL: PANEL_URL,
     KEY_APPLICATION: PANEL_PLTA,
@@ -109,4 +113,4 @@ const config = {
   },
 };
 
-module.exports = config;
+export default config;

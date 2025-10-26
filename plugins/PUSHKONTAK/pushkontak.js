@@ -1,6 +1,7 @@
-const { getGroupMetadata } = require("@lib/cache");
-const { downloadQuotedMedia, downloadMedia } = require("@lib/utils");
-const fs = require("fs");
+import { getGroupMetadata } from "../../lib/cache.js";
+import { downloadQuotedMedia, downloadMedia } from "../../lib/utils.js";
+
+import fs from "fs";
 
 async function delay(duration) {
   return new Promise((resolve) => setTimeout(resolve, duration * 1000));
@@ -48,10 +49,10 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Filter peserta grup yang sesuai
+    // Ambil id atau phoneNumber dari peserta grup
     const allUsers = metadata.participants
-      .filter((v) => v.id.endsWith("@lid"))
-      .map((v) => v.id);
+      .map((v) => v.phoneNumber || v.id)
+      .filter(Boolean); // buang yang undefined atau null
 
     if (allUsers.length === 0) {
       return await sock.sendMessage(
@@ -113,7 +114,7 @@ function sendErrorMessage(sock, remoteJid, message, prefix, command) {
   );
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["pushkontak"],
   OnlyPremium: false,

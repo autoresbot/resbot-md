@@ -1,4 +1,4 @@
-const { findUser, updateUser } = require("@lib/users");
+import { findUser, updateUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, prefix, command } = messageInfo;
@@ -33,7 +33,7 @@ async function handle(sock, messageInfo) {
   const totalCost = limitToBuy * pricePerLimit;
 
   // Ambil data user
-  const dataUsers = await findUser(sender);
+  const dataUsers = findUser(sender);
 
   if (!dataUsers) return;
 
@@ -44,14 +44,14 @@ async function handle(sock, messageInfo) {
     return await sock.sendMessage(
       remoteJid,
       {
-        text: `⚠️ _Saldo Anda tidak cukup untuk membeli *${limitToBuy}* limit._\n\n_Harga total:_ ${totalCost} money\n_Saldo Anda:_ ${dataUsers.money} money`,
+        text: `⚠️ _Saldo Anda tidak cukup untuk membeli *${limitToBuy}* limit._\n\n_Harga total:_ ${totalCost} money\n_Saldo Anda:_ ${userData.money} money`,
       },
       { quoted: message }
     );
   }
 
   // Update data pengguna
-  await updateUser(sender, {
+  updateUser(sender, {
     limit: userData.limit + limitToBuy, // Tambah limit
     money: userData.money - totalCost, // Kurangi saldo
   });
@@ -68,7 +68,7 @@ async function handle(sock, messageInfo) {
   );
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["buylimit"],
   OnlyPremium: false,

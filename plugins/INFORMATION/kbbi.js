@@ -1,5 +1,7 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
 const cleanHtml = (input) => input.replace(/<\/?[^>]+(>|$)/g, "");
 
 async function sendMessageWithQuote(
@@ -60,8 +62,7 @@ async function handle(sock, messageInfo) {
     await sendMessageWithQuote(sock, remoteJid, message, errorMessage);
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["kbbi"],
   OnlyPremium: false,

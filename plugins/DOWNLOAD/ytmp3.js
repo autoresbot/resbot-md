@@ -1,23 +1,51 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { extractLink } = require("@lib/utils");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-// Fungsi untuk mengirim pesan dengan kutipan (quote)
+import config from "../../config.js";
+import { logCustom } from "../../lib/logger.js";
+import { extractLink, downloadToBuffer } from "../../lib/utils.js";
+
+// Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
   await sock.sendMessage(remoteJid, { text }, { quoted: message });
 }
 
-// Fungsi utama untuk menangani permintaan
+// Fungsi delay (jeda)
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Fungsi untuk mencoba request API hingga 3 kali
+async function fetchWithRetry(api, endpoint, params, maxRetries = 3, delayMs = 5000) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await api.get(endpoint, params);
+      if (response && response.status) {
+        console.log(`✅ Berhasil pada percobaan ke-${attempt}`);
+        return response;
+      }
+      throw new Error(`API response invalid (percobaan ${attempt})`);
+    } catch (err) {
+      lastError = err;
+      console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
+      if (attempt < maxRetries) {
+        console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
+        await delay(delayMs);
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Fungsi utama handler
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command } = messageInfo;
 
   try {
     const validLink = extractLink(content);
 
-    // Validasi input: pastikan konten ada
-    if (!content.trim() || content.trim() == "") {
+    if (!content.trim() || content.trim() === "") {
       return sendMessageWithQuote(
         sock,
         remoteJid,
@@ -28,25 +56,25 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Tampilkan reaksi "Loading"
+    // Kirim reaksi "Loading"
     await sock.sendMessage(remoteJid, {
       react: { text: "⏰", key: message.key },
     });
 
-    // Inisialisasi API dengan APIKEY dari config
     const api = new ApiAutoresbot(config.APIKEY);
 
-    // Memanggil API untuk mengunduh audio
-    const response = await api.get("/api/downloader/ytplay", {
-      url: validLink,
-      format: "m4a",
-    });
+    // Coba request API maksimal 3x
+    const response = await fetchWithRetry(
+      api,
+      "/api/downloader/ytplay",
+      { url: validLink, format: "m4a" },
+      3,
+      5000
+    );
 
-    // Validasi respons API
     if (response.status) {
       const url_media = response.data.url;
 
-      // Download file ke buffer
       const audioBuffer = await downloadToBuffer(url_media, "mp3");
 
       await sock.sendMessage(
@@ -59,7 +87,6 @@ async function handle(sock, messageInfo) {
       );
     } else {
       logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
-      // Jika tidak ada URL untuk audio, beri tahu pengguna
       await sendMessageWithQuote(
         sock,
         remoteJid,
@@ -68,10 +95,7 @@ async function handle(sock, messageInfo) {
       );
     }
   } catch (error) {
-    // Tangani kesalahan dan log error
     logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
-
-    // Kirim pesan kesalahan yang lebih informatif
     const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\nDetail Error: ${
       error.message || error
     }`;
@@ -79,10 +103,10 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
-  Commands: ["ytmp3"], // Menentukan perintah yang diproses oleh handler ini
+  Commands: ["ytmp3"],
   OnlyPremium: false,
   OnlyOwner: false,
-  limitDeduction: 1, // Jumlah limit yang akan dikurangi
+  limitDeduction: 1,
 };

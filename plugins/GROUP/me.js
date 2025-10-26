@@ -1,7 +1,10 @@
-const { findUser, isOwner, isPremiumUser } = require("@lib/users");
-const { getGroupMetadata, getProfilePictureUrl } = require("@lib/cache");
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+
+import { findUser, isOwner, isPremiumUser } from "../../lib/users.js";
+import { getGroupMetadata, getProfilePictureUrl } from "../../lib/cache.js";
 
 const getCountryFlag = (sender) => {
   const countryCode = sender.slice(0, 2); // Dua angka pertama
@@ -45,7 +48,7 @@ async function handle(sock, messageInfo) {
     const dataUsers = await findUser(sender);
     if (!dataUsers) return;
 
-      const [docId, userData] = dataUsers;
+    const [docId, userData] = dataUsers;
 
     if (!isGroup) {
       await sock.sendMessage(
@@ -63,13 +66,13 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
 
     const roleInGrub = isAdmin ? "Admin" : "Member";
-    const role = (await isOwner(sender))
+    const role = isOwner(sender)
       ? "Owner"
-      : (await isPremiumUser(sender))
+      : isPremiumUser(sender)
       ? "Premium"
       : userData.role;
 
@@ -102,7 +105,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["me", "limit"],
   OnlyPremium: false,

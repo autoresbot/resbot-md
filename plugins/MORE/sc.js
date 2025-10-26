@@ -1,13 +1,13 @@
-const { reply } = require('@lib/utils');
-const config    = require('@config');
+import { reply } from "../../lib/utils.js";
+import config from "../../config.js";
 
 async function handle(sock, messageInfo) {
-    const { m } = messageInfo;
+  const { m } = messageInfo;
 
-    const text = `╭「 𝙎𝘾𝙍𝙄𝙋𝙏 𝘼𝙐𝙏𝙊𝙍𝙀𝙎𝘽𝙊𝙏 」
+  const text = `╭「 𝙎𝘾𝙍𝙄𝙋𝙏 𝘼𝙐𝙏𝙊𝙍𝙀𝙎𝘽𝙊𝙏 」
 │
-│◧ ᴠᴇʀꜱɪᴏɴ : ${config.version}
-│◧ ᴛʏᴘᴇ ᴘʟᴜɢɪɴꜱ
+│◧ ᴠᴇʀꜱɪᴏɴ : ${global.version}
+│◧ ᴛʏᴘᴇ ᴘʟᴜɢɪɴꜱ ᴇꜱᴍ
 │◧ ɴᴏ ᴇɴᴄ 100%
 │◧ ɴᴏ ʙᴜɢ & ɴᴏ ᴇʀʀᴏʀ 
 │◧ ʜᴀʀɢᴀ ? free
@@ -18,14 +18,14 @@ async function handle(sock, messageInfo) {
 
 ╭「 Link Download 」
 
-◧ ᴡᴇʙꜱɪᴛᴇ https://autoresbot.com/download`
+◧ ᴡᴇʙꜱɪᴛᴇ https://autoresbot.com/download`;
 
-        await reply(m, text);
+  await reply(m, text);
 }
 
-module.exports = {
-    handle,
-    Commands    : ['sc','script'],
-    OnlyPremium : false,
-    OnlyOwner   : false
+export default {
+  handle,
+  Commands: ["sc", "script"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

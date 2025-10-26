@@ -7,7 +7,7 @@ const DB_family100 = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-    DB_family100[remoteJid] = data;
+  DB_family100[remoteJid] = data;
 }
 
 /**
@@ -15,7 +15,7 @@ function addUser(remoteJid, data) {
  * @param {string} remoteJid - ID pengguna (unik)
  */
 function removeUser(remoteJid) {
-    delete DB_family100[remoteJid];
+  delete DB_family100[remoteJid];
 }
 
 /**
@@ -24,7 +24,7 @@ function removeUser(remoteJid) {
  * @returns {object|null} - Data pengguna atau null jika tidak ditemukan
  */
 function getUser(remoteJid) {
-    return DB_family100[remoteJid] || null;
+  return DB_family100[remoteJid] || null;
 }
 
 /**
@@ -33,14 +33,8 @@ function getUser(remoteJid) {
  * @returns {boolean} - True jika pengguna ada di database, false jika tidak
  */
 function isUserPlaying(remoteJid) {
-    return Boolean(DB_family100[remoteJid]);
+  return Boolean(DB_family100[remoteJid]);
 }
 
 // Ekspor fungsi dan database
-module.exports = {
-    DB_family100,
-    addUser,
-    removeUser,
-    getUser,
-    isUserPlaying,
-};
+export { DB_family100, addUser, removeUser, getUser, isUserPlaying };

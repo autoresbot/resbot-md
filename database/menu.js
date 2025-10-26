@@ -1,71 +1,84 @@
-const fs = require('fs');
-const path = require('path');
+import fs from "fs/promises";
+import path from "path";
+import { pathToFileURL } from "url";
 
-const pluginsDir = path.join(process.cwd(), 'plugins');
+const pluginsDir = path.join(process.cwd(), "plugins");
 
 let cachedMenu = {};
 let lastUpdate = 0;
 const CACHE_INTERVAL = 30 * 1000; // 30 detik
 
-function loadMenu() {
-    const menu = {};
+// Load semua plugin dan buat menu
+async function loadMenu() {
+  const menu = {};
+  const dirents = await fs.readdir(pluginsDir, { withFileTypes: true });
 
-    fs.readdirSync(pluginsDir, { withFileTypes: true }).forEach(dirent => {
-        if (!dirent.isDirectory()) return;
+  for (const dirent of dirents) {
+    if (!dirent.isDirectory()) continue;
 
-        const category = dirent.name.toLowerCase();
-        const categoryPath = path.join(pluginsDir, dirent.name);
-        const commands = [];
+    const category = dirent.name.toLowerCase();
+    const categoryPath = path.join(pluginsDir, dirent.name);
+    const commands = [];
 
-        fs.readdirSync(categoryPath).forEach(file => {
-            const filePath = path.join(categoryPath, file);
-            if (!file.endsWith('.js')) return;
+    const files = await fs.readdir(categoryPath);
+    for (const file of files) {
+      if (!file.endsWith(".js")) continue;
 
-            try {
-                delete require.cache[require.resolve(filePath)]; // hapus cache module agar bisa reload
-                const plugin = require(filePath);
+      const filePath = path.join(categoryPath, file);
 
-                if (plugin.Commands && Array.isArray(plugin.Commands)) {
-                    commands.push(...plugin.Commands);
-                }
-            } catch (err) {
-                console.error(`❌ Gagal load file ${filePath}:`, err.message);
-            }
-        });
+      try {
+        const moduleURL =
+          pathToFileURL(filePath).href + "?cacheBust=" + Date.now();
+        const plugin = await import(moduleURL);
+        const pluginDefault = plugin.default || plugin;
 
-        if (commands.length > 0) {
-            menu[category] = [...new Set(commands)];
+        if (pluginDefault.Commands && Array.isArray(pluginDefault.Commands)) {
+          commands.push(...pluginDefault.Commands);
         }
-    });
-
-    return menu;
-}
-
-function updateCacheIfNeeded() {
-    const now = Date.now();
-    if (now - lastUpdate > CACHE_INTERVAL) {
-        cachedMenu = loadMenu();
-        lastUpdate = now;
+      } catch (err) {
+        console.error(`❌ Gagal load file ${filePath}:`, err.message);
+      }
     }
+
+    if (commands.length > 0) {
+      menu[category] = [...new Set(commands)];
+    }
+  }
+
+  return menu;
 }
 
-// Gunakan Proxy agar ketika `menu.kategori` diakses, ia cek cache dulu
-const menu = new Proxy({}, {
+// Pastikan menu sudah di-load, dipanggil sebelum akses
+export async function loadMenuOnce() {
+  const now = Date.now();
+  if (
+    now - lastUpdate > CACHE_INTERVAL ||
+    Object.keys(cachedMenu).length === 0
+  ) {
+    cachedMenu = await loadMenu();
+    lastUpdate = now;
+  }
+  return cachedMenu;
+}
+
+// Proxy tetap bisa dipakai untuk akses langsung (non-await)
+const menuProxy = new Proxy(
+  {},
+  {
     get(target, prop) {
-        updateCacheIfNeeded();
-        return cachedMenu[prop];
+      // Cek cache tapi tidak await
+      loadMenuOnce().catch(console.error);
+      return cachedMenu[prop];
     },
     ownKeys() {
-        updateCacheIfNeeded();
-        return Reflect.ownKeys(cachedMenu);
+      loadMenuOnce().catch(console.error);
+      return Reflect.ownKeys(cachedMenu);
     },
     getOwnPropertyDescriptor() {
-        updateCacheIfNeeded();
-        return {
-            enumerable: true,
-            configurable: true
-        };
-    }
-});
+      loadMenuOnce().catch(console.error);
+      return { enumerable: true, configurable: true };
+    },
+  }
+);
 
-module.exports = menu;
+export default menuProxy;

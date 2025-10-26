@@ -1,6 +1,6 @@
-const { sendMessageWithMention } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
-const mess = require("@mess");
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import mess from "../../strings.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
@@ -11,7 +11,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -24,12 +24,18 @@ async function handle(sock, messageInfo) {
 
     // Filter peserta dengan status admin
     const adminList = participants
-      .filter((participant) => participant.admin !== null)
-      .map((admin, index) => `◧ @${admin.id.split("@")[0]}`)
+      .filter((p) => p.admin !== null)
+      .map((admin) => {
+        // Ambil nomor dengan prioritas phoneNumber dulu
+        const jid = admin.phoneNumber || admin.id;
+        const cleanNumber =
+          typeof jid === "string" ? jid.split("@")[0] : "unknown";
+        return `◧ @${cleanNumber}`;
+      })
       .join("\n");
 
     // Cek jika tidak ada admin
-    if (!adminList) {
+    if (!adminList || adminList.trim() === "") {
       return await sock.sendMessage(
         remoteJid,
         { text: "⚠️ _Tidak ada admin dalam grup ini._" },
@@ -58,7 +64,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["listadmin"],
   OnlyPremium: false,

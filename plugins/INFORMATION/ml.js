@@ -1,6 +1,8 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+import { logCustom } from "../../lib/logger.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, prefix, command, content } = messageInfo;
@@ -41,14 +43,14 @@ async function handle(sock, messageInfo) {
     const response = await api.get("/api/stalker/ml", { user_id, server });
 
     if (response?.data) {
-      const { username, this_login_country } = response.data;
+      const { username, this_login_country, region} = response.data;
 
       const gameDataId = `🎮 | *MOBILE LEGEND*
 
 ◧ User ID : ${user_id}
 ◧ Server : ${server}
 ◧ Username : ${username || "Tidak diketahui"}
-◧ Country : ${this_login_country || "Tidak tersedia"}`;
+◧ Country : ${this_login_country || region || "Tidak tersedia"}`;
 
       // Mengirimkan data yang diperoleh
       await sock.sendMessage(
@@ -81,8 +83,7 @@ async function handle(sock, messageInfo) {
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["ml", "mlcek"],
   OnlyPremium: false,

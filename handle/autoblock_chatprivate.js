@@ -1,32 +1,31 @@
-const respondedSenders  = new Set();
+const respondedSenders = new Set();
 
 async function process(sock, messageInfo) {
-    const { sender, remoteJid, isGroup } = messageInfo;
+  const { sender, remoteJid, isGroup } = messageInfo;
 
-    // KOMENTARI INI UNTUK MENGHIDUPKAN
-    return true;
+  // KOMENTARI INI UNTUK MENGHIDUPKAN
 
-    if (isGroup) return true; // Abaikan jika pesan berasal dari grup
-    if(remoteJid == 'status@broadcast') return true; // abaikan story
+  return true;
 
+  if (isGroup) return true; // Abaikan jika pesan berasal dari grup
+  if (remoteJid == "status@broadcast") return true; // abaikan story
 
-    if (respondedSenders.has(sender)) return true;
+  if (respondedSenders.has(sender)) return true;
 
-    try {
-        //await sock.sendMessage(sender, { text: 'Kata kata hari ini' }, { quoted: message });
+  try {
+    //await sock.sendMessage(sender, { text: 'Kata kata hari ini' }, { quoted: message });
 
-        await sock.updateBlockStatus(sender, "block");
+    await sock.updateBlockStatus(sender, "block");
 
-        // Tandai pengirim sudah di block
-        respondedSenders.add(sender);
-    } catch (error) {
-        console.error("Error in block user:", error);
-    }
-    return true;
+    // Tandai pengirim sudah di block
+    respondedSenders.add(sender);
+  } catch (error) {
+    console.error("Error in block user:", error);
+  }
+  return true;
 }
-
-module.exports = {
-    name: "Autoblock Chat Pribadi",
-    priority: 10,
-    process,
+export default {
+  name: "Autoblock Chat Pribadi",
+  priority: 10,
+  process,
 };

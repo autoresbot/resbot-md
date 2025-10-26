@@ -1,70 +1,146 @@
-const ApiAutoresbot = require('api-autoresbot');
-const mess          = require('@mess');
-const config        = require("@config");
-const { getBuffer } = require('@lib/utils');
-const sharp         = require('sharp');
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import config from "../../config.js";
+import mess from "../../strings.js";
+import { getBuffer } from "../../lib/utils.js";
+import sharp from "sharp";
+import { logCustom } from "../../lib/logger.js";
 
-async function handle(sock, messageInfo) {
-    const { remoteJid, message, command, content } = messageInfo;
+let Jimp; // lazy import supaya nggak makan resource kalau nggak perlu
 
-    try {
-        // Loading
-        await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
+async function safeImageConvert(buffer) {
+  try {
+    const metadata = await sharp(buffer).metadata();
 
-        const api = new ApiAutoresbot(config.APIKEY);
-        const response = await api.get('/api/anime', { method: command });
+    // Kalau file valid (jpeg/png/webp)
+    if (["jpeg", "png", "webp"].includes(metadata.format)) return buffer;
 
-        // Mengecek jika respons dan data tersedia
-        if (response && response.data) {
-            const buffer = await getBuffer(response.data);
-
-            // Pastikan buffer adalah gambar
-            let imageBuffer;
-            const metadata = await sharp(buffer).metadata();
-
-            if (metadata.format === 'gif') {
-                // Konversi GIF ke gambar statis (JPEG)
-                imageBuffer = await sharp(buffer).toFormat('jpeg').toBuffer();
-            } else if (['jpeg', 'png', 'webp'].includes(metadata.format)) {
-                // Buffer sudah berupa gambar
-                imageBuffer = buffer;
-            } else {
-                throw new Error('File yang diterima bukan gambar yang valid.');
-            }
-
-            logCustom('info', content, `ERROR-COMMAND-ANIME-${command}.txt`);
-
-            // Kirimkan gambar jika respons data valid
-            await sock.sendMessage(remoteJid, {
-                image: imageBuffer,
-                caption: mess.general.success
-            }, { quoted: message });
-        } else {
-            logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
-
-            // Pesan jika data kosong
-            await sock.sendMessage(remoteJid, {
-                text: "Maaf, tidak ada data tersedia untuk permintaan ini."
-            }, { quoted: message });
-        }
-    } catch (error) {
-        logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
-
-        await sock.sendMessage(remoteJid, {
-            text: `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\n${error}`
-        }, { quoted: message });
+    // Kalau gif → konversi ke jpeg
+    if (metadata.format === "gif") {
+      return await sharp(buffer).toFormat("jpeg").toBuffer();
     }
+
+    throw new Error("Format gambar tidak dikenali.");
+  } catch (err) {
+    console.warn("⚠️ Sharp gagal, fallback ke Jimp:", err.message);
+    try {
+      if (!Jimp) {
+        const jimpModule = await import("jimp");
+        Jimp = jimpModule.default || jimpModule;
+      }
+      const jimpImage = await Jimp.read(buffer);
+      return await jimpImage.getBufferAsync(Jimp.MIME_JPEG);
+    } catch (jimpErr) {
+      throw new Error(
+        `Gagal memproses gambar (Sharp & Jimp gagal): ${jimpErr.message}`
+      );
+    }
+  }
 }
 
-module.exports = {
-    handle,
-    Commands: [
-        'waifu', 'neko', 'shinobu', 'megumin', 'bully', 'cuddle', 'cry', 'hug', 'awoo',
-        'kiss', 'lick', 'pat', 'smug', 'bonk', 'yeet', 'blush', 'smile', 'wave', 'highfive',
-        'handhold', 'nom', 'bite', 'glomp', 'slap', 'kill', 'happy', 'wink', 'poke', 'dance', 'cringe'
-    ],
-    OnlyPremium     : false,
-    OnlyOwner       : false,
-    limitDeduction  : 1
+async function handle(sock, messageInfo) {
+  const { remoteJid, message, command, content } = messageInfo;
+
+  try {
+    // React sementara proses
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
+
+    const api = new ApiAutoresbot(config.APIKEY);
+
+    const response = await api
+      .get("/api/anime", { method: command })
+      .catch(() => null);
+
+    if (!response || !response.data) {
+      logCustom("warn", content, `NO-DATA-${command}.txt`);
+      return await sock.sendMessage(
+        remoteJid,
+        {
+          text: `_⚠️ Gagal: Periksa Apikey Anda! (.apikey)_`,
+        },
+        { quoted: message }
+      );
+    }
+
+    // Ambil buffer dengan validasi ekstra
+    let buffer;
+    try {
+      buffer = await getBuffer(response.data);
+      if (!buffer || buffer.length < 10)
+        throw new Error("Buffer kosong atau tidak valid.");
+    } catch (bufErr) {
+      logCustom("error", bufErr.message, `BUFFER-ERROR-${command}.txt`);
+      return await sock.sendMessage(
+        remoteJid,
+        { text: "⚠️ Gagal memuat gambar dari server." },
+        { quoted: message }
+      );
+    }
+
+    const imageBuffer = await safeImageConvert(buffer);
+
+    await sock.sendMessage(
+      remoteJid,
+      {
+        image: imageBuffer,
+        caption: mess.general.success || "✅ Berhasil memproses gambar!",
+      },
+      { quoted: message }
+    );
+
+    logCustom("info", `Command: ${command}`, `COMMAND-SUCCESS-${command}.txt`);
+  } catch (error) {
+    console.error("❌ Error di handler anime:", error);
+
+    logCustom("error", error.message, `ERROR-COMMAND-${command}.txt`);
+
+    await sock.sendMessage(
+      remoteJid,
+      {
+        text: `❌ Terjadi kesalahan saat memproses permintaan.\n\nError: ${error.message}`,
+      },
+      { quoted: message }
+    );
+  }
+}
+
+export default {
+  handle,
+  Commands: [
+    "waifu",
+    "neko",
+    "shinobu",
+    "megumin",
+    "bully",
+    "cuddle",
+    "cry",
+    "hug",
+    "awoo",
+    "kiss",
+    "lick",
+    "pat",
+    "smug",
+    "bonk",
+    "yeet",
+    "blush",
+    "smile",
+    "wave",
+    "highfive",
+    "handhold",
+    "nom",
+    "bite",
+    "glomp",
+    "slap",
+    "kill",
+    "happy",
+    "wink",
+    "poke",
+    "dance",
+    "cringe",
+  ],
+  OnlyPremium: false,
+  OnlyOwner: false,
+  limitDeduction: 1,
 };

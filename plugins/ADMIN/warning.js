@@ -1,8 +1,8 @@
 const batasPeringatan = 3;
 
-const mess = require("@mess");
-const { getGroupMetadata } = require("@lib/cache");
-const { sendMessageWithMention, determineUser } = require("@lib/utils");
+import mess from "../../strings.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { sendMessageWithMention, determineUser } from "../../lib/utils.js";
 
 // Warning list disimpan di memori (RAM)
 const warningList = {};
@@ -25,7 +25,9 @@ async function handle(sock, messageInfo) {
 
   const groupMetadata = await getGroupMetadata(sock, remoteJid);
   const participants = groupMetadata.participants;
-  const isAdmin = participants.some((p) => p.id === sender && p.admin);
+  const isAdmin = participants.some(
+    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+  );
 
   if (!isAdmin) {
     await sock.sendMessage(
@@ -158,7 +160,6 @@ async function handle(sock, messageInfo) {
         senderType
       );
     } catch (error) {
-      console.error(error);
       await sendMessageWithMention(
         sock,
         remoteJid,
@@ -172,7 +173,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: [
     "warn",

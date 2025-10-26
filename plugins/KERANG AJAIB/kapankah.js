@@ -1,5 +1,4 @@
-const mess = require("@mess");
-const { sendMessageWithMention } = require("@lib/utils");
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -68,7 +67,7 @@ async function handle(sock, messageInfo) {
   );
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["kapankah"],
   OnlyPremium: false,

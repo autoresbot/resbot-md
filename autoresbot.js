@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 4.3.1
+║ 📦 Version   : 5.0.0
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -15,55 +15,66 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 Script **Autoresbot** resmi menjadi **Open Source** dan dapat digunakan secara gratis:
 🔗 https://autoresbot.com
 */
+// List command tanpa registrasi
+export const commandWithoutRegister = ["list", "owner", "menu", "claim"];
 
-const commandWithoutRegister = ["list", "owner", "menu", "claim"];
-
-const chokidar = require("chokidar");
-const config = require("@config");
+// Import ESM
+import chokidar from "chokidar";
+import config from "./config.js";
 const mode = config.mode;
-const { findGroup } = require("@lib/group");
-const chalk = require("chalk");
-const handler = require("./lib/handler");
-const mess = require("@mess");
-const { updateParticipant } = require("@lib/cache");
-const lastMessageTime = {};
-const path = require("path");
-const { handleActiveFeatures } = require("./lib/participant_update");
-const {
+
+import { findGroup } from "./lib/group.js";
+import chalk from "chalk";
+import handler from "./lib/handler.js";
+import mess from "./strings.js";
+import { updateParticipant } from "./lib/cache.js";
+
+import path from "path";
+import { handleActiveFeatures } from "./lib/participant_update.js";
+
+import {
   logWithTime,
   log,
   danger,
   findClosestCommand,
   logTracking,
-} = require("@lib/utils");
-const {
+} from "./lib/utils.js";
+
+import {
   isOwner,
   isPremiumUser,
   updateUser,
   findUser,
   isUserRegistered,
-} = require("@lib/users");
+} from "./lib/users.js";
+
+import { reloadPlugins } from "./lib/plugins.js";
+import { logCustom } from "./lib/logger.js";
+
+handler.initHandlers();
+
+// Variabel global
+const lastMessageTime = {};
 const pluginsPath = path.join(process.cwd(), "plugins");
 const lastSent_participantUpdate = {};
-
-const { reloadPlugins } = require("@lib/plugins");
-const { logCustom } = require("@lib/logger");
 let plugins = [];
 
+// Load plugin awal
 reloadPlugins()
   .then((loadedPlugins) => {
     plugins = loadedPlugins;
+    console.log(`[✔] Load All Plugins done...`);
   })
   .catch((error) => {
     console.error("❌ ERROR: Gagal memuat plugins:", error);
   });
 
+// Hot reload hanya di development
 if (mode === "development") {
-  const chokidar = require("chokidar");
   const watcher = chokidar.watch(pluginsPath, {
     persistent: true,
     ignoreInitial: true,
-    ignored: /(^|[\/\\])\../, // Abaikan file tersembunyi.
+    ignored: /(^|[\/\\])\../, // Abaikan file tersembunyi
   });
 
   watcher.on("change", (filePath) => {
@@ -98,8 +109,8 @@ async function processMessage(sock, messageInfo) {
     command,
   } = messageInfo;
 
-  const isPremiumUsers = await isPremiumUser(sender);
-  const isOwnerUsers = await isOwner(sender);
+  const isPremiumUsers = isPremiumUser(sender);
+  const isOwnerUsers = isOwner(sender);
 
   try {
     const shouldContinue = await handler.preProcess(sock, messageInfo);
@@ -157,25 +168,6 @@ async function processMessage(sock, messageInfo) {
     for (const plugin of plugins) {
       if (plugin.Commands.includes(command)) {
         commandFound = true;
-
-        // Handler:
-        if (!isUserRegistered(sender) && command.toLowerCase() !== "register") {
-          // Kalau command ada di commandWithoutRegister, skip peringatan
-          if (!commandWithoutRegister.includes(command.toLowerCase())) {
-
-              await sock.sendMessage(
-                remoteJid,
-                {
-                  text:
-                    mess.general?.isNotRegister ||
-                    "❗ Kamu belum terdaftar. Ketik *.register* dulu ya!",
-                },
-                { quoted: message }
-              );
-           
-            return;
-          }
-        }
 
         // Cek apakah perintah ini hanya untuk pengguna premium
         if (plugin.OnlyPremium && !isPremiumUsers && !isOwnerUsers) {
@@ -251,7 +243,7 @@ async function processMessage(sock, messageInfo) {
           `_Command *${command}* tidak ditemukan_ \n\n_Apakah maksud Anda *.${closestCommand}*?_`,
           `ERROR-COMMAND-NOT-FOUND.txt`
         );
-        await sock.sendMessage(
+        return await sock.sendMessage(
           remoteJid,
           {
             text: `_Command *${command}* tidak ditemukan_ \n\n_Apakah maksud Anda *.${closestCommand}*?_`,
@@ -300,4 +292,4 @@ async function participantUpdate(sock, messageInfo) {
   }
 }
 
-module.exports = { processMessage, participantUpdate };
+export { processMessage, participantUpdate };

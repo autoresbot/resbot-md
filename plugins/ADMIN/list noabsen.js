@@ -1,7 +1,7 @@
-const { findAbsen } = require("@lib/absen");
-const { sendMessageWithMention } = require("@lib/utils");
-const mess = require("@mess");
-const { getGroupMetadata } = require("@lib/cache");
+import { findAbsen } from "../../lib/absen.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import mess from "../../strings.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
@@ -14,7 +14,7 @@ async function handle(sock, messageInfo) {
     const totalMembers = participants.length;
 
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -62,7 +62,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["listnoabsen"],
   OnlyPremium: false,

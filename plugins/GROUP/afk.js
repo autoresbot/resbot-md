@@ -1,4 +1,4 @@
-const { findUser, updateUser } = require("@lib/users");
+import { findUser, updateUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, content, sender, pushName } =
@@ -49,8 +49,7 @@ async function handle(sock, messageInfo) {
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["afk"],
   OnlyPremium: false,

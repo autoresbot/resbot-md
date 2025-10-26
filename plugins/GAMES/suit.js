@@ -1,6 +1,11 @@
-const mess = require("@mess");
-const { addUser, removeUser, getUser, isUserPlaying } = require("@tmpDB/suit");
-const { sendMessageWithMention } = require("@lib/utils");
+import mess from "../../strings.js";
+import {
+  addUser,
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/suit.js";
+import { sendMessageWithMention, convertToJid } from "../../lib/utils.js";
 
 const WAKTU_GAMES = 60; // 60 detik
 
@@ -13,6 +18,9 @@ async function startGame(
   message,
   senderType
 ) {
+
+
+
   addUser(remoteJid, {
     status: false,
     player1,
@@ -52,6 +60,8 @@ async function startGame(
 // Fungsi utama untuk menangani command
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, mentionedJid, senderType } = messageInfo;
+  console.log("sender :",sender);
+  console.log("mentionedJid :",mentionedJid);
 
   if (isUserPlaying(remoteJid)) {
     return await sock.sendMessage(
@@ -74,7 +84,9 @@ async function handle(sock, messageInfo) {
   }
 
   const player1 = sender;
-  const player2 = mentionedJid[0];
+  //const player2 = mentionedJid[0];
+
+  const player2 = await convertToJid(sock, mentionedJid[0])
 
   if (player1 === player2) {
     return await sock.sendMessage(
@@ -85,8 +97,7 @@ async function handle(sock, messageInfo) {
   }
   await startGame(sock, remoteJid, player1, player2, message, senderType);
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["suit"],
   OnlyPremium: false,

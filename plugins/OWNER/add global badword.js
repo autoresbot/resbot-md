@@ -1,4 +1,4 @@
-const { addBadword, updateBadword, findBadword } = require("@lib/badword");
+import { addBadword, updateBadword, findBadword } from "../../lib/badword.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, prefix, command, content, fullText } =
@@ -28,7 +28,6 @@ async function handle(sock, messageInfo) {
     // Kirim respons ke grup
     await sendResponse(sock, remoteJid, responseMessage, message);
   } catch (error) {
-    console.error(error);
     await sendResponse(
       sock,
       remoteJid,
@@ -69,7 +68,7 @@ async function sendResponse(sock, remoteJid, text, quotedMessage) {
   await sock.sendMessage(remoteJid, { text }, { quoted: quotedMessage });
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["addglobalbadword"],
   OnlyPremium: false,

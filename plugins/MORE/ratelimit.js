@@ -1,10 +1,10 @@
-const config = require('@config');
+import config from "../../config.js";
 
 async function handle(sock, messageInfo) {
-    const { remoteJid, message } = messageInfo;
-    const rateLimitSeconds = config.rate_limit / 1000; // Konversi ke detik
+  const { remoteJid, message } = messageInfo;
+  const rateLimitSeconds = config.rate_limit / 1000; // Konversi ke detik
 
-    const response = `⏱️ *Rate Limit Bot*
+  const response = `⏱️ *Rate Limit Bot*
 
 🕒 _Batas waktu penggunaan perintah_: *${rateLimitSeconds} detik*
 
@@ -12,13 +12,13 @@ async function handle(sock, messageInfo) {
 Untuk menjaga agar bot tidak mengirim terlalu banyak pesan dalam waktu singkat dan menghindari spam. Oleh karena itu, setiap perintah baru dapat diproses setelah jeda ${rateLimitSeconds} detik.
 
 🙏 Terima kasih atas pengertiannya!`;
-    
-    await sock.sendMessage(remoteJid, { text: response }, { quoted: message });
+
+  await sock.sendMessage(remoteJid, { text: response }, { quoted: message });
 }
 
-module.exports = {
-    handle,
-    Commands: ['ratelimit'],
-    OnlyPremium: false, 
-    OnlyOwner: false
+export default {
+  handle,
+  Commands: ["ratelimit"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

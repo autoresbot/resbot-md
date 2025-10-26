@@ -1,26 +1,27 @@
-const fs = require("fs");
-const path = require("path");
-const { findGroup } = require("@lib/group");
-const { containsBadword } = require("@lib/badword");
-const mess = require("@mess");
-const spamDetection = require("@lib/spamDetection");
-const badwordDetection = require("@lib/badwordDetection");
-const config = require("@config");
-const { updateUser, findUser } = require("@lib/users");
-const autoAi = require("@lib/autoai");
-const autoSimi = require("@lib/autosimi");
-const autoRusuh = require("@lib/autorusuh");
-const { getGroupMetadata, findParticipantLatest } = require("@lib/cache");
-const {
+import fs from "fs";
+import path from "path";
+import { findGroup } from "../../lib/group.js";
+import { containsBadword } from "../../lib/badword.js";
+import mess from "../../strings.js";
+import spamDetection from "../../lib/spamDetection.js";
+import badwordDetection from "../../lib/badwordDetection.js";
+import config from "../../config.js";
+import { updateUser, findUser } from "../../lib/users.js";
+import autoAi from "../../lib/autoai.js";
+import autoSimi from "../../lib/autosimi.js";
+import autoRusuh from "../../lib/autorusuh.js";
+import { getGroupMetadata, findParticipantLatest } from "../../lib/cache.js";
+import {
   logWithTime,
   isUrlInText,
   toText,
   sendMessageWithMention,
   sendMessageWithMentionNotQuoted,
   logTracking,
-} = require("@lib/utils");
-const { findMessageById, editMessageById } = require("@lib/chatManager");
-const { sendImageAsSticker } = require("@lib/exif");
+} from "../../lib/utils.js";
+import { findMessageById, editMessageById } from "../../lib/chatManager.js";
+import { sendImageAsSticker } from "../../lib/exif.js";
+
 const notifiedUsers = new Set();
 const rateLimit_blacklist = {};
 const notifiedBlacklistUsers = new Set();
@@ -84,8 +85,9 @@ async function process(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
-    );
+    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+  );
+
 
     // Fungsi untuk menghapus pesan
     const deleteMessage = async () => {
@@ -364,10 +366,11 @@ async function process(sock, messageInfo) {
             }
           } catch (error) {
             console.error(
-              "Terjadi kesalahan saat memproses tindakan badword:",
-              error
+              "❗ _Terjadi kesalahan, tindakan badword gagal. Pastikan Bot Adalah admin_"
             );
-            await sendText("❗ _Terjadi kesalahan, tindakan badword gagal._");
+            await sendText(
+              "❗ _Terjadi kesalahan, tindakan badword gagal. Pastikan Bot Adalah admin_"
+            );
           }
         }
         return false;
@@ -411,10 +414,11 @@ async function process(sock, messageInfo) {
           }
         } catch (error) {
           console.error(
-            "Terjadi kesalahan saat memproses tindakan badword:",
-            error
+            "❗ _Terjadi kesalahan, tindakan badword gagal. Pastikan Bot Adalah admin_"
           );
-          await sendText("❗ _Terjadi kesalahan, tindakan badword gagal._");
+          await sendText(
+            "❗ _Terjadi kesalahan, tindakan badword gagal. Pastikan Bot Adalah admin_"
+          );
         }
 
         return false;
@@ -801,7 +805,7 @@ async function process(sock, messageInfo) {
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
+export default {
   name: "Mode On Handler :",
   priority: 2,
   process,

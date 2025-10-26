@@ -1,7 +1,8 @@
-const { sendMessageWithMention } = require("@lib/utils");
-const mess = require("@mess");
-const { getActiveUsers } = require("@lib/users");
-const { getGroupMetadata } = require("@lib/cache");
+import { sendMessageWithMention } from "../../lib/utils.js";
+import mess from "../../strings.js";
+import { getActiveUsers } from "../../lib/users.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+
 const TOTAL_HARI_SIDER = 30; // total sider maksimum tidak aktif 30 hari
 
 async function handle(sock, messageInfo) {
@@ -11,9 +12,9 @@ async function handle(sock, messageInfo) {
   try {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const { participants, size } = groupMetadata;
+    const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -79,7 +80,7 @@ ${memberList}`;
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["gcsider"],
   OnlyPremium: false,

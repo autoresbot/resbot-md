@@ -1,4 +1,4 @@
-const { findUser, updateUser } = require("@lib/users");
+import { findUser, updateUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, command, prefix } = messageInfo;
@@ -51,7 +51,7 @@ async function handle(sock, messageInfo) {
 
   // Ambil data pengguna
   try {
-    const dataUsers = await findUser(sender);
+    const dataUsers = findUser(sender);
 
     const [docId, userData] = dataUsers;
 
@@ -60,14 +60,14 @@ async function handle(sock, messageInfo) {
       return await sock.sendMessage(
         remoteJid,
         {
-          text: `⚠️ _Untuk mengganti role akun, level minimal adalah 10._\n\n_Level kamu saat ini: ${dataUsers.level}_`,
+          text: `⚠️ _Untuk mengganti role akun, level minimal adalah 10._\n\n_Level kamu saat ini: ${userData.level}_`,
         },
         { quoted: message }
       );
     }
 
     // Update role pengguna
-    await updateUser(sender, { achievement: content });
+    updateUser(sender, { achievement: content });
 
     // Kirim pesan berhasil
     return await sock.sendMessage(
@@ -91,7 +91,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["setakun"],
   OnlyPremium: false,

@@ -1,4 +1,5 @@
-const { findUser, updateUser } = require("@lib/users");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention, convertToJid } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, command, prefix } = messageInfo;
@@ -32,6 +33,7 @@ async function handle(sock, messageInfo) {
     }
 
     const target = args[0]; // Nomor penerima atau tag
+    const r = await convertToJid(sock, target);
     const limitToSend = parseInt(args[1], 10);
 
     // Validasi jumlah limit
@@ -62,7 +64,7 @@ async function handle(sock, messageInfo) {
     }
 
     // Ambil nomor murni target & sender
-    const targetNumber = extractNumber(target); // si penerima
+    const targetNumber = extractNumber(r); // si penerima
     const senderNumber = extractNumber(sender); // si pengirim
 
     // Validasi: Tidak bisa kirim ke diri sendiri
@@ -99,7 +101,7 @@ async function handle(sock, messageInfo) {
     }
 
     // Ambil data penerima
-    const receiverData = await findUser(targetNumber);
+    const receiverData = await findUser(r);
 
     if (!receiverData) {
       return await sock.sendMessage(
@@ -137,7 +139,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["sendlimit"],
   OnlyPremium: false,

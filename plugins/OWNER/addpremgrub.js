@@ -1,6 +1,8 @@
-const { findUser, updateUser, addUser } = require("@lib/users");
-const { sendMessageWithMention, determineUser } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+
+
 
 let inProccess = false;
 
@@ -13,36 +15,24 @@ async function handle(sock, messageInfo) {
       await sendMessageWithMention(
         sock,
         remoteJid,
-        `_Proses sedang berlangsung silakan tunggu hingga selesai_`,
+        `_Proses sedang berlangsung, silakan tunggu hingga selesai_`,
         message,
         senderType
       );
       return;
     }
 
-    // Validasi input
+    // ✅ Validasi input
     if (!content || content.trim() === "") {
-      const tex = `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ \n_*${
-        prefix + command
-      }*_ https://chat.whatsapp.com/xxx 30`;
-      return await sock.sendMessage(
-        remoteJid,
-        { text: tex },
-        { quoted: message }
-      );
+      const tex = `_⚠️ Format Penggunaan:_ \n\n💬 Contoh:\n*${prefix + command}* https://chat.whatsapp.com/xxx 30`;
+      return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
     let [linkgrub, jumlahHariPremium] = content.split(" ");
 
     if (!linkgrub.includes("chat.whatsapp.com") || isNaN(jumlahHariPremium)) {
-      const tex = `⚠️ _Pastikan format yang benar : ${
-        prefix + command
-      } https://chat.whatsapp.com/xxx 30_`;
-      return await sock.sendMessage(
-        remoteJid,
-        { text: tex },
-        { quoted: message }
-      );
+      const tex = `⚠️ _Pastikan format yang benar:_\n${prefix + command} https://chat.whatsapp.com/xxx 30`;
+      return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
     await sock.sendMessage(remoteJid, {
@@ -61,38 +51,42 @@ async function handle(sock, messageInfo) {
     });
 
     if (!res.content[0]?.attrs?.id) {
-      const tex = `⚠️ _Link Grup tidak valid atau Pastikan Bot Sudah bergabung_`;
-      return await sock.sendMessage(
-        remoteJid,
-        { text: tex },
-        { quoted: message }
-      );
+      const tex = `⚠️ _Link grup tidak valid atau pastikan bot sudah bergabung_`;
+      await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
+      inProccess = false;
+      return;
     }
 
     const groupId = res.content[0].attrs.id + "@g.us";
 
-    // Mendapatkan metadata grup
+    // ✅ Ambil metadata grup
     const groupMetadata = await getGroupMetadata(sock, groupId);
-    const participants = groupMetadata.participants;
+    const participants = groupMetadata?.participants || [];
 
     let successCount = 0;
     let failedCount = 0;
-    let totalsize = participants.length;
 
-    for (const [index, member] of participants.entries()) {
-      //await new Promise((resolve) => setTimeout(resolve, index * 500));
+    for (const member of participants) {
       try {
-        const id_users = member.id;
+        // ✅ Ambil JID valid: prioritas phoneNumber, fallback ke id
+        const id_users = member.phoneNumber || member.id;
+
+        if (typeof id_users !== "string") {
+          console.warn("Skip participant tanpa ID valid:", member);
+          failedCount++;
+          continue;
+        }
 
         // Ambil data pengguna
-        let dataUsers = await findUser(id_users);
+        const dataUsers = await findUser(id_users);
 
-        // Hitung waktu premium baru dari hari ini
+        // Hitung tanggal premium baru
         const currentDate = new Date();
         currentDate.setDate(currentDate.getDate() + jumlahHariPremium);
 
-        // Jika pengguna tidak ditemukan, tambahkan pengguna baru
         if (!dataUsers) {
+          console.warn(`User belum terdaftar: ${id_users}`);
+          failedCount++;
           continue;
         }
 
@@ -103,21 +97,15 @@ async function handle(sock, messageInfo) {
 
         successCount++;
       } catch (error) {
-        console.error(`Gagal menambahkan premium untuk ${member.id}:`, error);
+        console.error(`Gagal menambahkan premium untuk member:`, error);
         failedCount++;
       }
     }
 
     inProccess = false;
 
-    const responseText = `✅ Berhasil menambahkan ${successCount} pengguna ke member premium.\n❌ Gagal: ${failedCount}`;
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-      responseText,
-      message,
-      senderType
-    );
+    const responseText = `✅ Berhasil menambahkan *${successCount}* pengguna ke member premium.\n❌ Gagal: *${failedCount}*`;
+    await sendMessageWithMention(sock, remoteJid, responseText, message, senderType);
   } catch (error) {
     console.error("Error processing premium addition:", error);
     inProccess = false;
@@ -129,7 +117,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["addpremgrub", "addpremiumgrub"],
   OnlyPremium: false,

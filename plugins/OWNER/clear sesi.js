@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message } = messageInfo;
@@ -44,8 +44,7 @@ async function handle(sock, messageInfo) {
     );
   }
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["clearsesi"],
   OnlyPremium: false,

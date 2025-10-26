@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 4.3.1
+║ 📦 Version   : 5.0.0
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -34,7 +34,6 @@ const mess = {
     isBlocked: "⚠️ _Kamu sedang di block dari penggunaan bot ini_", // kalau block seluruhnya
     isBaned: "⚠️ _Kamu sedang di ban pada grub ini_", // kalau ban hanya grub itu saja
     fiturBlocked: "⚠️ _Fitur sedang di ban di grub ini_",
-    isNotRegister: "❗ Kamu belum terdaftar. Ketik *.register* dulu ya!!",
   },
   action: {
     grub_open: "✅ Grup berhasil dibuka",
@@ -100,4 +99,4 @@ global.group.variable = `
 ☍ @size
 ☍ @time`;
 
-module.exports = mess;
+export default mess;

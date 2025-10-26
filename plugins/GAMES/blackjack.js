@@ -1,5 +1,9 @@
-const { addUser, isUserPlaying } = require("@tmpDB/blackjack");
-const { findUser, updateUser } = require("@lib/users");
+import {
+  addUser,
+  isUserPlaying,
+} from "../../database/temporary_db/blackjack.js";
+import { findUser, updateUser } from "../../lib/users.js";
+
 let mode = "hard"; // normal, hard, setan (mode setan gk mungkin menang)
 
 let kartu_blackjack_player = [];
@@ -156,7 +160,7 @@ Ketik *stand* untuk mengakhiri giliran.`;
   );
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["bj", "blackjack"],
   OnlyPremium: false,

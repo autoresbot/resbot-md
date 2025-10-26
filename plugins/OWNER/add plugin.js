@@ -1,60 +1,64 @@
-const { reply } = require("@lib/utils");
-const fs = require('fs');
-const path = require('path');
+import { reply } from "../../lib/utils.js";
+import fs from "fs";
+import path from "path";
 
 async function handle(sock, messageInfo) {
-    const { m, prefix, command, content } = messageInfo;
+  const { m, prefix, command, content } = messageInfo;
 
-    // Memisahkan konten berdasarkan tanda '|'
-    const parts = content.split('|').map(part => part.trim());
+  // Memisahkan konten berdasarkan tanda '|'
+  const parts = content.split("|").map((part) => part.trim());
 
-    if (parts.length < 2) {
-        return await reply(
-            m,
-            `_Masukkan format yang valid_\n\n_Contoh:_ _*${prefix + command} newfitur*_ | async function handle(sock, messageInfo) {\n    const { remoteJid, message } = messageInfo;\n    await sock.sendMessage(remoteJid, { text: 'tes new fitur' }, { quoted: message });\n}
+  if (parts.length < 2) {
+    return await reply(
+      m,
+      `_Masukkan format yang valid_\n\n_Contoh:_ _*${
+        prefix + command
+      } newfitur*_ | async function handle(sock, messageInfo) {\n    const { remoteJid, message } = messageInfo;\n    await sock.sendMessage(remoteJid, { text: 'tes new fitur' }, { quoted: message });\n}
             
-module.exports = {
+export default {
     handle,
     Commands: ['newfitur'],
     OnlyPremium: false,
     OnlyOwner: false,
 };`
-        );
-    }
+    );
+  }
 
-    // Bagian pertama adalah nama perintah baru (newCommand)
-    let newCommand = parts[0];
+  // Bagian pertama adalah nama perintah baru (newCommand)
+  let newCommand = parts[0];
 
-    // Periksa apakah newCommand tidak diakhiri dengan '.js'
-    if (!newCommand.endsWith('.js')) {
-        newCommand += '.js'; // Tambahkan '.js' jika tidak ada
-    }
+  // Periksa apakah newCommand tidak diakhiri dengan '.js'
+  if (!newCommand.endsWith(".js")) {
+    newCommand += ".js"; // Tambahkan '.js' jika tidak ada
+  }
 
+  // Gabungkan semua elemen setelah elemen pertama untuk mendapatkan sisa teks sebagai isi fungsi (functionBody)
+  const functionBody = parts.slice(1).join("|");
 
-    // Gabungkan semua elemen setelah elemen pertama untuk mendapatkan sisa teks sebagai isi fungsi (functionBody)
-    const functionBody = parts.slice(1).join('|');
+  // Menggunakan cwd (current working directory)
+  const folderPath = path.join(process.cwd(), "./plugins/FEATURES ADD/");
 
-    // Menggunakan cwd (current working directory)
-    const folderPath = path.join(process.cwd(), './plugins/FEATURES ADD/');
-    
-    // Pastikan folder tujuan ada
-    if (!fs.existsSync(folderPath)) {
-        fs.mkdirSync(folderPath, { recursive: true });
-    }
+  // Pastikan folder tujuan ada
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
+  }
 
-    // Membuat isi file berdasarkan newCommand dan functionBody
-    const fileContent = functionBody;
+  // Membuat isi file berdasarkan newCommand dan functionBody
+  const fileContent = functionBody;
 
-    // Menulis file baru dengan nama sesuai newCommand
-    const filePath = path.join(folderPath, `${newCommand}`);
-    fs.writeFileSync(filePath, fileContent);
+  // Menulis file baru dengan nama sesuai newCommand
+  const filePath = path.join(folderPath, `${newCommand}`);
+  fs.writeFileSync(filePath, fileContent);
 
-    return await reply(m, `_Plugin baru dengan nama *${newCommand}* berhasil dibuat!_\n\n_Restart server untuk menerapkan perubahan_`);
+  return await reply(
+    m,
+    `_Plugin baru dengan nama *${newCommand}* berhasil dibuat!_\n\n_Restart server untuk menerapkan perubahan_`
+  );
 }
 
-module.exports = {
-    handle,
-    Commands    : ['addplugin', 'addplugins'],
-    OnlyPremium : false,
-    OnlyOwner   : true
+export default {
+  handle,
+  Commands: ["addplugin", "addplugins"],
+  OnlyPremium: false,
+  OnlyOwner: true,
 };

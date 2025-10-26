@@ -25,7 +25,7 @@ async function process(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   name: "Badword Pribadi",
   priority: 10,
   process,

@@ -1,6 +1,6 @@
-const { addBadword, updateBadword, findBadword } = require("@lib/badword");
-const { getGroupMetadata } = require("@lib/cache");
-const mess = require("@mess");
+import { addBadword, updateBadword, findBadword } from "../../lib/badword.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import mess from "../../strings.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, prefix, command, content, fullText } =
@@ -11,7 +11,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -41,7 +41,6 @@ async function handle(sock, messageInfo) {
     // Kirim respons ke grup
     await sendResponse(sock, remoteJid, responseMessage, message);
   } catch (error) {
-    console.error(error);
     await sendResponse(
       sock,
       remoteJid,
@@ -82,7 +81,7 @@ async function sendResponse(sock, remoteJid, text, quotedMessage) {
   await sock.sendMessage(remoteJid, { text }, { quoted: quotedMessage });
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["addbadword"],
   OnlyPremium: false,

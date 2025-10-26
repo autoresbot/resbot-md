@@ -1,6 +1,10 @@
-const { removeUser, getUser, isUserPlaying } = require("@tmpDB/family100");
-const { sendMessageWithMention } = require("@lib/utils");
-const { addUser, updateUser, deleteUser, findUser } = require("@lib/users");
+import {
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/family100.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { addUser, updateUser, deleteUser, findUser } from "../../lib/users.js";
 
 async function process(sock, messageInfo) {
   const { remoteJid, fullText, message, sender, senderType } = messageInfo;
@@ -136,8 +140,6 @@ ${data.answer
   return true;
 }
 
-module.exports = {
-  name: "Family 100",
-  priority: 10,
-  process,
-};
+export const name = "Family 100";
+export const priority = 10;
+export { process };

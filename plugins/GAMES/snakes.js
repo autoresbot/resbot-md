@@ -3,16 +3,16 @@ const DATABASE = {}; // Simpan game di RAM
 const MONEY_MENANG = 100;
 const opsiLoading = "sticker"; // sticker, emoticon
 
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
-const { getProfilePictureUrl } = require("@lib/cache");
-const {
+import { getProfilePictureUrl } from "../../lib/cache.js";
+import {
   getBuffer,
   sendMessageWithMention,
   sendImagesWithMention,
-} = require("@lib/utils");
-const { addUser, updateUser, deleteUser, findUser } = require("@lib/users");
+} from "../../lib/utils.js";
+import { addUser, updateUser, deleteUser, findUser } from "../../lib/users.js";
 
 const snakes = {
   99: 41,
@@ -332,7 +332,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["snakes"],
   OnlyPremium: false,

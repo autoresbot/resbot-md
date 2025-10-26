@@ -7,7 +7,7 @@ const DB_blackjack = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-    DB_blackjack[remoteJid] = data;
+  DB_blackjack[remoteJid] = data;
 }
 
 /**
@@ -15,7 +15,7 @@ function addUser(remoteJid, data) {
  * @param {string} remoteJid - ID pengguna (unik)
  */
 function removeUser(remoteJid) {
-    delete DB_blackjack[remoteJid];
+  delete DB_blackjack[remoteJid];
 }
 
 /**
@@ -24,7 +24,7 @@ function removeUser(remoteJid) {
  * @returns {object|null} - Data pengguna atau null jika tidak ditemukan
  */
 function getUser(remoteJid) {
-    return DB_blackjack[remoteJid] || null;
+  return DB_blackjack[remoteJid] || null;
 }
 
 /**
@@ -33,14 +33,7 @@ function getUser(remoteJid) {
  * @returns {boolean} - True jika pengguna ada di database, false jika tidak
  */
 function isUserPlaying(remoteJid) {
-    return Boolean(DB_blackjack[remoteJid]);
+  return Boolean(DB_blackjack[remoteJid]);
 }
 
-// Ekspor fungsi dan database
-module.exports = {
-    DB_blackjack,
-    addUser,
-    removeUser,
-    getUser,
-    isUserPlaying,
-};
+export { DB_blackjack, addUser, removeUser, getUser, isUserPlaying };

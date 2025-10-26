@@ -1,7 +1,8 @@
-const os = require("os");
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+import os from "os";
+import { execSync } from "child_process";
+
+import fs from "fs";
+import path from "path";
 
 // Fungsi format uptime
 function getUptime(seconds) {
@@ -26,23 +27,35 @@ function getPlatform() {
 function getDiskInfo() {
   try {
     if (os.platform() === "win32") {
-      const stdout = execSync('wmic logicaldisk get size,freespace,caption').toString();
-      const lines = stdout.trim().split('\n').filter(line => line.trim());
-      const diskData = lines.slice(1).map(line => {
+      const stdout = execSync(
+        "wmic logicaldisk get size,freespace,caption"
+      ).toString();
+      const lines = stdout
+        .trim()
+        .split("\n")
+        .filter((line) => line.trim());
+      const diskData = lines.slice(1).map((line) => {
         const [drive, free, total] = line.trim().split(/\s+/);
         return {
           drive,
-          total: (parseInt(total) / (1024 ** 3)).toFixed(2) + " GB",
-          free: (parseInt(free) / (1024 ** 3)).toFixed(2) + " GB",
-          used: ((parseInt(total) - parseInt(free)) / (1024 ** 3)).toFixed(2) + " GB"
+          total: (parseInt(total) / 1024 ** 3).toFixed(2) + " GB",
+          free: (parseInt(free) / 1024 ** 3).toFixed(2) + " GB",
+          used:
+            ((parseInt(total) - parseInt(free)) / 1024 ** 3).toFixed(2) + " GB",
         };
       });
       // Ambil drive C sebagai default
-      return diskData.find(d => d.drive === "C:") || diskData[0];
+      return diskData.find((d) => d.drive === "C:") || diskData[0];
     } else {
-      const total = execSync("df -h --output=size / | tail -1").toString().trim();
-      const free = execSync("df -h --output=avail / | tail -1").toString().trim();
-      const used = execSync("df -h --output=used / | tail -1").toString().trim();
+      const total = execSync("df -h --output=size / | tail -1")
+        .toString()
+        .trim();
+      const free = execSync("df -h --output=avail / | tail -1")
+        .toString()
+        .trim();
+      const used = execSync("df -h --output=used / | tail -1")
+        .toString()
+        .trim();
       return { total, free, used };
     }
   } catch (err) {
@@ -62,7 +75,8 @@ async function handle(sock, messageInfo) {
   const platformName = getPlatform();
   const totalRam = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2) + " GB";
   const freeRam = (os.freemem() / 1024 / 1024 / 1024).toFixed(2) + " GB";
-  const usedRam = ((os.totalmem() - os.freemem()) / 1024 / 1024 / 1024).toFixed(2) + " GB";
+  const usedRam =
+    ((os.totalmem() - os.freemem()) / 1024 / 1024 / 1024).toFixed(2) + " GB";
   const { total: totalDisk, free: freeDisk, used: usedDisk } = getDiskInfo();
   const cpuCores = os.cpus().length;
   const uptimeVPS = getUptime(os.uptime());
@@ -72,7 +86,7 @@ async function handle(sock, messageInfo) {
     let totalSize = 0;
     const folderPath = "./session";
     if (fs.existsSync(folderPath)) {
-      fs.readdirSync(folderPath).forEach(file => {
+      fs.readdirSync(folderPath).forEach((file) => {
         const filePath = path.join(folderPath, file);
         const stats = fs.statSync(filePath);
         if (stats.isFile()) totalSize += stats.size;
@@ -84,7 +98,8 @@ async function handle(sock, messageInfo) {
   await sock.sendMessage(
     remoteJid,
     {
-      text: `• *INFORMATION SERVER*\n\n` +
+      text:
+        `• *INFORMATION SERVER*\n\n` +
         `⌬ *Platform* : \`\`\`${platformName}\`\`\`\n` +
         `⌬ *Total Ram* : \`\`\`${totalRam}\`\`\`\n` +
         `⌬ *Free Ram* : \`\`\`${freeRam}\`\`\`\n` +
@@ -103,8 +118,7 @@ async function handle(sock, messageInfo) {
     { quoted: message }
   );
 }
-
-module.exports = {
+export default {
   handle,
   Commands: ["runtime"],
   OnlyPremium: false,

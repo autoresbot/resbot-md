@@ -1,5 +1,7 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message } = messageInfo;
@@ -46,7 +48,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["zikir"],
   OnlyPremium: false,

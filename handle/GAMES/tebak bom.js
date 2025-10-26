@@ -1,6 +1,10 @@
-const { removeUser, getUser, isUserPlaying } = require("@tmpDB/tebak bom");
-const { addUser, updateUser, findUser } = require("@lib/users");
-const mess = require("@mess");
+import {
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/tebak bom.js";
+import { addUser, updateUser, findUser } from "../../lib/users.js";
+import mess from "../../strings.js";
 
 async function process(sock, messageInfo) {
   const { remoteJid, fullText, message, sender } = messageInfo;
@@ -147,8 +151,6 @@ function formatView(view) {
     }, "");
 }
 
-module.exports = {
-  name: "Tebak Angka",
-  priority: 10,
-  process,
-};
+export const name = "Tebak Angka";
+export const priority = 10;
+export { process };

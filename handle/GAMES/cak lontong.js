@@ -1,5 +1,9 @@
-const { removeUser, getUser, isUserPlaying } = require("@tmpDB/cak lontong");
-const { addUser, updateUser, deleteUser, findUser } = require("@lib/users");
+import {
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/cak lontong.js";
+import { addUser, updateUser, deleteUser, findUser } from "../../lib/users.js";
 
 async function process(sock, messageInfo) {
   const { remoteJid, content, fullText, message, sender } = messageInfo;
@@ -54,8 +58,6 @@ async function process(sock, messageInfo) {
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
-  name: "Cak Lontong",
-  priority: 10,
-  process,
-};
+export const name = "Cak Lontong";
+export const priority = 10;
+export { process };

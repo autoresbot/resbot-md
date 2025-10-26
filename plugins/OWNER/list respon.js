@@ -1,5 +1,5 @@
-const { getDataByGroupId } = require("@lib/list");
-const { sendMessageWithMention } = require("@lib/utils");
+import { getDataByGroupId } from "../../lib/list.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, senderType } = messageInfo;
@@ -44,7 +44,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["listrespon"],
   OnlyPremium: false,

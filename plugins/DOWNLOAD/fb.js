@@ -1,9 +1,12 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { isURL } = require("@lib/utils");
-const mess = require("@mess");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+
+import { isURL } from "../../lib/utils.js";
+import mess from "../../strings.js";
+import { logCustom } from "../../lib/logger.js";
+import { downloadToBuffer } from "../../lib/utils.js";
 
 async function sendMessageWithQuote(
   sock,
@@ -86,7 +89,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["fb", "facebook"],
   OnlyPremium: false,

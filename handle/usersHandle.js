@@ -1,14 +1,14 @@
-const { addUser, findUser, updateUser, isOwner } = require("@lib/users");
-const { SLRcheckMessage } = require("@lib/slr");
-const {
+import { registerUser, findUser, updateUser, isOwner } from "../lib/users.js";
+import { SLRcheckMessage } from "../lib/slr.js";
+import {
   findGroup,
   addGroup,
   isUserBlocked,
   isFiturBlocked,
-} = require("@lib/group");
-const { logWithTime, warning, logTracking } = require("@lib/utils");
-const mess = require("@mess");
-const { getGroupMetadata } = require("@lib/cache");
+} from "../lib/group.js";
+import { logWithTime, warning, logTracking } from "../lib/utils.js";
+import mess from "../strings.js";
+import { getGroupMetadata } from "../lib/cache.js";
 
 const notifiedUsers = new Set();
 
@@ -30,7 +30,7 @@ async function process(sock, messageInfo) {
     if (selfChecker && command != "public") {
       console.log("BOT SEDANG SELF");
       logWithTime("System", `BOT SEDANG DI SELF`);
-      if (await isOwner(sender)) {
+      if (isOwner(sender)) {
         return true;
       }
       return false;
@@ -176,7 +176,13 @@ async function process(sock, messageInfo) {
 
       await updateUser(sender, { level, level_cache });
     } else {
-      // tidak lagi di pake sekarang pake register
+      try {
+        // register otomatis
+        const username = `user_${sender.toLowerCase()}`;
+        const res = registerUser(sender, username);
+      } catch (error) {
+        console.log("GAGAL REGISTER OTOMATIS :", error);
+      }
     }
 
     return true; // Lanjutkan ke plugin berikutnya
@@ -186,7 +192,7 @@ async function process(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   name: "Users & Grub Handle",
   priority: 3,
   process,

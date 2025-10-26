@@ -7,7 +7,7 @@ const DB_tebak_hewan = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-    DB_tebak_hewan[remoteJid] = data;
+  DB_tebak_hewan[remoteJid] = data;
 }
 
 /**
@@ -15,7 +15,7 @@ function addUser(remoteJid, data) {
  * @param {string} remoteJid - ID pengguna (unik)
  */
 function removeUser(remoteJid) {
-    delete DB_tebak_hewan[remoteJid];
+  delete DB_tebak_hewan[remoteJid];
 }
 
 /**
@@ -24,7 +24,7 @@ function removeUser(remoteJid) {
  * @returns {object|null} - Data pengguna atau null jika tidak ditemukan
  */
 function getUser(remoteJid) {
-    return DB_tebak_hewan[remoteJid] || null;
+  return DB_tebak_hewan[remoteJid] || null;
 }
 
 /**
@@ -33,14 +33,8 @@ function getUser(remoteJid) {
  * @returns {boolean} - True jika pengguna ada di database, false jika tidak
  */
 function isUserPlaying(remoteJid) {
-    return Boolean(DB_tebak_hewan[remoteJid]);
+  return Boolean(DB_tebak_hewan[remoteJid]);
 }
 
 // Ekspor fungsi dan database
-module.exports = {
-    DB_tebak_hewan,
-    addUser,
-    removeUser,
-    getUser,
-    isUserPlaying,
-};
+export { DB_tebak_hewan, addUser, removeUser, getUser, isUserPlaying };

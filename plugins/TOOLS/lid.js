@@ -1,5 +1,5 @@
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, sender } = messageInfo;
+  const { remoteJid, message, sender, m } = messageInfo;
 
   try {
     await sock.sendMessage(
@@ -19,7 +19,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["id"],
   OnlyPremium: false,

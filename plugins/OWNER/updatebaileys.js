@@ -1,57 +1,56 @@
-const { reply } = require('@lib/utils');
-const config = require('@config');
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import { reply } from "../../lib/utils.js";
+import fs from "fs";
+import { execSync } from "child_process";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
 
 async function handle(sock, messageInfo) {
-    const { m, remoteJid, message } = messageInfo;
+  const { m, remoteJid, message } = messageInfo;
 
-    let oldVersion = 'Tidak ditemukan';
-    let newVersion = 'Tidak ditemukan';
-    let updateInfo = '';
+  let oldVersion = "Tidak ditemukan";
+  let newVersion = "Tidak ditemukan";
+  let updateInfo = "";
 
-    try {
-        const pkgPath = require.resolve('baileys/package.json');
-        const pkgData = fs.readFileSync(pkgPath, 'utf-8');
-        const pkg = JSON.parse(pkgData);
-        oldVersion = pkg.version;
-    } catch (error) {
-        console.warn('[!] Gagal membaca versi lama Baileys:', error.message);
+  try {
+    // Dapatkan versi lama Baileys
+    const pkgPath = require.resolve("baileys/package.json");
+    const pkg = require(pkgPath);
+    oldVersion = pkg.version;
+  } catch (error) {
+    console.warn("[!] Gagal membaca versi lama Baileys:", error.message);
+  }
+
+  try {
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
+
+    execSync("npm install baileys", { stdio: "ignore" });
+
+    // Hapus cache require supaya bisa baca versi baru
+    const resolvedPath = require.resolve("baileys/package.json");
+    delete require.cache[resolvedPath];
+
+    const newPkg = require(resolvedPath);
+    newVersion = newPkg.version || "Tidak ditemukan";
+
+    if (newVersion !== oldVersion) {
+      updateInfo = `✅ *baileys* berhasil diperbarui dari v${oldVersion} ke v${newVersion}`;
+    } else {
+      updateInfo = `✅ *baileys* sudah versi terbaru: v${newVersion}`;
     }
+  } catch (err) {
+    console.error("[!] Gagal update baileys:", err.message);
+    updateInfo = "❌ Terjadi kesalahan saat memperbarui *baileys*";
+  }
 
-    try {
-        await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
-        execSync('npm install baileys', { stdio: 'ignore' });
-
-        // Clear cache module supaya baca ulang versi terbaru
-        const resolvedPath = require.resolve('baileys/package.json');
-        delete require.cache[resolvedPath];
-
-        const newPkgData = fs.readFileSync(resolvedPath, 'utf-8');
-        const newPkg = JSON.parse(newPkgData);
-        newVersion = newPkg.version;
-
-        if (newVersion !== oldVersion) {
-            updateInfo = `✅ *baileys* berhasil diperbarui dari v${oldVersion} ke v${newVersion}`;
-        } else {
-            updateInfo = `✅ *baileys* sudah versi terbaru: v${newVersion}`;
-        }
-    } catch (err) {
-        console.error('[!] Gagal update baileys:', err.message);
-        updateInfo = '❌ Terjadi kesalahan saat memperbarui *baileys*';
-    }
-
-    const responseText = [
-        updateInfo
-    ].join('\n');
-
-    await reply(m, responseText);
+  await reply(m, updateInfo);
 }
 
-module.exports = {
-    handle,
-    Commands: ['updatebaileys', 'updatebailey'],
-    OnlyPremium: false,
-    OnlyOwner: false
+export default {
+  handle,
+  Commands: ["updatebaileys", "updatebailey"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

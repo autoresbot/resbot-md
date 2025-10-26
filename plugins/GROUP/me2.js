@@ -1,5 +1,5 @@
-const { findUser } = require("@lib/users");
-const { isOwner, isPremiumUser } = require("@lib/users");
+import { findUser } from "../../lib/users.js";
+import { isOwner, isPremiumUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, pushName } = messageInfo;
@@ -10,9 +10,9 @@ async function handle(sock, messageInfo) {
 
   const [docId, userData] = dataUsers;
 
-  const role = (await isOwner(sender))
+  const role = isOwner(sender)
     ? "Owner"
-    : (await isPremiumUser(sender))
+    : isPremiumUser(sender)
     ? "Premium"
     : userData.role;
 
@@ -20,7 +20,6 @@ async function handle(sock, messageInfo) {
 ╭─── _*MY PROFILE*_ 
 ├────
 ├──
-│ Username  : *${userData.username}*
 │ Level : *${userData.level || 0}*
 │ Limit : *${userData.limit || 0}*
 │ Money : *${userData.money || 0}*
@@ -32,7 +31,7 @@ async function handle(sock, messageInfo) {
   await sock.sendMessage(remoteJid, { text: teks }, { quoted: message });
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["me2", "limit2"],
   OnlyPremium: false,

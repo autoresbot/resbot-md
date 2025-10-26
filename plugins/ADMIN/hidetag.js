@@ -1,10 +1,10 @@
-const mess = require("@mess");
-const { downloadQuotedMedia, downloadMedia } = require("@lib/utils");
-const fs = require("fs").promises;
-const { getGroupMetadata } = require("@lib/cache");
-const { sendImageAsSticker } = require("@lib/exif");
-const { isOwner } = require("@lib/users");
-const config = require("@config");
+import mess from "../../strings.js";
+import { downloadQuotedMedia, downloadMedia } from "../../lib/utils.js";
+import fs from "fs/promises";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { sendImageAsSticker } from "../../lib/exif.js";
+import { isOwner } from "../../lib/users.js";
+import config from "../../config.js";
 
 function getMediaContent(media) {
   if (media.type === "video" || media.type === "image") {
@@ -23,10 +23,10 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
 
-    const isOwnerUsers = await isOwner(sender);
+    const isOwnerUsers = isOwner(sender);
 
     if (!isAdmin && !isOwnerUsers) {
       await sock.sendMessage(
@@ -159,7 +159,7 @@ async function sendMedia(
   await sock.sendMessage(remoteJid, options, { quoted: message });
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["hidetag", "h", "hidetak"],
   OnlyPremium: false,

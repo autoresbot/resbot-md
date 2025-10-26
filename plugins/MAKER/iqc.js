@@ -1,6 +1,8 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const mess = require("@mess");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+import mess from "../../strings.js";
 
 // Fungsi untuk buat angka acak dalam range
 function randomInt(min, max) {
@@ -101,7 +103,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["iqc"],
   OnlyPremium: false,

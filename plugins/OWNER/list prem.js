@@ -1,5 +1,5 @@
-const { readUsers } = require("@lib/users");
-const { sendMessageWithMention } = require("@lib/utils");
+import { readUsers } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, senderType } = messageInfo;
@@ -58,7 +58,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["listprem", "listpremium"],
   OnlyPremium: false,

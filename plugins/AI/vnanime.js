@@ -1,7 +1,8 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { downloadToBuffer } = require("@lib/utils");
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import config from "../../config.js";
+import { downloadToBuffer } from "../../lib/utils.js";
+import { logCustom } from "../../lib/logger.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command, isQuoted } =
@@ -22,7 +23,7 @@ async function handle(sock, messageInfo) {
   }
 
   try {
-    // Kirim reaksi proses
+    // Loading
     await sock.sendMessage(remoteJid, {
       react: { text: "⏰", key: message.key },
     });
@@ -41,7 +42,6 @@ async function handle(sock, messageInfo) {
         {
           audio: audioBuffer,
           mimetype: "audio/mp4",
-          ptt: true,
         },
         { quoted: message }
       );
@@ -53,17 +53,17 @@ async function handle(sock, messageInfo) {
     logCustom("error", text, `ERROR-COMMAND-${command}.txt`);
     console.error("⚠️ Terjadi kesalahan:", error);
 
-    await sock.sendMessage(
+    return await sock.sendMessage(
       remoteJid,
       {
-        text: `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\n_${error.message}_`,
+        text: `_⚠️ Gagal: Periksa Apikey Anda! (.apikey)_`,
       },
       { quoted: message }
     );
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["vnanime"],
   OnlyPremium: false,

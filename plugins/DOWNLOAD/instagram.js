@@ -1,7 +1,9 @@
-const { igdl } = require("btch-downloader");
-const mess = require("@mess");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+// const { igdl } = require("btch-downloader");
+import { igdl } from "btch-downloader";
+
+import mess from "../../strings.js";
+import { logCustom } from "../../lib/logger.js";
+import { downloadToBuffer } from "../../lib/utils.js";
 
 /**
  * Mengirim pesan dengan kutipan
@@ -97,7 +99,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["ig", "instagram"], // Perintah yang didukung oleh handler ini
   OnlyPremium: false,

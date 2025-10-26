@@ -7,29 +7,29 @@ const DB_tictactoe = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-    DB_tictactoe[remoteJid] = data;
+  DB_tictactoe[remoteJid] = data;
 }
-
 
 function updateGame(remoteJid, newData) {
-    if (DB_tictactoe[remoteJid]) {
-        // Perbarui hanya data yang ada di newData
-        DB_tictactoe[remoteJid] = { 
-            ...DB_tictactoe[remoteJid], 
-            ...newData 
-        };
-    } else {
-        console.error(`User dengan remoteJid ${remoteJid} tidak ditemukan untuk diperbarui.`);
-    }
+  if (DB_tictactoe[remoteJid]) {
+    // Perbarui hanya data yang ada di newData
+    DB_tictactoe[remoteJid] = {
+      ...DB_tictactoe[remoteJid],
+      ...newData,
+    };
+  } else {
+    console.error(
+      `User dengan remoteJid ${remoteJid} tidak ditemukan untuk diperbarui.`
+    );
+  }
 }
-
 
 /**
  * Menghapus data pengguna dari database
  * @param {string} remoteJid - ID pengguna (unik)
  */
 function removeUser(remoteJid) {
-    delete DB_tictactoe[remoteJid];
+  delete DB_tictactoe[remoteJid];
 }
 
 /**
@@ -38,7 +38,7 @@ function removeUser(remoteJid) {
  * @returns {object|null} - Data pengguna atau null jika tidak ditemukan
  */
 function getUser(remoteJid) {
-    return DB_tictactoe[remoteJid] || null;
+  return DB_tictactoe[remoteJid] || null;
 }
 
 /**
@@ -47,15 +47,15 @@ function getUser(remoteJid) {
  * @returns {boolean} - True jika pengguna ada di database, false jika tidak
  */
 function isUserPlaying(remoteJid) {
-    return Boolean(DB_tictactoe[remoteJid]);
+  return Boolean(DB_tictactoe[remoteJid]);
 }
 
 // Ekspor fungsi dan database
-module.exports = {
-    DB_tictactoe,
-    addUser,
-    removeUser,
-    getUser,
-    isUserPlaying,
-    updateGame
+export {
+  DB_tictactoe,
+  addUser,
+  removeUser,
+  getUser,
+  isUserPlaying,
+  updateGame,
 };

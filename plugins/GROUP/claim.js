@@ -1,5 +1,5 @@
-const { findUser, updateUser, addUser } = require("@lib/users");
-const { formatRemainingTime } = require("@lib/utils");
+import { findUser, updateUser, addUser } from "../../lib/users.js";
+import { formatRemainingTime } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender } = messageInfo;
@@ -51,17 +51,11 @@ async function handle(sock, messageInfo) {
       { quoted: message }
     );
   } else {
-    return await sock.sendMessage(
-      remoteJid,
-      {
-        text: `❗ Kamu belum terdaftar. Ketik *.register* dulu ya!`,
-      },
-      { quoted: message }
-    );
+    return;
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["claim"],
   OnlyPremium: false,

@@ -1,6 +1,6 @@
-const { tiktokSearch } = require("@scrape/tiktok");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+import { tiktokSearch } from "../../lib/scrape/tiktok.js";
+import { logCustom } from "../../lib/logger.js";
+import { downloadToBuffer } from "../../lib/utils.js";
 
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
   await sock.sendMessage(remoteJid, { text }, { quoted: message });
@@ -53,7 +53,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["tiktoksearch", "ttsearch", "tts"], // Menentukan perintah yang diproses oleh handler ini
   OnlyPremium: false,

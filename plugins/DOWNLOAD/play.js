@@ -1,22 +1,24 @@
-const yts = require("yt-search");
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { logCustom } = require("@lib/logger");
-const { downloadToBuffer } = require("@lib/utils");
+import yts from "yt-search";
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-// Fungsi untuk mengirim pesan dengan kutipan (quote)
+import config from "../../config.js";
+import { logCustom } from "../../lib/logger.js";
+import { downloadToBuffer } from "../../lib/utils.js";
+
+// Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
   return sock.sendMessage(remoteJid, { text }, { quoted: message });
 }
 
-// Fungsi untuk mengirim reaksi
+// Fungsi kirim reaksi
 async function sendReaction(sock, message, reaction) {
   return sock.sendMessage(message.key.remoteJid, {
     react: { text: reaction, key: message.key },
   });
 }
 
-// Fungsi untuk melakukan pencarian YouTube
+// Fungsi pencarian YouTube
 async function searchYouTube(query) {
   const searchResults = await yts(query);
   return (
@@ -25,7 +27,35 @@ async function searchYouTube(query) {
   );
 }
 
-// Fungsi utama untuk menangani perintah
+// Fungsi delay (jeda)
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Fungsi untuk memanggil API dengan retry (maksimal 3x, jeda 5 detik)
+async function fetchWithRetry(api, endpoint, params, maxRetries = 3, delayMs = 5000) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await api.get(endpoint, params);
+      if (response && response.status) {
+        console.log(`✅ API berhasil pada percobaan ke-${attempt}`);
+        return response;
+      }
+      throw new Error(`Response tidak valid (percobaan ${attempt})`);
+    } catch (err) {
+      lastError = err;
+      console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
+      if (attempt < maxRetries) {
+        console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
+        await delay(delayMs);
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Fungsi utama
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command } = messageInfo;
 
@@ -42,7 +72,6 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Tampilkan reaksi "Loading"
     await sendReaction(sock, message, "⏰");
 
     // Pencarian YouTube
@@ -66,27 +95,29 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Kirim informasi video
     const caption = `*YOUTUBE DOWNLOADER*\n\n◧ Title: ${video.title}\n◧ Duration: ${video.timestamp}\n◧ Uploaded: ${video.ago}\n◧ Views: ${video.views}\n◧ Description: ${video.description}`;
 
-    // Inisialisasi API dan unduh file
+    // Inisialisasi API dan gunakan fetchWithRetry
     const api = new ApiAutoresbot(config.APIKEY);
-    const response = await api.get("/api/downloader/ytplay", {
-      url: video.url,
-      format: "m4a",
-    });
+    const response = await fetchWithRetry(
+      api,
+      "/api/downloader/ytplay",
+      { url: video.url, format: "m4a" },
+      3,
+      5000
+    );
 
     if (response && response.status) {
       const url_media = response.data.url;
 
-      // Kirim image
+      // Kirim image dengan caption
       await sock.sendMessage(
         remoteJid,
         { image: { url: video.thumbnail }, caption },
         { quoted: message }
       );
 
-      // Download file ke buffer
+      // Download file audio ke buffer
       const audioBuffer = await downloadToBuffer(url_media, "mp3");
 
       await sock.sendMessage(
@@ -112,10 +143,10 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["play"],
   OnlyPremium: false,
   OnlyOwner: false,
-  limitDeduction: 1, // Jumlah limit yang akan dikurangi
+  limitDeduction: 1,
 };

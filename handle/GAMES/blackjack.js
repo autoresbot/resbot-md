@@ -1,7 +1,11 @@
-const { removeUser, getUser, isUserPlaying } = require("@tmpDB/blackjack");
-const { updateUser, findUser } = require("@lib/users");
-const { danger } = require("@lib/utils");
-const config = require("@config");
+import {
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/blackjack.js";
+import { updateUser, findUser } from "../../lib/users.js";
+import { danger } from "../../lib/utils.js";
+import config from "../../config.js";
 
 const kartu_blackjack = [
   "A",
@@ -233,8 +237,6 @@ Ketik *.hit* untuk mengambil kartu tambahan atau *.stand* untuk mengakhiri gilir
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
-  name: "Blackjack",
-  priority: 10,
-  process,
-};
+export const name = "Blackjack";
+export const priority = 10;
+export { process };

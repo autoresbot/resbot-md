@@ -1,12 +1,13 @@
-
-const { reply, style } = require('@lib/utils');
+import { reply, style } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
-    const { m, remoteJid, message, prefix, command, content } = messageInfo;
+  const { m, remoteJid, message, prefix, command, content } = messageInfo;
 
-    try {
-        if (!content) {
-            return await reply(m, `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} resbot*_
+  try {
+    if (!content) {
+      return await reply(
+        m,
+        `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} resbot*_
 
 ᴄᴏɴᴛᴏʜ ꜱᴛʏʟᴇ
 𝓬𝓸𝓷𝓽𝓸𝓱 𝓼𝓽𝔂𝓵𝓮2
@@ -19,24 +20,32 @@ contoh style3
 🄲🄾🄽🅃🄾🄷 🅂🅃🅈🄻🄴9
 🅲🅾️🅽🆃🅾️🅷 🆂🆃🆈🅻🅴10
                 
-_Gunakan .style2 sampai .style10_`);
-        }
-
-        const result = style(content);
-        if (!result) {
-            return await reply(m, '⚠️ _Failed to apply style. Please check your input._');
-        }
-
-        await sock.sendMessage(remoteJid, { text: result }, { quoted: message });
-    } catch (error) {
-        console.error('Error in handle function:', error);
-        await sock.sendMessage(remoteJid, { text: `_Error: ${error.message}_` }, { quoted: message });
+_Gunakan .style2 sampai .style10_`
+      );
     }
+
+    const result = style(content);
+    if (!result) {
+      return await reply(
+        m,
+        "⚠️ _Failed to apply style. Please check your input._"
+      );
+    }
+
+    await sock.sendMessage(remoteJid, { text: result }, { quoted: message });
+  } catch (error) {
+    console.error("Error in handle function:", error);
+    await sock.sendMessage(
+      remoteJid,
+      { text: `_Error: ${error.message}_` },
+      { quoted: message }
+    );
+  }
 }
 
-module.exports = {
-    handle,
-    Commands    : ['style'],
-    OnlyPremium : false,
-    OnlyOwner   : false
+export default {
+  handle,
+  Commands: ["style"],
+  OnlyPremium: false,
+  OnlyOwner: false,
 };

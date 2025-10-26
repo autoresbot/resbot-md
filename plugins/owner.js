@@ -1,15 +1,15 @@
-const { sendMessageWithMention } = require("@lib/utils");
-const { listOwner } = require("@lib/users");
-const config = require("@config");
+import { sendMessageWithMention } from "../lib/utils.js";
+import { listOwner } from "../lib/users.js";
+import config from "../config.js";
 
-async function handle(sock, messageInfo) {
+export async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, senderType } = messageInfo;
 
-  const data = await listOwner();
+  const data = listOwner();
 
   let list = [];
-
   let no = 1;
+
   for (const item of data) {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
@@ -20,6 +20,7 @@ EMAIL;type=INTERNET:${config.owner_email}
 URL:https://autoresbot.com
 ADR:;;${config.region};;;
 END:VCARD`;
+
     list.push({
       displayName: `Owner ${no}`,
       vcard: vcard,
@@ -59,9 +60,7 @@ END:VCARD`;
   );
 }
 
-module.exports = {
-  handle,
-  Commands: ["owner"],
-  OnlyPremium: false,
-  OnlyOwner: false,
-};
+// ESM export
+export const Commands = ["owner"];
+export const OnlyPremium = false;
+export const OnlyOwner = false;

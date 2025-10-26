@@ -1,5 +1,5 @@
-const { reply, extractNumber } = require("@lib/utils");
-const { findUser, updateUser } = require("@lib/users");
+import { reply } from "../../lib/utils.js";
+import { findUser, updateUser } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { m, prefix, command, content, mentionedJid, senderType } = messageInfo;
@@ -50,7 +50,7 @@ _gunakan fitur *ban* untuk memblokir user di grub ini saja_`
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["block"],
   OnlyPremium: false,

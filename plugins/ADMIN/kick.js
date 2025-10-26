@@ -1,7 +1,7 @@
-const mess = require("@mess");
-const config = require("@config");
-const { getGroupMetadata } = require("@lib/cache");
-const { determineUser } = require("@lib/utils");
+import mess from "../../strings.js";
+import config from "../../config.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { determineUser } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -21,7 +21,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -81,7 +81,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["kick"],
   OnlyPremium: false,

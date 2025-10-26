@@ -1,18 +1,20 @@
-const mess = require("@mess");
-const { getTotalChatPerGroup } = require("@lib/totalchat");
-const { sendMessageWithMention } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import mess from "../../strings.js";
+import { getTotalChatPerGroup } from "../../lib/totalchat.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, isGroup, senderType } = messageInfo;
   if (!isGroup) return; // Hanya untuk grup
 
   try {
-    // Mendapatkan metadata grup
+    // ✅ Ambil metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata.participants;
+    const participants = groupMetadata?.participants || [];
+
+    // ✅ Cek apakah pengirim admin (pakai phoneNumber atau id)
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
 
     if (!isAdmin) {
@@ -24,14 +26,15 @@ async function handle(sock, messageInfo) {
       return;
     }
 
-    // Ambil total chat per grup
+    // ✅ Ambil total chat per grup
     const totalChatData = await getTotalChatPerGroup(remoteJid);
 
-    // Gabungkan data peserta dengan jumlah chat mereka
-    const chatWithParticipants = participants.map((participant) => ({
-      id: participant.id,
-      totalChat: totalChatData[participant.id] || 0,
-    }));
+    // ✅ Gabungkan data peserta dengan total chat mereka
+    const chatWithParticipants = participants.map((participant) => {
+      const jid = participant.phoneNumber || participant.id; // ambil yang valid
+      const totalChat = totalChatData[jid] || 0;
+      return { jid, totalChat };
+    });
 
     if (chatWithParticipants.length === 0) {
       return await sock.sendMessage(
@@ -41,44 +44,45 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Hitung total semua chat di grup
+    // ✅ Hitung total semua chat
     const totalChatCount = chatWithParticipants.reduce(
       (sum, p) => sum + p.totalChat,
       0
     );
 
-    // Urutkan anggota berdasarkan jumlah chat
+    // ✅ Urutkan berdasarkan jumlah chat
     const sortedMembers = chatWithParticipants.sort(
       (a, b) => b.totalChat - a.totalChat
     );
 
-    // Format pesan untuk dikirim
-    let response = `══✪〘 *👥 Total Chat* 〙✪══:\n\n`;
-    sortedMembers.forEach(({ id, totalChat }, index) => {
-      response += `◧  @${id.split("@")[0]}: ${totalChat} chat\n`;
+    // ✅ Format hasil
+    let response = `══✪〘 *👥 Total Chat* 〙✪══\n\n`;
+    sortedMembers.forEach(({ jid, totalChat }) => {
+      const clean = typeof jid === "string" ? jid.split("@")[0] : "unknown";
+      response += `◧ @${clean}: ${totalChat} chat\n`;
     });
 
     response += `\n\n📊 _Total chat di grup ini:_ *${totalChatCount}*`;
 
-    // Kirim pesan dengan mention
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-      response,
-      message,
-      senderType
-    );
+    // ✅ Kirim pesan dengan mention
+    const mentionList = sortedMembers
+      .map((m) => m.jid)
+      .filter((j) => typeof j === "string");
+
+    await sendMessageWithMention(sock, remoteJid, response, message, senderType, {
+      mentions: mentionList,
+    });
   } catch (error) {
     console.error("Error handling total chat command:", error);
-    return await sock.sendMessage(
+    await sock.sendMessage(
       remoteJid,
-      { text: "Terjadi kesalahan saat memproses permintaan Anda." },
+      { text: "❌ Terjadi kesalahan saat memproses permintaan Anda." },
       { quoted: message }
     );
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["totalchat"],
   OnlyPremium: false,

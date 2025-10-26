@@ -1,4 +1,5 @@
-const { findUser, updateUser } = require("@lib/users");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention, convertToJid } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, command, prefix } = messageInfo;
@@ -32,6 +33,7 @@ async function handle(sock, messageInfo) {
     }
 
     const target = args[0]; // Nomor penerima atau tag
+    const r = await convertToJid(sock, target);
     const moneyToSend = parseInt(args[1], 10);
 
     // Validasi jumlah money
@@ -62,7 +64,7 @@ async function handle(sock, messageInfo) {
     }
 
     // Ambil nomor murni target & sender
-    const targetNumber = extractNumber(target);
+    const targetNumber = extractNumber(r);
     const senderNumber = extractNumber(sender);
 
     // Validasi: Tidak bisa mengirim ke diri sendiri
@@ -136,7 +138,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["sendmoney"],
   OnlyPremium: false,

@@ -1,6 +1,10 @@
-const { removeUser, getUser, isUserPlaying } = require("@tmpDB/tebak lagu");
-const { addUser, updateUser, deleteUser, findUser } = require("@lib/users");
-const mess = require("@mess");
+import {
+  removeUser,
+  getUser,
+  isUserPlaying,
+} from "../../database/temporary_db/tebak lagu.js";
+import { addUser, updateUser, deleteUser, findUser } from "../../lib/users.js";
+import mess from "../../strings.js";
 
 async function process(sock, messageInfo) {
   const { remoteJid, content, fullText, message, sender } = messageInfo;
@@ -72,7 +76,7 @@ async function process(sock, messageInfo) {
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
+export default {
   name: "Tebak Lagu",
   priority: 10,
   process,

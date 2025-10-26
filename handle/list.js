@@ -1,18 +1,18 @@
-const { getDataByGroupId } = require("@lib/list");
-const fs = require("fs").promises;
-const {
+import { getDataByGroupId } from "../lib/list.js";
+import fs from "fs/promises";
+import {
   getCurrentDate,
   sendMessageWithMention,
   sendImagesWithMention,
   getCurrentTime,
   getGreeting,
   getHari,
-} = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
-const config = require("@config");
-const { sendImageAsSticker } = require("@lib/exif");
-const chalk = require("chalk");
-const { logTracking } = require("@lib/utils");
+  logTracking,
+} from "../lib/utils.js";
+import { getGroupMetadata } from "../lib/cache.js";
+import config from "../config.js";
+import { sendImageAsSticker } from "../lib/exif.js";
+import chalk from "chalk";
 
 const lastMessageTime = {};
 
@@ -156,7 +156,7 @@ async function getMediaBuffer(mediaFileName) {
   }
 }
 
-module.exports = {
+export default {
   name: "List Handle",
   priority: 1,
   process,

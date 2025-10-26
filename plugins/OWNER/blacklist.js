@@ -1,7 +1,6 @@
-const config = require("@config");
-const { reply, extractNumber } = require("@lib/utils");
-const { findUser, updateUser, addUser } = require("@lib/users");
-const { isOwner, isPremiumUser } = require("@lib/users");
+import config from "../../config.js";
+import { reply, extractNumber } from "../../lib/utils.js";
+import { findUser, updateUser, isOwner } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
   const { m, prefix, remoteJid, command, content, mentionedJid, message } =
@@ -43,7 +42,7 @@ _Fitur *blacklist* akan membuat user akan di kick di semua grub (wajib .on detec
       );
     }
 
-    if (await isOwner(targetNumber)) {
+    if (isOwner(targetNumber)) {
       return await sock.sendMessage(
         remoteJid,
         { text: `⚠️ _Tidak dapat blacklist nomor owner_` },
@@ -82,7 +81,7 @@ _(.on detectblacklist2)_ kick member`
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["blacklist"],
   OnlyPremium: false,

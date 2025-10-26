@@ -1,12 +1,12 @@
-const {
+import {
   removeUser,
   getUser,
   isUserPlaying,
   updateUser,
   findDataByKey,
-} = require("@tmpDB/suit");
-const { sendMessageWithMention } = require("@lib/utils");
-const config = require("@config");
+} from "../../database/temporary_db/suit.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import config from "../../config.js";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -143,8 +143,6 @@ async function process(sock, messageInfo) {
   return true;
 }
 
-module.exports = {
-  name: "Suit",
-  priority: 9,
-  process,
-};
+export const name = "Suit";
+export const priority = 9;
+export { process };

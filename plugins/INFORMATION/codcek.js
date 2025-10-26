@@ -1,6 +1,8 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+import { logCustom } from "../../lib/logger.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, prefix, command, content } = messageInfo;
@@ -79,7 +81,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["codcek", "cod"],
   OnlyPremium: false,

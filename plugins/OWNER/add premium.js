@@ -1,5 +1,5 @@
-const { findUser, updateUser, addUser } = require("@lib/users");
-const { sendMessageWithMention, determineUser } = require("@lib/utils");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -18,8 +18,8 @@ async function handle(sock, messageInfo) {
     // Validasi input
     if (!content?.trim()) {
       const tex =
-        `_⚠️ Format: *${prefix + command} username/id 30*_\n\n` +
-        `_💬 Contoh: *${prefix + command} azharicreative 30*_`;
+        `_⚠️ Format: *${prefix + command} id 30*_\n\n` +
+        `_💬 Contoh: *${prefix + command} @tag 30*_`;
 
       return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
@@ -90,7 +90,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["addprem", "addpremium"],
   OnlyPremium: false,

@@ -1,6 +1,6 @@
-const { findUser, updateUser } = require("@lib/users");
-const { sendMessageWithMention } = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
 
 let inProccess = false;
 
@@ -63,6 +63,7 @@ async function handle(sock, messageInfo) {
 
     let successCount = 0;
     let failedCount = 0;
+  
 
     for (const member of participants) {
       try {
@@ -103,7 +104,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["delpremgrub", "delpremiumgrub"],
   OnlyPremium: false,

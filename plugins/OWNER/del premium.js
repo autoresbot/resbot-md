@@ -1,5 +1,5 @@
-const { findUser, updateUser } = require("@lib/users");
-const { sendMessageWithMention } = require("@lib/utils");
+import { findUser, updateUser } from "../../lib/users.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, content, prefix, command, senderType } =
@@ -77,7 +77,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["delprem", "delpremium"],
   OnlyPremium: false,

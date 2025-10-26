@@ -1,7 +1,7 @@
-const { findUser, updateUser } = require("@lib/users");
-const { formatDuration, logTracking } = require("@lib/utils"); // Fungsi untuk menghitung durasi waktu
-const { logCustom } = require("@lib/logger");
-const mess = require("@mess");
+import { findUser, updateUser } from "../lib/users.js";
+import { formatDuration, logTracking } from "../lib/utils.js"; // Fungsi untuk menghitung durasi waktu
+import { logCustom } from "../lib/logger.js";
+import mess from "../strings.js";
 
 async function process(sock, messageInfo) {
   const { remoteJid, message, sender, pushName, mentionedJid } = messageInfo;
@@ -92,7 +92,7 @@ async function process(sock, messageInfo) {
   return true; // Lanjutkan ke plugin berikutnya
 }
 
-module.exports = {
+export default {
   name: "Afk",
   priority: 3,
   process,

@@ -4,7 +4,7 @@
 ╔═════════════════════════════════╗
 ║ 🛠️ Informasi Script
 ╠═════════════════════════════════╣
-║ 📦 Version    : 4.3.1
+║ 📦 Version    : 5.0.0
 ║ 👨‍💻 Developer  : Azhari Creative
 ║ 🌐 Website    : autoresbot.com
 ║ 💻 GitHub     : github.com/autoresbot/resbot-md
@@ -27,11 +27,6 @@ Pastikan Anda sudah menginstal package `api-autoresbot` melalui npm:
 
 ```bash
 npm install api-autoresbot
-```
-
-```javascript
-const ApiAutoresbot = require("api-autoresbot");
-const api = new ApiAutoresbot("YOUR_APIKEY");
 ```
 
 ## Menggunakan API
@@ -125,11 +120,12 @@ sock.sendMessage(
 ## Menggunakan cache untuk metadata grup
 
 ```javascript
-const {
+import {
   getGroupMetadata,
   getProfilePictureUrl,
   groupFetchAllParticipating,
-} = require("@lib/cache");
+} from "./cache.js";
+
 getGroupMetadata(sock, remoteJid);
 ```
 

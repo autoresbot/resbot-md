@@ -1,8 +1,11 @@
-const ApiAutoresbot = require("api-autoresbot");
-const config = require("@config");
-const { getBuffer } = require("@lib/utils");
-const mess = require("@mess");
-const { logCustom } = require("@lib/logger");
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+
+import config from "../../config.js";
+
+import { getBuffer } from "../../lib/utils.js";
+import mess from "../../strings.js";
+import { logCustom } from "../../lib/logger.js";
 
 async function sendMessageWithQuote(
   sock,
@@ -61,7 +64,7 @@ async function handle(sock, messageInfo) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["pin", "pinterest"],
   OnlyPremium: false,

@@ -1,15 +1,16 @@
-const { getDataByGroupId } = require("@lib/list");
-const { applyTemplate } = require("@DB/templates/list");
-const { getGroupMetadata } = require("@lib/cache");
-const { checkMessage } = require("@lib/participants");
-const fs = require("fs").promises;
-const {
+import { getDataByGroupId } from "../../lib/list.js";
+import { applyTemplate } from "../../database/templates/list.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { checkMessage } from "../../lib/participants.js";
+import fs from "fs/promises";
+
+import {
   sendMessageWithMention,
   getCurrentTime,
   getCurrentDate,
   getGreeting,
   getHari,
-} = require("@lib/utils");
+} from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, sender, message, content, senderType } =
@@ -187,7 +188,7 @@ async function sendMediaMessage(sock, remoteJid, buffer, caption, quoted) {
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["list"],
   OnlyPremium: false,

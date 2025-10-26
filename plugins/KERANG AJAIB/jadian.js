@@ -1,34 +1,47 @@
-const mess = require("@mess");
-const { getGroupMetadata } = require("@lib/cache");
-const { sendMessageWithMention, logTracking } = require("@lib/utils");
+import mess from "../../strings.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { sendMessageWithMention, logTracking } from "../../lib/utils.js";
+
 async function handle(sock, messageInfo) {
   const { remoteJid, message, isGroup, sender, senderType } = messageInfo;
 
-  // Cek apakah permainan hanya untuk grup
+  // ✅ Cek apakah permainan hanya untuk grup
   if (!isGroup) {
-    const groupOnlyMessage = { text: mess.game.isGroup };
-    return sock.sendMessage(remoteJid, groupOnlyMessage, { quoted: message });
+    return sock.sendMessage(
+      remoteJid,
+      { text: mess.game.isGroup },
+      { quoted: message }
+    );
   }
 
   try {
     logTracking(`jadian.js - groupMetadata (${remoteJid})`);
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
+
     if (!groupMetadata) {
-      console.error("Failed to fetch group metadata");
+      console.error("❌ Gagal mendapatkan metadata grup");
       return;
     }
 
     const groupName = groupMetadata.subject;
-    const participants = groupMetadata.participants;
+    const participants = groupMetadata?.participants || [];
 
-    // Pilih pengirim secara acak, pastikan pengirim tidak dipilih
+    // ✅ Pilih peserta acak (bukan pengirim)
     let randomParticipant;
     do {
       randomParticipant =
         participants[Math.floor(Math.random() * participants.length)];
-    } while (randomParticipant.id === sender);
+    } while (
+      randomParticipant?.id === sender ||
+      randomParticipant?.phoneNumber === sender
+    );
 
-    // Daftar kata-kata lucu atau kreatif yang akan muncul secara acak
+    const targetJid = randomParticipant.phoneNumber || randomParticipant.id;
+    const senderClean = sender.split("@")[0];
+    const targetClean =
+      typeof targetJid === "string" ? targetJid.split("@")[0] : "unknown";
+
+    // ✅ Pesan lucu/kreatif acak
     const randomMessages = [
       "Cocok banget, jodoh sejati! 😍💖 Jangan lupa kasih tau teman-teman kalian yang lagi cari jodoh!",
       "Hati-hati, jangan sampai kalian baper ya! 😜",
@@ -39,32 +52,27 @@ async function handle(sock, messageInfo) {
       "Buat kalian yang jomblo, jangan khawatir! Mungkin jodoh masih nunggu! 😂",
     ];
 
-    // Pilih pesan secara acak dari daftar
     const randomMessage =
       randomMessages[Math.floor(Math.random() * randomMessages.length)];
 
-    const jadianMessage = `@${sender.split("@")[0]} ❤️ @${
-      randomParticipant.id.split("@")[0]
-    } \n\n${randomMessage}`;
+    // ✅ Buat pesan akhir
+    const jadianMessage = `@${senderClean} ❤️ @${targetClean}\n\n${randomMessage}`;
 
-    // Kirim pesan dengan mention
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-      jadianMessage,
-      message,
-      senderType
-    );
+    // ✅ Kirim dengan mention
+    await sendMessageWithMention(sock, remoteJid, jadianMessage, message, senderType, {
+      mentions: [sender, targetJid],
+    });
   } catch (error) {
-    console.error("Error saat mengambil metadata grup:", error);
-    const errorMessage = {
-      text: "Terjadi kesalahan saat mengambil data grup.",
-    };
-    await sock.sendMessage(remoteJid, errorMessage, { quoted: message });
+    console.error("❌ Error saat mengambil metadata grup:", error);
+    await sock.sendMessage(
+      remoteJid,
+      { text: "Terjadi kesalahan saat mengambil data grup." },
+      { quoted: message }
+    );
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["jadian"],
   OnlyPremium: false,

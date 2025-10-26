@@ -1,16 +1,16 @@
-const {
+import {
   sendMessageWithMention,
   getCurrentTime,
   getCurrentDate,
   reply,
   getSenderType,
-} = require("@lib/utils");
-const { getGroupMetadata } = require("@lib/cache");
-const { sendImageAsSticker } = require("@lib/exif");
-const { checkMessage } = require("@lib/participants");
-const mess = require("@mess");
-const config = require("@config");
-const fs = require("fs");
+} from "../../lib/utils.js";
+import { getGroupMetadata } from "../../lib/cache.js";
+import { sendImageAsSticker } from "../../lib/exif.js";
+import { checkMessage } from "../../lib/participants.js";
+import mess from "../../strings.js";
+import config from "../../config.js";
+import fs from "fs";
 
 async function handle(sock, messageInfo) {
   const { m, remoteJid, sender, message, isQuoted } = messageInfo;
@@ -20,7 +20,7 @@ async function handle(sock, messageInfo) {
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (participant) => participant.id === sender && participant.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
     );
     if (!isAdmin) {
       await sock.sendMessage(
@@ -113,7 +113,7 @@ ${quotedSender} _Terima kasih sudah order!_`;
   }
 }
 
-module.exports = {
+export default {
   handle,
   Commands: ["done", "d", "selesai"],
   OnlyPremium: false,
