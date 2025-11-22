@@ -60,8 +60,6 @@ async function startGame(
 // Fungsi utama untuk menangani command
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, mentionedJid, senderType } = messageInfo;
-  console.log("sender :",sender);
-  console.log("mentionedJid :",mentionedJid);
 
   if (isUserPlaying(remoteJid)) {
     return await sock.sendMessage(
@@ -95,6 +93,16 @@ async function handle(sock, messageInfo) {
       { quoted: message }
     );
   }
+  console.log(`
+🎮 MEMULAI GAME
+──────────────────────────────
+Room        : ${remoteJid}
+Player 1    : ${player1}
+Player 2    : ${player2}
+Sender Type : ${senderType}
+──────────────────────────────
+`);
+
   await startGame(sock, remoteJid, player1, player2, message, senderType);
 }
 export default {

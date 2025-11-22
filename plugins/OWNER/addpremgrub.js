@@ -1,4 +1,4 @@
-import { findUser, updateUser } from "../../lib/users.js";
+import { findUser, updateUser, registerUser } from "../../lib/users.js";
 import { sendMessageWithMention } from "../../lib/utils.js";
 import { getGroupMetadata } from "../../lib/cache.js";
 
@@ -78,16 +78,22 @@ async function handle(sock, messageInfo) {
         }
 
         // Ambil data pengguna
-        const dataUsers = await findUser(id_users);
+        let dataUsers = await findUser(id_users);
 
         // Hitung tanggal premium baru
         const currentDate = new Date();
         currentDate.setDate(currentDate.getDate() + jumlahHariPremium);
 
         if (!dataUsers) {
-          console.warn(`User belum terdaftar: ${id_users}`);
-          failedCount++;
-          continue;
+          console.warn(`User belum terdaftar: ${id_users}, coba daftarkan`);
+
+           const username = `user_${id_users.toLowerCase()}`;
+           const res = registerUser(id_users, username);
+           dataUsers = await findUser(id_users);
+
+
+          // failedCount++;
+          // continue;
         }
 
         const [docId, userData] = dataUsers;

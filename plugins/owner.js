@@ -39,16 +39,17 @@ END:VCARD`;
   }
 
   // Mengirim pesan kontak
-  const chatId = await sock.sendMessage(
-    remoteJid,
-    {
-      contacts: {
-        displayName: data,
-        contacts: list,
-      },
+const chatId = await sock.sendMessage(
+  remoteJid,
+  {
+    contacts: {
+      displayName: `Daftar Owner (${data.length})`,
+      contacts: list,
     },
-    { quoted: message }
-  );
+  },
+  { quoted: message }
+);
+
 
   // Kirim pesan dengan mention
   await sendMessageWithMention(
@@ -60,7 +61,10 @@ END:VCARD`;
   );
 }
 
-// ESM export
-export const Commands = ["owner"];
-export const OnlyPremium = false;
-export const OnlyOwner = false;
+export default {
+  Commands: ["owner"],
+  OnlyPremium: false,
+  OnlyOwner: false,
+  handle,
+};
+

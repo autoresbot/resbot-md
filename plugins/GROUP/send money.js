@@ -34,6 +34,13 @@ async function handle(sock, messageInfo) {
 
     const target = args[0]; // Nomor penerima atau tag
     const r = await convertToJid(sock, target);
+      if(!r) {
+       return await sock.sendMessage(
+        remoteJid,
+        { text: `⚠️ _User tidak ditemukan, pastikan target sudah chat di grub ini_` },
+        { quoted: message }
+      );
+    }
     const moneyToSend = parseInt(args[1], 10);
 
     // Validasi jumlah money

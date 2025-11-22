@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.0.0
+║ 📦 Version   : 5.0.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -53,6 +53,13 @@ if (major < 20 || major >= 21) {
   // ─── Start App ───────────────────────────────────
   try {
     clearDirectory("./tmp");
+
+      // Jalankan setiap 3 jam (3 jam = 10800000 ms)
+    setInterval(() => {
+      console.log("[SCHEDULE] Membersihkan folder tmp...");
+      clearDirectory("./tmp");
+    }, 3 * 60 * 60 * 1000);
+
     console.log('[✔] Cache cleaned successfully.');
     
     await checkAndInstallModules([

@@ -5,8 +5,8 @@ import {
   updateUser,
   findDataByKey,
 } from "../../database/temporary_db/suit.js";
-import { sendMessageWithMention } from "../../lib/utils.js";
 import config from "../../config.js";
+import { sendMessageWithMention } from "../../lib/utils.js";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -25,7 +25,7 @@ function determineWinner(choice1, choice2) {
 async function process(sock, messageInfo) {
   const { fullText, message, sender, isGroup, senderType } = messageInfo;
   const { remoteJid } = messageInfo;
-
+  
   let gameData = isGroup
     ? isUserPlaying(remoteJid)
       ? getUser(remoteJid)
@@ -72,7 +72,6 @@ async function process(sock, messageInfo) {
 
   if (["batu", "kertas", "gunting"].includes(fullText.toLowerCase())) {
     const choice = fullText.toLowerCase();
-
     if (player1 === sender && !answer_player1) {
       updateUser(groupId, { answer_player1: choice });
       await delay(1000);

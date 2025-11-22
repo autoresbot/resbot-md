@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.0.0
+║ 📦 Version   : 5.0.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -20,7 +20,7 @@ import moment from "moment-timezone";
 
 const CONNECTION = "pairing"; // qr atau pairing
 const OWNER_NAME = "Autoresbot";
-const NOMOR_BOT = "628xxxxx"; // 628xx nomor wa
+const NOMOR_BOT = "628xxx"; // 628xx nomor wa
 const DESTINATION = "group"; // group , private, both
 const APIKEY = ""; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
@@ -31,7 +31,7 @@ const VERSION = global.version; // don't edit
 const EMAIL = "autoresbot@gmail.com";
 const REGION = "Indonesia";
 const WEBSITE = "autoresbot.com";
-const DATA_OWNER = ["6282154365238"];
+const DATA_OWNER = ["6282154365238","6285246154386"];
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)

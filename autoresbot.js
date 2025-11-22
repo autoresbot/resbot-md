@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.0.0
+║ 📦 Version   : 5.0.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -190,6 +190,13 @@ async function processMessage(sock, messageInfo) {
           );
           return;
         }
+
+//  fitur baru disini
+  // OnlyAdmin: false, // default false
+  // OnlyGroup: false, // default false
+  // OnlyPrivate: false // default false
+
+
 
         // Cek apakah perintah ini menggunakan limit
         if (!isPremiumUsers && !isOwnerUsers && plugin.limitDeduction) {

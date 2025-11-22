@@ -42,23 +42,35 @@ async function handle(sock, messageInfo) {
     );
   }
 
-  // --- Ambil data user ---
-  const r = await convertToJid(sock, rawNumber)
-  const dataUsers = await findUser(r);
+
+  // --- Cek user single function ---
+  let dataUsers = await findUser(rawNumber);
+  let userJid = rawNumber;
+
   if (!dataUsers) {
-    return sock.sendMessage(
-      remoteJid,
-      {
-        text: `⚠️ _Pengguna dengan username/id ${r} tidak ditemukan._`,
-      },
-      { quoted: message }
-    );
+    // Jika tidak ketemu, coba dengan JID
+    const r = await convertToJid(sock, rawNumber);
+    userJid = r;
+    dataUsers = await findUser(r);
+
+    if (!dataUsers) {
+      return sock.sendMessage(
+        remoteJid,
+        {
+          text: `⚠️ _Pengguna dengan username/id ${rawNumber} tidak ditemukan._`,
+        },
+        { quoted: message }
+      );
+    }
   }
+
+  const userId = dataUsers[0];
+
 
   const [docId, userData] = dataUsers;
 
   // --- Update data user ---
-  await updateUser(r, {
+  await updateUser(userJid, {
     limit: (userData.limit || 0) + limitToAdd,
   });
 

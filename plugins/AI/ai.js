@@ -62,4 +62,8 @@ export default {
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,
+  
+  OnlyAdmin: false, // default false
+  OnlyGroup: false, // default false
+  OnlyPrivate: false // default false
 };

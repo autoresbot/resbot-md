@@ -28,15 +28,19 @@ async function handle(sock, messageInfo) {
       );
     }
 
+    function cleanJid(jid) {
+    return jid.replace(/@[\w.]+whatsapp\.net/i, "");
+  }
+
     // Format daftar pengguna premium pakai username
-    const premiumList = premiumUsers
-      .map(
-        (user, index) =>
-          `◧ *${user.username}* (Premium hingga: ${new Date(
-            user.premium
-          ).toLocaleDateString()})`
-      )
-      .join("\n");
+   const premiumList = premiumUsers
+  .map((user, index) => {
+    const uname = cleanJid(user.aliases[0]);
+    return `◧ *@${uname}* (Premium hingga: ${new Date(
+      user.premium
+    ).toLocaleDateString()})`;
+  })
+  .join("\n");
 
     const textNotif = `📋 *LIST PREMIUM:*\n\n${premiumList}\n\n_Total:_ *${premiumUsers.length}*`;
 

@@ -1,5 +1,5 @@
 import { findUser, updateUser } from "../../lib/users.js";
-import { sendMessageWithMention } from "../../lib/utils.js";
+import { sendMessageWithMention, convertToJid } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -36,19 +36,26 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Ambil data pengguna
-    let dataUsers = await findUser(nomorHp);
+      // --- Cek user single function ---
+  let dataUsers = await findUser(nomorHp);
+  let userJid = nomorHp;
 
-    // Jika pengguna tidak ditemukan, tambahkan pengguna baru
+  if (!dataUsers) {
+    // Jika tidak ketemu, coba dengan JID
+    const r = await convertToJid(sock, nomorHp);
+    userJid = r;
+    dataUsers = await findUser(r);
+
     if (!dataUsers) {
-      return await sock.sendMessage(
+      return sock.sendMessage(
         remoteJid,
         {
-          text: `⚠️ _Pengguna dengan nomor/username tersebut tidak ditemukan._`,
+          text: `⚠️ _Pengguna dengan username/id ${nomorHp} tidak ditemukan._`,
         },
         { quoted: message }
       );
     }
+  }
 
     const [docId, userData] = dataUsers;
 
@@ -62,11 +69,11 @@ async function handle(sock, messageInfo) {
     userData.premium = new Date(addedPremiumTime).toISOString(); // Simpan dalam format ISO 8601
 
     // Update data pengguna di database
-    await updateUser(nomorHp, userData);
+    await updateUser(userJid, userData);
 
     // Tampilkan pesan bahwa premium sudah ditambahkan
     const premiumEndDate = new Date(addedPremiumTime);
-    const responseText = `_Masa Premium pengguna_ ${nomorHp} _telah diperpanjang hingga:_ ${premiumEndDate.toLocaleString()}`;
+    const responseText = `_Masa Premium pengguna_ ${userJid} _telah diperpanjang hingga:_ ${premiumEndDate.toLocaleString()}`;
 
     // Kirim pesan dengan mention
     await sendMessageWithMention(
