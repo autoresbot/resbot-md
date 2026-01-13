@@ -222,7 +222,6 @@ async function processMessage(sock, messageInfo) {
 async function participantUpdate(sock, messageInfo) {
   const { id, action, participants } = messageInfo;
   const now = Date.now();
-  console.log('Participant Update Event:', { id, action, participants });
 
   try {
     const settingGroups = await findGroup(id);
