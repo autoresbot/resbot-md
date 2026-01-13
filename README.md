@@ -4,7 +4,7 @@
 ╔═════════════════════════════════╗
 ║ 🛠️ Informasi Script
 ╠═════════════════════════════════╣
-║ 📦 Version    : 5.0.1
+║ 📦 Version    : 5.1.0
 ║ 👨‍💻 Developer  : Azhari Creative
 ║ 🌐 Website    : autoresbot.com
 ║ 💻 GitHub     : github.com/autoresbot/resbot-md
@@ -32,19 +32,19 @@ npm install api-autoresbot
 ## Menggunakan API
 
 ```javascript
-const response = await api.get("/api/random/zikir");
+const response = await api.get('/api/random/zikir');
 ```
 
 ## Menggunakan API dengan Parameter
 
 ```javascript
-const response = await api.get("/api/gemini", { text: content });
+const response = await api.get('/api/gemini', { text: content });
 ```
 
 ## Menggunakan API dengan response buffer
 
 ```javascript
-const response = await api.getBuffer("/api/maker/attp2", { text: content });
+const response = await api.getBuffer('/api/maker/attp2', { text: content });
 ```
 
 ## Menggunakan API untuk upload media sementara
@@ -58,29 +58,25 @@ const response = await api.tmpUpload(mediaPath);
 ## Mengirim pesan teks
 
 ```javascript
-await sock.sendMessage(remoteJid, { text: "Example" });
-await sock.sendMessage(remoteJid, { text: "Example" }, { quoted: message });
+await sock.sendMessage(remoteJid, { text: 'Example' });
+await sock.sendMessage(remoteJid, { text: 'Example' }, { quoted: message });
 ```
 
 ## Mengirim gambar dari URL dan buffer
 
 ```javascript
 await sock.sendMessage(remoteJid, {
-  image: { url: "https://example.com/tes.jpg" },
+  image: { url: 'https://example.com/tes.jpg' },
   caption: `Caption`,
 });
 await sock.sendMessage(
   remoteJid,
-  { image: { url: "https://example.com/tes.jpg" }, caption: `Caption` },
-  { quoted: message }
+  { image: { url: 'https://example.com/tes.jpg' }, caption: `Caption` },
+  { quoted: message },
 );
 
 await sock.sendMessage(remoteJid, { image: buffer, caption: `Caption` });
-await sock.sendMessage(
-  remoteJid,
-  { image: buffer, caption: `Caption` },
-  { quoted: message }
-);
+await sock.sendMessage(remoteJid, { image: buffer, caption: `Caption` }, { quoted: message });
 ```
 
 ## Mengirim audio dari URL dan buffer
@@ -88,8 +84,8 @@ await sock.sendMessage(
 ```javascript
 await sock.sendMessage(
   remoteJid,
-  { audio: { url: "" }, mimetype: "audio/mp4" },
-  { quoted: message }
+  { audio: { url: '' }, mimetype: 'audio/mp4' },
+  { quoted: message },
 );
 await sock.sendMessage(remoteJid, { audio: bufferAudio }, { quoted: message });
 ```
@@ -97,7 +93,7 @@ await sock.sendMessage(remoteJid, { audio: bufferAudio }, { quoted: message });
 ## Menambahkan reaction pada pesan
 
 ```javascript
-await sock.sendMessage(remoteJid, { react: { text: "⏰", key: message.key } });
+await sock.sendMessage(remoteJid, { react: { text: '⏰', key: message.key } });
 ```
 
 ## Mengirim pesan terusan
@@ -113,18 +109,14 @@ sock.sendMessage(
       mentionedJid: [remoteJid],
     },
   },
-  { quoted: message }
+  { quoted: message },
 );
 ```
 
 ## Menggunakan cache untuk metadata grup
 
 ```javascript
-import {
-  getGroupMetadata,
-  getProfilePictureUrl,
-  groupFetchAllParticipating,
-} from "./cache.js";
+import { getGroupMetadata, getProfilePictureUrl, groupFetchAllParticipating } from './cache.js';
 
 getGroupMetadata(sock, remoteJid);
 ```

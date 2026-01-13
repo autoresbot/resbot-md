@@ -1,9 +1,9 @@
-import axios from "axios";
+import axios from 'axios';
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender } = messageInfo;
 
-  const domain = "https://www.google.com";
+  const domain = 'https://www.google.com';
 
   try {
     // Kondisi pertama: Jika tidak ada content, hanya mengembalikan response time lokal
@@ -17,14 +17,14 @@ async function handle(sock, messageInfo) {
         {
           text: `⌬ _Response Time :_ ${kecepatanResponS.toFixed(6)} s`,
         },
-        { quoted: message }
+        { quoted: message },
       );
       return;
     }
 
     // Kondisi kedua: Jika ada content, melakukan ping ke domain
     await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
+      react: { text: '⏰', key: message.key },
     });
 
     const startTime = process.hrtime();
@@ -35,25 +35,23 @@ async function handle(sock, messageInfo) {
     await sock.sendMessage(
       remoteJid,
       {
-        text: `⌬ _Response Time :_ ${kecepatanResponS.toFixed(
-          6
-        )} s\n⌬ _Ping :_ ${domain}`,
+        text: `⌬ _Response Time :_ ${kecepatanResponS.toFixed(6)} s\n⌬ _Ping :_ ${domain}`,
       },
-      { quoted: message }
+      { quoted: message },
     );
   } catch (error) {
-    console.error("Error in ping handler:", error);
+    console.error('Error in ping handler:', error);
 
     await sock.sendMessage(
       remoteJid,
-      { text: "Maaf, terjadi kesalahan saat melakukan ping. Coba lagi nanti!" },
-      { quoted: message }
+      { text: 'Maaf, terjadi kesalahan saat melakukan ping. Coba lagi nanti!' },
+      { quoted: message },
     );
   }
 }
 export default {
   handle,
-  Commands: ["ping"],
+  Commands: ['ping'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

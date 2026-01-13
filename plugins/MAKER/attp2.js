@@ -1,10 +1,9 @@
-import ApiAutoresbotModule from "api-autoresbot";
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
-import config from "../../config.js";
+import config from '../../config.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, content, isQuoted, prefix, command } =
-    messageInfo;
+  const { remoteJid, message, content, isQuoted, prefix, command } = messageInfo;
 
   try {
     const text = content ?? isQuoted?.text ?? null;
@@ -13,23 +12,21 @@ async function handle(sock, messageInfo) {
       await sock.sendMessage(
         remoteJid,
         {
-          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-            prefix + command
-          } resbot*_`,
+          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} resbot*_`,
         },
-        { quoted: message }
+        { quoted: message },
       );
       return; // Hentikan eksekusi jika tidak ada konten
     }
 
     // Kirimkan pesan loading dengan reaksi emoji
     await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
+      react: { text: '⏰', key: message.key },
     });
 
     // Buat instance API dan ambil data dari endpoint
     const api = new ApiAutoresbot(config.APIKEY);
-    const response = await api.getBuffer("/api/maker/attp3", { text: text });
+    const response = await api.getBuffer('/api/maker/attp3', { text: encodeURIComponent(text) });
 
     // Kirimkan stiker sebagai respon
     await sock.sendMessage(
@@ -37,7 +34,7 @@ async function handle(sock, messageInfo) {
       {
         sticker: response,
       },
-      { quoted: message }
+      { quoted: message },
     );
   } catch (error) {
     // Tangani kesalahan dan kirimkan pesan error ke pengguna
@@ -47,14 +44,14 @@ async function handle(sock, messageInfo) {
       {
         text: errorMessage,
       },
-      { quoted: message }
+      { quoted: message },
     );
   }
 }
 
 export default {
   handle,
-  Commands: ["attp2"],
+  Commands: ['attp2'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

@@ -1,10 +1,9 @@
-import { downloadQuotedMedia, downloadMedia } from "../../lib/utils.js";
-import fs from "fs";
-import { readUsers } from "../../lib/users.js";
+import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
+import fs from 'fs';
+import { readUsers } from '../../lib/users.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, content, type, isQuoted, prefix, command } =
-    messageInfo;
+  const { remoteJid, message, content, type, isQuoted, prefix, command } = messageInfo;
 
   try {
     // Membaca data pengguna
@@ -13,29 +12,17 @@ async function handle(sock, messageInfo) {
     // Ambil semua ID pengguna (jid)
     const statusJidList = Object.keys(pengguna);
 
-    const nomorTanpaBroadcast = statusJidList.filter(
-      (jid) => jid !== "status@broadcast"
-    );
+    const nomorTanpaBroadcast = statusJidList.filter((jid) => jid !== 'status@broadcast');
 
     // Unduh media dan tentukan tipe media
-    const media = isQuoted
-      ? await downloadQuotedMedia(message)
-      : await downloadMedia(message);
+    const media = isQuoted ? await downloadQuotedMedia(message) : await downloadMedia(message);
     const mediaType = isQuoted ? `${isQuoted.type}Message` : `${type}Message`;
-    let mediaContent = content?.trim()
-      ? content
-      : isQuoted?.content?.caption || "";
+    let mediaContent = content?.trim() ? content : isQuoted?.content?.caption || '';
 
     // Validasi pesan kosong
-    if (!media && (!mediaContent || mediaContent.trim() === "")) {
-      const tex = `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-        prefix + command
-      } tes*_`;
-      return await sock.sendMessage(
-        remoteJid,
-        { text: tex },
-        { quoted: message }
-      );
+    if (!media && (!mediaContent || mediaContent.trim() === '')) {
+      const tex = `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} tes*_`;
+      return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
     if (media) {
@@ -49,42 +36,35 @@ async function handle(sock, messageInfo) {
       // Kirim media sesuai tipe
       await sendMedia(
         sock,
-        "status@broadcast",
+        'status@broadcast',
         mediaType,
         mediaPath,
         mediaContent,
-        nomorTanpaBroadcast
+        nomorTanpaBroadcast,
       );
     } else {
       await sock.sendMessage(
-        "status@broadcast",
+        'status@broadcast',
         { text: mediaContent },
-        { statusJidList: nomorTanpaBroadcast }
+        { statusJidList: nomorTanpaBroadcast },
       );
     }
 
     return await sock.sendMessage(
       remoteJid,
-      { text: "Sukses mengirim status whatsapp" },
-      { quoted: message }
+      { text: 'Sukses mengirim status whatsapp' },
+      { quoted: message },
     );
   } catch (error) {
-    console.error("Error processing message:", error);
+    console.error('Error processing message:', error);
     await sock.sendMessage(remoteJid, {
-      text: "Terjadi kesalahan saat memproses pesan.",
+      text: 'Terjadi kesalahan saat memproses pesan.',
     });
   }
 }
 
 // Fungsi untuk mengirim media
-async function sendMedia(
-  sock,
-  remoteJid,
-  type,
-  mediaPath,
-  caption,
-  statusJidList
-) {
+async function sendMedia(sock, remoteJid, type, mediaPath, caption, statusJidList) {
   const mediaOptions = {
     audioMessage: { audio: fs.readFileSync(mediaPath) },
     imageMessage: { image: fs.readFileSync(mediaPath), caption },
@@ -101,7 +81,7 @@ async function sendMedia(
 
 export default {
   handle,
-  Commands: ["buatstory", "buatstori", "upsw"],
+  Commands: ['buatstory', 'buatstori', 'upsw'],
   OnlyPremium: false,
   OnlyOwner: true,
 };

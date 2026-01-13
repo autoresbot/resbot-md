@@ -1,5 +1,5 @@
-import mess from "../../strings.js";
-import { getGroupMetadata } from "../../lib/cache.js";
+import mess from '../../strings.js';
+import { getGroupMetadata } from '../../lib/cache.js';
 
 async function sendMessage(sock, remoteJid, text, message) {
   try {
@@ -21,8 +21,9 @@ async function handle(sock, messageInfo) {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
+
     const isAdmin = participants.some(
-      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
     );
 
     if (!isAdmin) {
@@ -50,7 +51,7 @@ Antilinkwav2: hapus pesan + kick (link WA)
 
 export default {
   handle,
-  Commands: ["antilink"],
+  Commands: ['antilink'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

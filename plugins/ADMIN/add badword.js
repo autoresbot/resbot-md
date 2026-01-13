@@ -1,24 +1,19 @@
-import { addBadword, updateBadword, findBadword } from "../../lib/badword.js";
-import { getGroupMetadata } from "../../lib/cache.js";
-import mess from "../../strings.js";
+import { addBadword, updateBadword, findBadword } from '../../lib/badword.js';
+import { getGroupMetadata } from '../../lib/cache.js';
+import mess from '../../strings.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, sender, prefix, command, content, fullText } =
-    messageInfo;
+  const { remoteJid, message, sender, prefix, command, content, fullText } = messageInfo;
 
   try {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
-      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
     );
     if (!isAdmin) {
-      await sock.sendMessage(
-        remoteJid,
-        { text: mess.general.isAdmin },
-        { quoted: message }
-      );
+      await sock.sendMessage(remoteJid, { text: mess.general.isAdmin }, { quoted: message });
       return;
     }
 
@@ -26,27 +21,20 @@ async function handle(sock, messageInfo) {
       return await sock.sendMessage(
         remoteJid,
         {
-          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-            prefix + command
-          } tolol*_`,
+          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} tolol*_`,
         },
-        { quoted: message }
+        { quoted: message },
       );
     }
 
-    const args = fullText.trim().split(" ").slice(1);
+    const args = fullText.trim().split(' ').slice(1);
     const dataGrub = await ensureGroupData(remoteJid);
     const responseMessage = await addBadwordToList(remoteJid, dataGrub, args);
 
     // Kirim respons ke grup
     await sendResponse(sock, remoteJid, responseMessage, message);
   } catch (error) {
-    await sendResponse(
-      sock,
-      remoteJid,
-      "Terjadi kesalahan saat memproses perintah.",
-      message
-    );
+    await sendResponse(sock, remoteJid, 'Terjadi kesalahan saat memproses perintah.', message);
   }
 }
 
@@ -63,17 +51,17 @@ async function ensureGroupData(remoteJid) {
 // Fungsi untuk menambahkan kata ke daftar badword
 async function addBadwordToList(remoteJid, dataGrub, words) {
   if (words.length === 0) {
-    return "⚠️ _Mohon berikan kata yang ingin ditambahkan. Contoh: .addbadword tolol_";
+    return '⚠️ _Mohon berikan kata yang ingin ditambahkan. Contoh: .addbadword tolol_';
   }
 
   const newWords = words.filter((word) => !dataGrub.listBadword.includes(word));
   if (newWords.length === 0) {
-    return "⚠️ _Semua kata sudah ada dalam daftar badword._";
+    return '⚠️ _Semua kata sudah ada dalam daftar badword._';
   }
 
   dataGrub.listBadword.push(...newWords);
   await updateBadword(remoteJid, { listBadword: dataGrub.listBadword });
-  return `✅ _Berhasil menambahkan kata:_ ${newWords.join(", ")}`;
+  return `✅ _Berhasil menambahkan kata:_ ${newWords.join(', ')}`;
 }
 
 // Fungsi untuk mengirim respons ke grup
@@ -83,7 +71,7 @@ async function sendResponse(sock, remoteJid, text, quotedMessage) {
 
 export default {
   handle,
-  Commands: ["addbadword"],
+  Commands: ['addbadword'],
   OnlyPremium: false,
   OnlyOwner: false,
 };
