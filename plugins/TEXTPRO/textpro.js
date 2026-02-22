@@ -1,4 +1,4 @@
-// SUDAH DI EDIT TES #1
+
 
 // Import ESM style
 import ApiAutoresbotModule from "api-autoresbot";

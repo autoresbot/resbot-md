@@ -1,4 +1,4 @@
-// SUDAH DI EDIT TES #1
+
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
