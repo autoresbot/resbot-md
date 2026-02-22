@@ -12,6 +12,8 @@ const __dirname = path.dirname(__filename);
 
 const serverUrl = `https://github.com/autoresbot/resbot-md/archive/refs/heads/master.zip`;
 
+const VERSION_URL = "https://raw.githubusercontent.com/autoresbot/resbot-md/master/version.txt";
+
 const WHITELIST_FILE = ['config.js', 'strings.js', 'database'];
 
 export async function handle(sock, messageInfo) {
