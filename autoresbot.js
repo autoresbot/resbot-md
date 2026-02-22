@@ -231,7 +231,7 @@ async function participantUpdate(sock, messageInfo) {
       try {
         updateParticipant(sock, id, participants, action);
       } catch (e) {
-        console.log('error updateParticipant ', e);
+        console.log('error updateParticipant ');
       }
     } else {
       return console.log('action tidak valid :', action);

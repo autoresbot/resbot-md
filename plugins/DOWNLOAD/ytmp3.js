@@ -16,21 +16,21 @@ function delay(ms) {
 }
 
 // Fungsi untuk mencoba request API hingga 3 kali
-async function fetchWithRetry(api, endpoint, params, maxRetries = 3, delayMs = 5000) {
+async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 7000) {
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await api.get(endpoint, params);
-      if (response && response.status) {
-        console.log(`✅ Berhasil pada percobaan ke-${attempt}`);
+      if (response && response.status && response.data.url) {
+        //console.log(`✅ Berhasil pada percobaan ke-${attempt}`);
         return response;
       }
       throw new Error(`API response invalid (percobaan ${attempt})`);
     } catch (err) {
       lastError = err;
-      console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
+      //console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
       if (attempt < maxRetries) {
-        console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
+        //console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
         await delay(delayMs);
       }
     }
