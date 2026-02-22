@@ -1,6 +1,6 @@
-import { listSewa } from "../../lib/sewa.js";
-import { selisihHari } from "../../lib/utils.js";
-import { groupFetchAllParticipating } from "../../lib/cache.js";
+import { listSewa } from '../../lib/sewa.js';
+import { selisihHari } from '../../lib/utils.js';
+import { groupFetchAllParticipating } from '../../lib/cache.js';
 
 async function handle(sock, messageInfo) {
   const { remoteJid, sender, message } = messageInfo;
@@ -12,25 +12,21 @@ async function handle(sock, messageInfo) {
     // Jika tidak ada list
     if (!sewa || Object.keys(sewa).length === 0) {
       await sock.sendMessage(remoteJid, {
-        text: "⚠️ _Tidak Ada daftar sewa ditemukan_",
+        text: '⚠️ _Tidak Ada daftar sewa ditemukan_',
       });
       return;
     }
 
     // Konversi objek ke array dan urutkan berdasarkan waktu expired terbaru
-    const sortedSewa = Object.entries(sewa).sort(
-      ([, a], [, b]) => a.expired - b.expired
-    );
+    const sortedSewa = Object.entries(sewa).sort(([, a], [, b]) => a.expired - b.expired);
 
     const allGroups = await groupFetchAllParticipating(sock);
 
     // Buat daftar untuk ditampilkan
-    let listMessage = "*▧ 「 LIST SEWA* 」\n\n";
+    let listMessage = '*▧ 「 LIST SEWA* 」\n\n';
     sortedSewa.forEach(([groupId, data], index) => {
       // Ambil subject dari allGroups jika ada
-      const subject = allGroups[groupId]
-        ? allGroups[groupId].subject
-        : "Nama Grup Tidak Ditemukan";
+      const subject = allGroups[groupId] ? allGroups[groupId].subject : 'Nama Grup Tidak Ditemukan';
 
       listMessage += `╭─
 │ Subject : ${subject}
@@ -47,14 +43,14 @@ async function handle(sock, messageInfo) {
     });
   } catch (error) {
     await sock.sendMessage(remoteJid, {
-      text: "_Terjadi kesalahan saat mengambil daftar sewa_",
+      text: '_Terjadi kesalahan saat mengambil daftar sewa_',
     });
   }
 }
 
 export default {
   handle,
-  Commands: ["listsewa"],
+  Commands: ['listsewa'],
   OnlyPremium: false,
   OnlyOwner: true,
 };
