@@ -80,7 +80,7 @@ async function handle(sock, messageInfo) {
 
     while (attempt < maxRetry) {
       attempt++;
-      console.log(`Polling removebg attempt ${attempt}`);
+      //console.log(`Polling removebg attempt ${attempt}`);
 
       const pollRes = await axios.get('https://api.autoresbot.com/api/tools/removebg', {
         params: { job_id: jobId },

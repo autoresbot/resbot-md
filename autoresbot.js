@@ -1,4 +1,3 @@
-
 /*
 ⚠️ PERINGATAN:
 Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
@@ -6,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.1.0
+║ 📦 Version   : 5.1.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
