@@ -83,18 +83,18 @@ if (major < 20 || major >= 21) {
 
   // ─── Error Handler ───────────────────────────────
   process.on('uncaughtException', (err) => {
-    if (err?.code === 'UND_ERR_SOCKET' || err?.message?.includes('terminated')) {
-      console.log('Socket HTTP closed safely.');
-      return;
-    }
-    console.error('❌ Uncaught Exception:', err);
+    console.log('========== UNCAUGHT EXCEPTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
   });
 
   process.on('unhandledRejection', (err) => {
-    if (err?.code === 'UND_ERR_SOCKET' || err?.message?.includes('terminated')) {
-      console.log('HTTP request aborted.');
-      return;
-    }
-    console.error('❌ Unhandled Rejection:', err);
+    console.log('========== UNHANDLED REJECTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
   });
 }
