@@ -1,3 +1,4 @@
+// SUDAH DI EDIT TES #1
 /*
 ⚠️ PERINGATAN:
 Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!

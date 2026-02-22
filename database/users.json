@@ -1,1 +1,21 @@
-{}
+{
+  "1910d080917cc8db19c834f18c0": {
+    "username": "user_6282154365238@s.whatsapp.net",
+    "aliases": [
+      "6282154365238@s.whatsapp.net"
+    ],
+    "money": 0,
+    "limit": 0,
+    "level_cache": 2,
+    "level": 1,
+    "role": "user",
+    "achievement": "gamers",
+    "status": "active",
+    "afk": {
+      "lastchat": 0,
+      "alasan": null
+    },
+    "createdAt": "2026-02-22T03:05:24.928Z",
+    "updatedAt": "2026-02-22T03:07:15.679Z"
+  }
+}

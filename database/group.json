@@ -1,1 +1,43 @@
-{}
+{
+  "120363403961912824@g.us": {
+    "fitur": {
+      "antilink": false,
+      "antilinkv2": false,
+      "antilinkwa": false,
+      "antilinkwav2": false,
+      "badword": false,
+      "antidelete": false,
+      "antiedit": false,
+      "antigame": false,
+      "antifoto": false,
+      "antivideo": false,
+      "antiaudio": false,
+      "antidocument": false,
+      "antikontak": false,
+      "antisticker": false,
+      "antipolling": false,
+      "antispamchat": false,
+      "antivirtex": false,
+      "antiviewonce": false,
+      "autoai": false,
+      "autosimi": false,
+      "autorusuh": false,
+      "welcome": false,
+      "left": false,
+      "promote": false,
+      "demote": false,
+      "onlyadmin": false,
+      "mute": false,
+      "detectblacklist": false,
+      "waktusholat": false,
+      "antibot": false,
+      "antitagsw": false,
+      "antitagsw2": false,
+      "antitagmeta": false,
+      "antitagmeta2": false
+    },
+    "userBlock": [],
+    "createdAt": "2026-02-22T03:05:24.637Z",
+    "updatedAt": "2026-02-22T03:05:24.637Z"
+  }
+}
