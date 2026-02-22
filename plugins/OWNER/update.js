@@ -23,6 +23,30 @@ export async function handle(sock, messageInfo) {
 
     try {
 
+        // ===== CHECK VERSION =====
+const localVersionPath = path.join(process.cwd(), "version.txt");
+
+let localVersion = "0.0.0";
+if (fs.existsSync(localVersionPath)) {
+    localVersion = fs.readFileSync(localVersionPath, "utf-8").trim();
+}
+
+const versionResponse = await axios.get(VERSION_URL);
+const remoteVersion = versionResponse.data.trim();
+
+if (localVersion === remoteVersion) {
+    await sock.sendMessage(remoteJid, {
+        text: `✅ Versi anda sudah terbaru (${localVersion})`,
+        quoted: message
+    });
+    return;
+}
+
+
+
+
+
+
         const zipPath = path.join(process.cwd(), 'update.zip');
         const extractPath = path.join(process.cwd(), 'update_temp');
 
