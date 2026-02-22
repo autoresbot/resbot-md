@@ -1,17 +1,24 @@
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
-const unzipper = require('unzipper');
-const fse = require('fs-extra');
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
+import unzipper from 'unzipper';
+import fse from 'fs-extra';
+import { fileURLToPath } from 'url';
+
+// Fix __dirname di ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const serverUrl = `https://github.com/autoresbot/resbot-md/archive/refs/heads/master.zip`;
 
 const WHITELIST_FILE = ['config.js', 'strings.js', 'database'];
 
-async function handle(sock, messageInfo) {
+export async function handle(sock, messageInfo) {
     const { remoteJid, message } = messageInfo;
 
-    await sock.sendMessage(remoteJid, { react: { text: "⏳", key: message.key } });
+    await sock.sendMessage(remoteJid, {
+        react: { text: "⏳", key: message.key }
+    });
 
     try {
 
@@ -33,7 +40,7 @@ async function handle(sock, messageInfo) {
             writer.on('error', reject);
         });
 
-        // 2️⃣ Extract
+        // 2️⃣ Extract ZIP
         await fs.createReadStream(zipPath)
             .pipe(unzipper.Extract({ path: extractPath }))
             .promise();
@@ -54,11 +61,11 @@ async function handle(sock, messageInfo) {
             const sourcePath = path.join(sourceBase, item);
             const targetPath = path.join(targetBase, item);
 
-            if (fs.existsSync(targetPath)) {
-                await fse.remove(targetPath);
-            }
-
-            await fse.copy(sourcePath, targetPath);
+            // 🔥 Jangan remove dulu
+            await fse.copy(sourcePath, targetPath, {
+                overwrite: true,
+                errorOnExist: false
+            });
         }
 
         // Cleanup
@@ -66,7 +73,7 @@ async function handle(sock, messageInfo) {
         await fse.remove(extractPath);
 
         await sock.sendMessage(remoteJid, {
-            text: `✅ *Update berhasil!*\n\nFile/Folder yang tidak diganti:\n${WHITELIST_FILE.map(v => "- " + v).join("\n")}\n\nSilakan restart bot.`,
+            text: `✅ *Update berhasil!*\n\nTidak mengganti:\n${WHITELIST_FILE.map(v => "- " + v).join("\n")}\n\nSilakan restart bot.`,
             quoted: message
         });
 
@@ -79,9 +86,6 @@ async function handle(sock, messageInfo) {
     }
 }
 
-module.exports = {
-    handle,
-    Commands: ['update'],
-    OnlyPremium: false,
-    OnlyOwner: true
-};
+export const Commands = ['update'];
+export const OnlyPremium = false;
+export const OnlyOwner = true;
