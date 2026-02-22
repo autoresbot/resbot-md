@@ -1,10 +1,10 @@
-import ApiAutoresbotModule from "api-autoresbot";
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-import config from "../../config.js";
-import mess from "../../strings.js";
-import { logCustom } from "../../lib/logger.js";
-import { extractLink, downloadToBuffer } from "../../lib/utils.js";
+import config from '../../config.js';
+import mess from '../../strings.js';
+import { logCustom } from '../../lib/logger.js';
+import { extractLink, downloadToBuffer } from '../../lib/utils.js';
 
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
   await sock.sendMessage(remoteJid, { text }, { quoted: message });
@@ -40,29 +40,35 @@ async function handle(sock, messageInfo) {
   const validLink = extractLink(content);
 
   try {
-    if (!content.trim() || content.trim() === "") {
+    if (!content.trim() || content.trim() === '') {
       return sendMessageWithQuote(
         sock,
         remoteJid,
         message,
         `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
           prefix + command
-        } https://www.youtube.com/watch?v=xxxxx*_`
+        } https://www.youtube.com/watch?v=xxxxx*_`,
       );
     }
 
     await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
+      react: { text: '⏰', key: message.key },
     });
 
     const api = new ApiAutoresbot(config.APIKEY);
 
     // Gunakan fetchWithRetry agar mencoba 3x dengan jeda 5 detik
-    const response = await fetchWithRetry(api, "/api/downloader/ytmp4", { url: validLink }, 6, 7000);
+    const response = await fetchWithRetry(
+      api,
+      '/api/downloader/ytmp4',
+      { url: validLink },
+      6,
+      9000,
+    );
 
     if (response.status) {
       const url_media = response.data.url;
-      const videoBuffer = await downloadToBuffer(url_media, "mp4");
+      const videoBuffer = await downloadToBuffer(url_media, 'mp4');
 
       await sock.sendMessage(
         remoteJid,
@@ -70,19 +76,19 @@ async function handle(sock, messageInfo) {
           video: videoBuffer,
           caption: mess.general.success,
         },
-        { quoted: message }
+        { quoted: message },
       );
     } else {
-      logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+      logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
       await sendMessageWithQuote(
         sock,
         remoteJid,
         message,
-        "Maaf, tidak dapat menemukan video dari URL yang Anda berikan."
+        'Maaf, tidak dapat menemukan video dari URL yang Anda berikan.',
       );
     }
   } catch (error) {
-    logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+    logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
     const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\nDetail Error: ${
       error.message || error
     }`;
@@ -92,7 +98,7 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ["ytmp4"],
+  Commands: ['ytmp4'],
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,

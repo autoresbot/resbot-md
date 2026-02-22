@@ -1,9 +1,9 @@
-import ApiAutoresbotModule from "api-autoresbot";
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-import config from "../../config.js";
-import { logCustom } from "../../lib/logger.js";
-import { extractLink, downloadToBuffer } from "../../lib/utils.js";
+import config from '../../config.js';
+import { logCustom } from '../../lib/logger.js';
+import { extractLink, downloadToBuffer } from '../../lib/utils.js';
 
 // Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
@@ -16,7 +16,7 @@ function delay(ms) {
 }
 
 // Fungsi untuk mencoba request API hingga 3 kali
-async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 7000) {
+async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 9000) {
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -45,20 +45,20 @@ async function handle(sock, messageInfo) {
   try {
     const validLink = extractLink(content);
 
-    if (!content.trim() || content.trim() === "") {
+    if (!content.trim() || content.trim() === '') {
       return sendMessageWithQuote(
         sock,
         remoteJid,
         message,
         `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
           prefix + command
-        } https://www.youtube.com/watch?v=xxxxx*_`
+        } https://www.youtube.com/watch?v=xxxxx*_`,
       );
     }
 
     // Kirim reaksi "Loading"
     await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
+      react: { text: '⏰', key: message.key },
     });
 
     const api = new ApiAutoresbot(config.APIKEY);
@@ -66,36 +66,36 @@ async function handle(sock, messageInfo) {
     // Coba request API maksimal 3x
     const response = await fetchWithRetry(
       api,
-      "/api/downloader/ytplay",
-      { url: validLink, format: "m4a" },
+      '/api/downloader/ytplay',
+      { url: validLink, format: 'm4a' },
       3,
-      5000
+      5000,
     );
 
     if (response.status) {
       const url_media = response.data.url;
 
-      const audioBuffer = await downloadToBuffer(url_media, "mp3");
+      const audioBuffer = await downloadToBuffer(url_media, 'mp3');
 
       await sock.sendMessage(
         remoteJid,
         {
           audio: audioBuffer,
-          mimetype: "audio/mp4",
+          mimetype: 'audio/mp4',
         },
-        { quoted: message }
+        { quoted: message },
       );
     } else {
-      logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+      logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
       await sendMessageWithQuote(
         sock,
         remoteJid,
         message,
-        "Maaf, tidak dapat menemukan audio dari URL yang Anda berikan."
+        'Maaf, tidak dapat menemukan audio dari URL yang Anda berikan.',
       );
     }
   } catch (error) {
-    logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+    logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
     const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\nDetail Error: ${
       error.message || error
     }`;
@@ -105,7 +105,7 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ["ytmp3"],
+  Commands: ['ytmp3'],
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,

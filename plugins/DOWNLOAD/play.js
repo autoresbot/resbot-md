@@ -1,10 +1,10 @@
-import yts from "yt-search";
-import ApiAutoresbotModule from "api-autoresbot";
+import yts from 'yt-search';
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-import config from "../../config.js";
-import { logCustom } from "../../lib/logger.js";
-import { downloadToBuffer } from "../../lib/utils.js";
+import config from '../../config.js';
+import { logCustom } from '../../lib/logger.js';
+import { downloadToBuffer } from '../../lib/utils.js';
 
 // Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
@@ -21,10 +21,7 @@ async function sendReaction(sock, message, reaction) {
 // Fungsi pencarian YouTube
 async function searchYouTube(query) {
   const searchResults = await yts(query);
-  return (
-    searchResults.all.find((item) => item.type === "video") ||
-    searchResults.all[0]
-  );
+  return searchResults.all.find((item) => item.type === 'video') || searchResults.all[0];
 }
 
 // Fungsi delay (jeda)
@@ -39,7 +36,6 @@ async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 7
     try {
       const response = await api.get(endpoint, params);
       if (response && response.status && response.data.url) {
-       
         //console.log(`✅ API berhasil pada percobaan ke-${attempt}`);
         return response;
       }
@@ -48,7 +44,7 @@ async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 7
       lastError = err;
       //console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
       if (attempt < maxRetries) {
-       // console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
+        // console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
         await delay(delayMs);
       }
     }
@@ -67,13 +63,11 @@ async function handle(sock, messageInfo) {
         sock,
         remoteJid,
         message,
-        `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-          prefix + command
-        } matahariku*_`
+        `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} matahariku*_`,
       );
     }
 
-    await sendReaction(sock, message, "⏰");
+    await sendReaction(sock, message, '⏰');
 
     // Pencarian YouTube
     const video = await searchYouTube(query);
@@ -83,7 +77,7 @@ async function handle(sock, messageInfo) {
         sock,
         remoteJid,
         message,
-        "⛔ _Tidak dapat menemukan video yang sesuai_"
+        '⛔ _Tidak dapat menemukan video yang sesuai_',
       );
     }
 
@@ -92,7 +86,7 @@ async function handle(sock, messageInfo) {
         sock,
         remoteJid,
         message,
-        "_Maaf, video terlalu besar untuk dikirim melalui WhatsApp._"
+        '_Maaf, video terlalu besar untuk dikirim melalui WhatsApp._',
       );
     }
 
@@ -102,10 +96,10 @@ async function handle(sock, messageInfo) {
     const api = new ApiAutoresbot(config.APIKEY);
     const response = await fetchWithRetry(
       api,
-      "/api/downloader/ytplay",
-      { url: video.url, format: "m4a" },
-      3,
-      5000
+      '/api/downloader/ytplay',
+      { url: video.url, format: 'm4a' },
+      7,
+      9000,
     );
 
     if (response && response.status) {
@@ -115,27 +109,27 @@ async function handle(sock, messageInfo) {
       await sock.sendMessage(
         remoteJid,
         { image: { url: video.thumbnail }, caption },
-        { quoted: message }
+        { quoted: message },
       );
 
       // Download file audio ke buffer
-      const audioBuffer = await downloadToBuffer(url_media, "mp3");
+      const audioBuffer = await downloadToBuffer(url_media, 'mp3');
 
       await sock.sendMessage(
         remoteJid,
         {
           audio: audioBuffer,
           fileName: `yt.mp3`,
-          mimetype: "audio/mp4",
+          mimetype: 'audio/mp4',
         },
-        { quoted: message }
+        { quoted: message },
       );
     } else {
-      await sendReaction(sock, message, "❗");
+      await sendReaction(sock, message, '❗');
     }
   } catch (error) {
-    console.error("Error while handling command:", error);
-    logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
+    console.error('Error while handling command:', error);
+    logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
 
     const errorMessage = `⚠️ Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\n💡 Detail: ${
       error.message || error
@@ -146,7 +140,7 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ["play"],
+  Commands: ['play'],
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,
