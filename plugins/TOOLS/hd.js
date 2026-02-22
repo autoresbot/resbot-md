@@ -9,10 +9,19 @@ import config from '../../config.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// 🔥 Axios instance dengan timeout & debug
+const http = axios.create({
+  timeout: 30000,
+  validateStatus: () => true,
+});
+
 async function handle(sock, messageInfo) {
   const { m, remoteJid, message, prefix, command, type, isQuoted } = messageInfo;
 
   try {
+    console.log('===== REMINI START =====');
+    console.log('User:', remoteJid);
+
     const mediaType = isQuoted ? isQuoted.type : type;
     if (mediaType !== 'image') {
       return await reply(m, `⚠️ _Kirim/Balas gambar dengan caption *${prefix + command}*_`);
@@ -22,43 +31,49 @@ async function handle(sock, messageInfo) {
       react: { text: '⏰', key: message.key },
     });
 
+    console.log('Downloading media...');
     const media = isQuoted ? await downloadQuotedMedia(message) : await downloadMedia(message);
-
     const mediaPath = path.join('tmp', media);
 
     if (!fs.existsSync(mediaPath)) {
       throw new Error('File media tidak ditemukan.');
     }
 
-    // Upload ke tmp
+    console.log('Uploading to tmp...');
     const api = new ApiAutoresbot(config.APIKEY);
     const upload = await api.tmpUpload(mediaPath);
 
     if (!upload || upload.code !== 200) {
+      console.log('Upload response:', upload);
       throw new Error('Upload gagal.');
     }
 
     const imageUrl = upload.data.url;
+    console.log('Image URL:', imageUrl);
 
     // ===============================
-    // 🔥 STEP 1: CREATE JOB
+    // CREATE JOB
     // ===============================
 
-    const createRes = await axios.get(`https://api.autoresbot.com/api/tools/remini`, {
+    console.log('Creating job...');
+    const createRes = await http.get(`https://api.autoresbot.com/api/tools/remini`, {
       params: { url: imageUrl },
       headers: {
         Authorization: `Bearer ${config.APIKEY}`,
       },
     });
 
+    console.log('Create response:', createRes.status, createRes.data);
+
     if (!createRes.data?.job_id) {
       throw new Error('Gagal membuat job.');
     }
 
     const jobId = createRes.data.job_id;
+    console.log('Job ID:', jobId);
 
     // ===============================
-    // 🔥 STEP 2: POLLING
+    // POLLING
     // ===============================
 
     const maxRetry = 10;
@@ -68,29 +83,39 @@ async function handle(sock, messageInfo) {
 
     while (attempt < maxRetry) {
       attempt++;
-      //console.log(`Polling attempt ${attempt}`);
+      console.log(`Polling attempt ${attempt} for job ${jobId}`);
 
-      const pollRes = await axios.get(`https://api.autoresbot.com/api/tools/remini`, {
-        params: { job_id: jobId },
-        headers: {
-          Authorization: `Bearer ${config.APIKEY}`,
-        },
-        validateStatus: () => true,
-      });
+      try {
+        const pollRes = await http.get(`https://api.autoresbot.com/api/tools/remini`, {
+          params: { job_id: jobId },
+          headers: {
+            Authorization: `Bearer ${config.APIKEY}`,
+          },
+        });
 
-      const data = pollRes.data;
+        console.log('Poll response:', pollRes.status, pollRes.data);
 
-      if (data.status === 'done') {
-        finalImageUrl = data.result;
-        //console.log("Job selesai ✅", finalImageUrl);
-        break;
+        const data = pollRes.data;
+
+        if (data.status === 'done') {
+          finalImageUrl = data.result;
+          console.log('Job selesai ✅', finalImageUrl);
+          break;
+        }
+
+        if (data.status === 'failed') {
+          throw new Error(data.error || 'Remini gagal.');
+        }
+      } catch (pollError) {
+        console.error('Polling error:', pollError.code, pollError.message);
+
+        if (pollError.code === 'ECONNRESET') {
+          console.log('⚠️ ECONNRESET saat polling, retry...');
+        } else {
+          throw pollError;
+        }
       }
 
-      if (data.status === 'failed') {
-        throw new Error(data.error || 'Remini gagal.');
-      }
-
-      //console.log("Masih processing...");
       await delay(delayMs);
     }
 
@@ -99,12 +124,19 @@ async function handle(sock, messageInfo) {
     }
 
     // ===============================
-    // 🔥 STEP 3: DOWNLOAD FINAL IMAGE
+    // DOWNLOAD FINAL IMAGE
     // ===============================
 
-    const imageRes = await axios.get(finalImageUrl, {
+    console.log('Downloading final image...');
+    const imageRes = await http.get(finalImageUrl, {
       responseType: 'arraybuffer',
     });
+
+    console.log('Final image status:', imageRes.status);
+
+    if (imageRes.status !== 200) {
+      throw new Error('Gagal download hasil akhir.');
+    }
 
     const MediaBuffer = Buffer.from(imageRes.data);
 
@@ -116,7 +148,19 @@ async function handle(sock, messageInfo) {
       },
       { quoted: message },
     );
+
+    console.log('===== REMINI SUCCESS =====');
   } catch (error) {
+    console.error('===== REMINI ERROR =====');
+    console.error('Message:', error.message);
+    console.error('Code:', error.code);
+    console.error('Stack:', error.stack);
+
+    if (error.response) {
+      console.error('Response Status:', error.response.status);
+      console.error('Response Data:', error.response.data);
+    }
+
     await reply(m, `_Terjadi kesalahan saat memproses gambar._\n\nERROR: ${error.message}`);
   }
 }
