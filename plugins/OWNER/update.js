@@ -34,9 +34,6 @@ export async function handle(sock, messageInfo) {
     const versionResponse = await axios.get(VERSION_URL, { timeout: 10000 });
     const remoteVersion = versionResponse.data.trim();
 
-    // console.log(`Local Version  : ${localVersion}`);
-    // console.log(`Remote Version : ${remoteVersion}`);
-
     if (!remoteVersion) {
       throw new Error('Remote version kosong');
     }
