@@ -1,6 +1,6 @@
 {
   "name": "resbot-md",
-  "version": "5.1.2",
+  "version": "5.1.3",
   "description": "Powerful WhatsApp Bot Script with Plugin Base",
   "main": "index.js",
   "scripts": {

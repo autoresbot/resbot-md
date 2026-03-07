@@ -5,6 +5,7 @@ import {
   addGroup,
   isUserBlocked,
   isFiturBlocked,
+  DEFAULT_FITUR,
 } from "../lib/group.js";
 import { logWithTime, warning, logTracking } from "../lib/utils.js";
 import mess from "../strings.js";
@@ -45,42 +46,7 @@ async function process(sock, messageInfo) {
       if (!dataGrub) {
         // Menambahkan grup jika belum ada
         await addGroup(remoteJid, {
-          fitur: {
-            antilink: false,
-            antilinkv2: false,
-            antilinkwa: false,
-            antilinkwav2: false,
-            badword: false,
-            antidelete: false,
-            antiedit: false,
-            antigame: false,
-            antifoto: false,
-            antivideo: false,
-            antiaudio: false,
-            antidocument: false,
-            antikontak: false,
-            antisticker: false,
-            antipolling: false,
-            antispamchat: false,
-            antivirtex: false,
-            antiviewonce: false,
-            autoai: false,
-            autosimi: false,
-            autorusuh: false,
-            welcome: false,
-            left: false,
-            promote: false,
-            demote: false,
-            onlyadmin: false,
-            mute: false,
-            detectblacklist: false,
-            waktusholat: false,
-            antibot: false,
-            antitagsw: false,
-            antitagsw2: false,
-            antitagmeta: false,
-            antitagmeta2: false,
-          },
+          fitur: { ...DEFAULT_FITUR },
           userBlock: [],
         });
       }

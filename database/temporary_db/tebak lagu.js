@@ -7,7 +7,6 @@ const DB_tebak_lagu = {};
  * @param {object} data - Data game pengguna (angka acak, level, dll.)
  */
 function addUser(remoteJid, data) {
-  console.log(data);
   DB_tebak_lagu[remoteJid] = data;
 }
 

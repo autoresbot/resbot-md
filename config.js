@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.1.2
+║ 📦 Version   : 5.1.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -43,6 +43,7 @@ const TYPE_WELCOME = '1'; // 1, 2, 3, 4, 5, 6 text dan random
 const BG_WELCOME2 = 'https://api.autoresbot.com/api/maker/bg-default';
 
 // Konfiqurasi Panel
+// Tutor : https://youtu.be/ZAWb7tnKjoM?si=jMUiB13KkXE1H7IG
 const PANEL_URL = '';
 const PANEL_PLTA = '';
 const PANEL_DESCRIPTION = 'Butuh Bantuan Hubungi 628xxxxx';

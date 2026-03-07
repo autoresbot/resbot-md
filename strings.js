@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.1.2
+║ 📦 Version   : 5.1.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -60,6 +60,7 @@ const mess = {
     afk_message: '🕊️ @sender telah kembali dari AFK sejak _*@durasi*_.@alasan',
     sewa_notif: '⚠️ _*Peringatan!*_\n\n_Masa Sewabot :_ @date',
     sewa_out: `❌ _*Masa SewaBOT Telah Habis*_\n_Bot akan keluar otomatis_\n\nTerima kasih sudah menggunakan layanan sewa autoresbot.\n\n*Nomor Owner*\nwa.me/@ownernumber`,
+    notifultah: '_Selamat ulang tahun! 🎉🎂_ @sender',
   },
   game_handler: {
     menyerah: 'Yahh Menyerah\nJawaban: @answer\n\nIngin bermain? Ketik *@command*',

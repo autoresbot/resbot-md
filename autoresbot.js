@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.1.2
+║ 📦 Version   : 5.1.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -159,8 +159,15 @@ async function processMessage(sock, messageInfo) {
         // OnlyGroup: false, // default false
         // OnlyPrivate: false // default false
 
+        let isGrubPremium = false;
+        const settingGroups = await findGroup(remoteJid);
+        if (settingGroups?.fitur?.premium && new Date(settingGroups.fitur.premium) > new Date()) {
+          // Premium masih aktif
+          isGrubPremium = true;
+        }
+
         // Cek apakah perintah ini menggunakan limit
-        if (!isPremiumUsers && !isOwnerUsers && plugin.limitDeduction) {
+        if (!isPremiumUsers && !isOwnerUsers && plugin.limitDeduction && !isGrubPremium) {
           try {
             const dataUsers = await findUser(sender);
             if (!dataUsers) return;

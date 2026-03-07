@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.1.2
+║ 📦 Version   : 5.1.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -83,18 +83,18 @@ if (major < 20 || major >= 21) {
 
   // ─── Error Handler ───────────────────────────────
   process.on('uncaughtException', (err) => {
-    // console.log('========== UNCAUGHT EXCEPTION ==========');
-    // console.log('Message:', err?.message);
-    // console.log('Code:', err?.code);
-    // console.log('Stack:', err?.stack);
-    // console.log('=========================================');
+    console.log('========== UNCAUGHT EXCEPTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
   });
 
   process.on('unhandledRejection', (err) => {
-    // console.log('========== UNHANDLED REJECTION ==========');
-    // console.log('Message:', err?.message);
-    // console.log('Code:', err?.code);
-    // console.log('Stack:', err?.stack);
-    // console.log('=========================================');
+    console.log('========== UNHANDLED REJECTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
   });
 }
