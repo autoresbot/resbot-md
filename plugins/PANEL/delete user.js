@@ -38,19 +38,19 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    // Panggil fungsi deleteUser
+    // Panggil fungsi deleteUser (akan otomatis hapus server user terlebih dahulu)
     const result = await deleteUser(Number(content));
 
     if (result) {
-      // Jika pengguna berhasil dibuat, simpan data pengguna
-      await saveUser(); // Pastikan saveUser menyimpan data terbaru dengan benar
+      // Jika pengguna berhasil dihapus, simpan data pengguna terbaru
+      await saveUser();
     }
 
     // Berikan respons sukses
     await sock.sendMessage(
       remoteJid,
       {
-        text: `✅ _Pengguna dengan id ${content} berhasil dihapus_`,
+        text: `✅ _Pengguna dengan id ${content} berhasil dihapus_\n\n_Note: Semua server milik user ini juga telah dihapus otomatis._`,
       },
       { quoted: message }
     );
