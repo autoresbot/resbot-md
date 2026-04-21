@@ -17,6 +17,10 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 import './lib/version.js';
 import { checkAndInstallModules, clearDirectory } from './lib/utils.js';
 
+import { applyUpdateIfExists } from './plugins/OWNER/update.js';
+
+await applyUpdateIfExists();
+
 console.log(`[✔] Start App ...`);
 
 // ─── Cek versi Node ───────────────────────────────

@@ -1,156 +1,168 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import unzipper from 'unzipper';
+import extract from 'extract-zip';
 import fse from 'fs-extra';
-import { fileURLToPath } from 'url';
-
-// Fix __dirname di ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const serverUrl = 'https://github.com/autoresbot/resbot-md/archive/refs/heads/master.zip';
-const VERSION_URL = 'https://raw.githubusercontent.com/autoresbot/resbot-md/master/version.txt';
 
-const WHITELIST_FILE = ['config.js', 'strings.js', 'database'];
+const WHITELIST = new Set([
+  'config.js',
+  'strings.js',
+  'update.js',
+  'database',
+  'node_modules',
+  '.git',
+  'session',
+  'version.txt',
+  'update_temp',
+  'update.zip',
+  'update.lock', // ✅ penting
+]);
 
-function compareVersion(v1, v2) {
-  const a = v1.split('.').map(Number);
-  const b = v2.split('.').map(Number);
-
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const num1 = a[i] || 0;
-    const num2 = b[i] || 0;
-
-    if (num1 > num2) return 1; // v1 lebih besar
-    if (num1 < num2) return -1; // v2 lebih besar
-  }
-
-  return 0; // sama
+function delay(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-export async function handle(sock, messageInfo) {
-  const { remoteJid, message } = messageInfo;
-
-  await sock.sendMessage(remoteJid, {
-    react: { text: '⏳', key: message.key },
-  });
-
-  try {
-    // ===== CHECK VERSION =====
-    const localVersionPath = path.join(process.cwd(), 'version.txt');
-
-    let localVersion = '0.0.0';
-    if (fs.existsSync(localVersionPath)) {
-      localVersion = fs.readFileSync(localVersionPath, 'utf-8').trim();
-    }
-
-    // Ambil versi terbaru dulu
-    const versionResponse = await axios.get(VERSION_URL, { timeout: 10000 });
-    const remoteVersion = versionResponse.data.trim();
-
-    if (!remoteVersion) {
-      throw new Error('Remote version kosong');
-    }
-
-    const cmp = compareVersion(localVersion, remoteVersion);
-
-    if (cmp === 0) {
-      await sock.sendMessage(remoteJid, {
-        text: `✅ Versi anda sudah terbaru (${localVersion})`,
-        quoted: message,
-      });
-      return;
-    }
-
-    // 🚫 LOCAL LEBIH BARU → BLOCK UPDATE
-    if (cmp === 1) {
-      await sock.sendMessage(remoteJid, {
-        text:
-          `⚠️ Update diblok!\n\n` +
-          `Versi lokal (${localVersion}) lebih baru dari GitHub (${remoteVersion}).\n` +
-          `Kemungkinan anda pakai versi custom / dev.`,
-        quoted: message,
-      });
-      return;
-    }
-
-    const zipPath = path.join(process.cwd(), 'update.zip');
-    const extractPath = path.join(process.cwd(), 'update_temp');
-
-    // 1️⃣ Download ZIP
-    const response = await axios({
-      method: 'GET',
-      url: serverUrl,
-      responseType: 'stream',
-      timeout: 60000,
-    });
-
-    const writer = fs.createWriteStream(zipPath);
-    response.data.pipe(writer);
-
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-
-    // 2️⃣ Extract ZIP
-    await fs
-      .createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: extractPath }))
-      .promise();
-
-    const extractedFolders = fs.readdirSync(extractPath);
-    if (!extractedFolders.length) {
-      throw new Error('Folder hasil extract tidak ditemukan');
-    }
-
-    const sourceBase = path.join(extractPath, extractedFolders[0]);
-    const targetBase = process.cwd();
-
-    const items = fs.readdirSync(sourceBase);
-
-    for (let item of items) {
-      if (WHITELIST_FILE.includes(item)) {
-        //console.log(`⚠️ Skip whitelist: ${item}`);
-        continue;
-      }
-
-      const sourcePath = path.join(sourceBase, item);
-      const targetPath = path.join(targetBase, item);
-
-      await fse.copy(sourcePath, targetPath, {
+// copy kuat (anti gagal)
+async function forceCopy(src, dest, retry = 5) {
+  for (let i = 0; i < retry; i++) {
+    try {
+      await fse.copy(src, dest, {
         overwrite: true,
         errorOnExist: false,
       });
+      return;
+    } catch (e) {
+      if (i === retry - 1) throw e;
+      await delay(800);
+    }
+  }
+}
+
+// proses apply update (dipakai saat start ulang)
+export async function applyUpdateIfExists() {
+  const cwd = process.cwd();
+  const lockFile = path.join(cwd, 'update.lock');
+  const tmp = path.join(cwd, 'update_temp');
+
+  if (!fs.existsSync(lockFile)) return;
+
+  console.log('🔁 Melanjutkan update...');
+
+  try {
+    const dirs = fs.readdirSync(tmp).filter((f) => {
+      const full = path.join(tmp, f);
+      return fs.existsSync(full) && fs.statSync(full).isDirectory();
+    });
+
+    if (!dirs.length) throw new Error('Folder update tidak ditemukan');
+
+    const source = path.join(tmp, dirs[0]);
+
+    // hapus lama
+    console.log('🧹 Cleaning...');
+    for (const item of fs.readdirSync(cwd)) {
+      if (WHITELIST.has(item)) continue;
+
+      const p = path.join(cwd, item);
+      try {
+        await fse.remove(p);
+        console.log('[REMOVE]', item);
+      } catch {
+        console.log('[LOCKED]', item);
+      }
     }
 
-    // 3️⃣ Update version.txt
-    fs.writeFileSync(localVersionPath, remoteVersion);
+    // copy baru
+    console.log('🚀 Copying...');
+    for (const item of fs.readdirSync(source)) {
+      if (WHITELIST.has(item)) continue;
 
-    // Cleanup
-    await fse.remove(zipPath);
-    await fse.remove(extractPath);
+      const srcPath = path.join(source, item);
+      const destPath = path.join(cwd, item);
 
-    await sock.sendMessage(remoteJid, {
-      text:
-        `✅ *Update berhasil!*\n\n` +
-        `Versi lama : ${localVersion}\n` +
-        `Versi baru : ${remoteVersion}\n\n` +
-        `Tidak mengganti:\n${WHITELIST_FILE.map((v) => '- ' + v).join('\n')}\n\n` +
-        `Silakan restart bot.`,
-      quoted: message,
+      try {
+        await forceCopy(srcPath, destPath);
+        console.log('[COPIED]', item);
+      } catch {
+        console.log('[SKIPPED]', item);
+      }
+    }
+
+    // cleanup
+    await fse.remove(tmp);
+    await fse.remove(path.join(cwd, 'update.zip'));
+    await fse.remove(lockFile);
+
+    console.log('✅ Update selesai');
+  } catch (e) {
+    console.error('❌ Gagal apply update:', e.message);
+  }
+}
+
+// command dari WhatsApp
+export async function handle(sock, m) {
+  const jid = m.remoteJid;
+  const cwd = process.cwd();
+
+  await sock.sendMessage(jid, {
+    react: { text: '⏳', key: m.message.key },
+  });
+
+  try {
+    const zip = path.join(cwd, 'update.zip');
+    const tmp = path.join(cwd, 'update_temp');
+    const lockFile = path.join(cwd, 'update.lock');
+
+    await fse.remove(tmp);
+    await fse.ensureDir(tmp);
+
+    // DOWNLOAD
+    console.log('⬇️ Downloading...');
+    const res = await axios({ url: serverUrl, responseType: 'stream' });
+
+    await new Promise((resolve, reject) => {
+      const w = fs.createWriteStream(zip);
+      res.data.pipe(w);
+      w.on('finish', resolve);
+      w.on('error', reject);
     });
-  } catch (error) {
-    console.error('Update Error:', error);
 
-    await sock.sendMessage(remoteJid, {
-      text: `❌ Gagal melakukan update.\n${error.message}`,
-      quoted: message,
+    // EXTRACT
+    console.log('📦 Extracting...');
+    await extract(zip, { dir: tmp });
+
+    await delay(500); // penting
+
+    // cek folder hasil extract
+    const dirs = fs.readdirSync(tmp).filter((f) => {
+      const full = path.join(tmp, f);
+      return fs.existsSync(full) && fs.statSync(full).isDirectory();
+    });
+
+    if (!dirs.length) throw new Error('Extract gagal');
+
+    // buat lock (biar lanjut setelah restart)
+    fs.writeFileSync(lockFile, 'updating');
+
+    await sock.sendMessage(jid, {
+      text: `✅ File update sudah siap\n🔄 Restarting untuk apply update...`,
+      quoted: m.message,
+    });
+
+    setTimeout(() => process.exit(0), 1500);
+  } catch (e) {
+    console.error(e);
+
+    await sock.sendMessage(jid, {
+      text: `❌ UPDATE FAILED\n${e.message}`,
+      quoted: m.message,
     });
   }
 }
 
-export const Commands = ['update'];
-export const OnlyPremium = false;
-export const OnlyOwner = true;
+export default {
+  handle,
+  Commands: ['update'],
+};
