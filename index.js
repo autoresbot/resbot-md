@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.2
+║ 📦 Version   : 5.2.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -16,10 +16,6 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 // ─── Import modul internal via path relatif ───────────
 import './lib/version.js';
 import { checkAndInstallModules, clearDirectory } from './lib/utils.js';
-
-import { applyUpdateIfExists } from './plugins/OWNER/update.js';
-
-await applyUpdateIfExists();
 
 console.log(`[✔] Start App ...`);
 
@@ -77,6 +73,14 @@ if (major < 20 || major >= 21) {
       'api-autoresbot@1.0.6',
       'extract-zip',
     ]);
+
+    try {
+      const { applyUpdateIfExists } = await import('./plugins/OWNER/update.js');
+
+      await applyUpdateIfExists();
+    } catch (error) {
+      console.log('Error Apply Update');
+    }
 
     // Inisialisasi SQLite dan jalankan migrasi jika diperlukan
     const { initDatabase } = await import('./lib/database.js');
