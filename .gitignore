@@ -1,0 +1,18 @@
+# Node.js
+node_modules/    
+tmp/    
+lib/key.txt
+logs/      
+logs_panel/      
+plugins_backup/
+tracking_action/
+session/
+catatan update.txt
+npm-debug.log           
+yarn-error.log
+.pnpm-debug.log
+.env
+database/bot.db
+database/bot.db-wal
+database/bot.db-shm
+database/_json_backup/
