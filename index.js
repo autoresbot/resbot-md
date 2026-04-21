@@ -75,6 +75,7 @@ if (major < 20 || major >= 21) {
       'qrcode-reader',
       'wa-sticker-formatter',
       'api-autoresbot@1.0.6',
+      'extract-zip',
     ]);
 
     // Inisialisasi SQLite dan jalankan migrasi jika diperlukan
