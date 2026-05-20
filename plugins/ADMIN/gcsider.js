@@ -6,7 +6,7 @@ import { getGroupMetadata } from '../../lib/cache.js';
 const TOTAL_HARI_SIDER = 30;
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
+  const { remoteJid, isGroup, message, sender, senderLid, senderType } = messageInfo;
   if (!isGroup) return;
 
   try {

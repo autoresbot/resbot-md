@@ -23,14 +23,14 @@ function determineWinner(choice1, choice2) {
 }
 
 async function process(sock, messageInfo) {
-  const { fullText, message, sender, isGroup, senderType } = messageInfo;
+  const { fullText, message, senderLid, isGroup, senderType } = messageInfo;
   const { remoteJid } = messageInfo;
   
   let gameData = isGroup
     ? isUserPlaying(remoteJid)
       ? getUser(remoteJid)
       : null
-    : findDataByKey({ player1: sender }) || findDataByKey({ player2: sender });
+    : findDataByKey({ player1: senderLid }) || findDataByKey({ player2: senderLid });
 
   if (!gameData) {
     return true;
@@ -39,7 +39,7 @@ async function process(sock, messageInfo) {
   const { player1, player2, groupId, status, answer_player1, answer_player2 } =
     gameData;
 
-  if (!status && player2 === sender) {
+  if (!status && player2 === senderLid) {
     if (fullText.toLowerCase() === "terima") {
       updateUser(groupId, { status: true });
 
@@ -71,17 +71,18 @@ async function process(sock, messageInfo) {
   }
 
   if (["batu", "kertas", "gunting"].includes(fullText.toLowerCase())) {
+    console.log('Sini 2 :',fullText)
     const choice = fullText.toLowerCase();
-    if (player1 === sender && !answer_player1) {
+    if (player1 === senderLid && !answer_player1) {
       updateUser(groupId, { answer_player1: choice });
       await delay(1000);
-      await sock.sendMessage(sender, {
+      await sock.sendMessage(senderLid, {
         text: `Pilihanmu (${choice}) telah diterima.`,
       });
-    } else if (player2 === sender && !answer_player2) {
+    } else if (player2 === senderLid && !answer_player2) {
       updateUser(groupId, { answer_player2: choice });
       await delay(3000);
-      await sock.sendMessage(sender, {
+      await sock.sendMessage(senderLid, {
         text: `Pilihanmu (${choice}) telah diterima.`,
       });
     } else {

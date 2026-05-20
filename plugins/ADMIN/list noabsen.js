@@ -10,7 +10,8 @@ async function handle(sock, messageInfo) {
   try {
     // Ambil metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata.participants;
+    const participants = groupMetadata?.participants || [];
+
     const totalMembers = participants.length;
 
     const isAdmin = participants.some(
@@ -30,9 +31,25 @@ async function handle(sock, messageInfo) {
     const absenMembers = data?.member || [];
 
     // Dapatkan daftar yang belum absen
-    const noAbsenMembers = participants
-      .filter((p) => !absenMembers.includes(p.id))
-      .map((p, index) => `${index + 1}. @${p.id.split("@")[0]}`);
+
+
+// Ambil peserta yang belum absen
+const filteredMembers = participants
+  .map((p) => {
+    const jid = p.phoneNumber || p.id;
+    return { jid };
+  })
+  .filter((p) => p.jid && !absenMembers.includes(p.jid));
+
+// Format text
+const noAbsenMembers = filteredMembers.map(
+  (p, index) => `${index + 1}. @${p.jid.split("@")[0]}`
+);
+
+// Mention list
+const mentionList = filteredMembers
+  .map((p) => p.jid)
+  .filter((jid) => typeof jid === "string");
 
     let textNotif;
     if (noAbsenMembers.length > 0) {
@@ -43,13 +60,17 @@ async function handle(sock, messageInfo) {
       textNotif = "✅ Semua anggota sudah absen hari ini.";
     }
 
-    await sendMessageWithMention(
-      sock,
-      remoteJid,
-      textNotif,
-      message,
-      senderType
-    );
+
+await sendMessageWithMention(
+  sock,
+  remoteJid,
+  textNotif,
+  message,
+  senderType,
+  {
+    mentions: mentionList,
+  }
+);
   } catch (error) {
     console.error("Error handling listnoabsen:", error);
     await sock.sendMessage(

@@ -25,7 +25,8 @@ async function handle(sock, messageInfo) {
     });
 
     // Ekstrak ID grup dari tautan
-    const groupId = content.split("chat.whatsapp.com/")[1];
+    const groupIdRaw = content.split("chat.whatsapp.com/")[1];
+  const groupId = groupIdRaw ? groupIdRaw.split("?")[0] : null;
     if (!groupId) {
       return await sock.sendMessage(
         remoteJid,

@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.3
+║ 📦 Version   : 5.2.4
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -15,8 +15,6 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 Script **Autoresbot** resmi menjadi **Open Source** dan dapat digunakan secara gratis:
 🔗 https://autoresbot.com
 */
-// List command tanpa registrasi
-export const commandWithoutRegister = ['list', 'owner', 'menu', 'claim'];
 
 // Import ESM
 import chokidar from 'chokidar';

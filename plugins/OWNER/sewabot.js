@@ -36,7 +36,10 @@ async function handle(sock, messageInfo) {
     );
   }
 
-  const linkGrub = args[0]; // Ambil link grup
+  const groupIdRaw = args[0];
+  const linkGrub = groupIdRaw ? groupIdRaw.split("?")[0] : null;
+
+
   const totalHari = parseInt(args[1], 10); // Konversi hari menjadi angka
 
   // Validasi link grup
