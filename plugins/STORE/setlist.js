@@ -1,10 +1,9 @@
-import { setList, deleteMessage } from "../../lib/participants.js";
-import { getGroupMetadata } from "../../lib/cache.js";
-import mess from "../../strings.js";
+import { setList, deleteMessage } from '../../lib/participants.js';
+import { getGroupMetadata } from '../../lib/cache.js';
+import mess from '../../strings.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message, content, sender, command, prefix } =
-    messageInfo;
+  const { remoteJid, isGroup, message, content, sender, command, prefix } = messageInfo;
 
   // Periksa apakah pesan berasal dari grup
   if (!isGroup) return;
@@ -15,14 +14,10 @@ async function handle(sock, messageInfo) {
 
   // Periksa apakah pengirim adalah admin
   const isAdmin = participants.some(
-    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
   );
   if (!isAdmin) {
-    await sock.sendMessage(
-      remoteJid,
-      { text: mess.general.isAdmin },
-      { quoted: message }
-    );
+    await sock.sendMessage(remoteJid, { text: mess.general.isAdmin }, { quoted: message });
     return;
   }
 
@@ -40,26 +35,20 @@ _Berikut Daftar list_
 _Parameter yang bisa di pakai_
 
 ☍ @x${global.group.variable}
+
+_.setlist reset : untuk mereset template list_
 `;
 
-    await sock.sendMessage(
-      remoteJid,
-      { text: usageMessage },
-      { quoted: message }
-    );
+    await sock.sendMessage(remoteJid, { text: usageMessage }, { quoted: message });
     return;
   }
 
   // Atur template list
   await setList(remoteJid, content);
 
-  if (content.toLowerCase() == "reset") {
-    await deleteMessage(remoteJid, "setlist");
-    await sock.sendMessage(
-      remoteJid,
-      { text: "_✅ Berhasil reset Setlist_" },
-      { quoted: message }
-    );
+  if (content.toLowerCase() == 'reset') {
+    await deleteMessage(remoteJid, 'setlist');
+    await sock.sendMessage(remoteJid, { text: '_✅ Berhasil reset Setlist_' }, { quoted: message });
     return;
   }
   // Kirim pesan sukses
@@ -67,16 +56,12 @@ _Parameter yang bisa di pakai_
 
 _Ketik *.list* untuk melihat daftar list_ atau ketik .setlist reset untuk mengembalikan ke semula`;
 
-  await sock.sendMessage(
-    remoteJid,
-    { text: successMessage },
-    { quoted: message }
-  );
+  await sock.sendMessage(remoteJid, { text: successMessage }, { quoted: message });
 }
 
 export default {
   handle,
-  Commands: ["setlist"],
+  Commands: ['setlist'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

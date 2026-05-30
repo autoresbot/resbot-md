@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.4
+║ 📦 Version   : 5.2.5
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -31,7 +31,7 @@ const VERSION = global.version; // don't edit
 const EMAIL = 'autoresbot@gmail.com';
 const REGION = 'Indonesia';
 const WEBSITE = 'autoresbot.com';
-const DATA_OWNER = ['69243815079978'];
+const DATA_OWNER = ['69243815079978']; // cara ambil owner https://youtu.be/qrRXPCSFvRo?si=KOWdFhrScHN7Ugd4
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)

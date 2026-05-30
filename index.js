@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.4
+║ 📦 Version   : 5.2.5
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -111,4 +111,19 @@ if (major < 20) {
     console.log('Stack:', err?.stack);
     console.log('=========================================');
   });
+
+  // ─── Graceful Shutdown: pastikan database di-close saat restart/stop ───
+  const gracefulShutdown = async (signal) => {
+    console.log(`[⚠] ${signal} received. Closing database...`);
+    try {
+      const { closeDatabase } = await import('./lib/database.js');
+      closeDatabase();
+    } catch (e) {
+      // ignore
+    }
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }

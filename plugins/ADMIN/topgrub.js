@@ -23,9 +23,24 @@ async function handle(sock, messageInfo) {
     const dataUsers = await readUsers();
 
     // Sortir berdasarkan money (paling besar di atas)
-    const sortedUsers = Object.entries(dataUsers)
+    // Ambil semua nomor member grup
+    // Ambil semua nomor member grup
+    const groupMembers = new Set(participants.map((p) => p.phoneNumber).filter(Boolean));
+
+    // Filter user yang ada di grup
+    const groupUsers = Object.entries(dataUsers).filter(([_, user]) => {
+      if (!user.aliases || !Array.isArray(user.aliases)) return false;
+
+      return user.aliases.some((alias) => groupMembers.has(alias));
+    });
+
+    // Urutkan berdasarkan money
+    const sortedUsers = groupUsers
       .sort((a, b) => (b[1]?.money || 0) - (a[1]?.money || 0))
-      .slice(0, 10); // Ambil top 10
+      .slice(0, 10);
+
+    console.log('Member grup:', groupMembers.size);
+    console.log('User cocok:', groupUsers.length);
 
     const aliasList = sortedUsers
       .map(([id, user]) => {
@@ -63,7 +78,7 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ['topglobal', 'top'],
+  Commands: ['topgrub'],
   OnlyPremium: false,
   OnlyOwner: false,
 };
