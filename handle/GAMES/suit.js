@@ -6,7 +6,7 @@ import {
   findDataByKey,
 } from '../../database/temporary_db/suit.js';
 
-import { sendMessageWithMention } from '../../lib/utils.js';
+import { sendTextWithMentions } from '../../lib/utils.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -23,7 +23,7 @@ function determineWinner(choice1, choice2) {
 }
 
 async function process(sock, messageInfo) {
-  const { fullText, message, sender, senderLid, isGroup, senderType } = messageInfo;
+  const { fullText, message, sender, isGroup } = messageInfo;
   const { remoteJid } = messageInfo;
 
   let gameData = isGroup
@@ -86,7 +86,7 @@ async function process(sock, messageInfo) {
 
       removeUser(groupId);
 
-      return await sendMessageWithMention(sock, groupId, resultMessage, message, senderType);
+      return await sendTextWithMentions(sock, groupId, resultMessage, [player1, player2], message);
     } else if (fullText.toLowerCase() === 'tolak') {
       removeUser(groupId);
 

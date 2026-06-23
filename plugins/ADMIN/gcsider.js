@@ -1,6 +1,6 @@
 import { sendMessageWithMention } from '../../lib/utils.js';
 import mess from '../../strings.js';
-import { getActiveUsers } from '../../lib/users.js';
+import { filterSiderParticipants } from '../../lib/users.js';
 import { getGroupMetadata } from '../../lib/cache.js';
 
 const TOTAL_HARI_SIDER = 30;
@@ -22,21 +22,16 @@ async function handle(sock, messageInfo) {
       return;
     }
 
-    const listNotSider = await getActiveUsers(TOTAL_HARI_SIDER);
+    // Sider = participant yang tidak aktif (updated_at) >= TOTAL_HARI_SIDER hari
+    const siderMembers = filterSiderParticipants(participants, TOTAL_HARI_SIDER);
 
-    if (listNotSider.length === 0) {
+    if (siderMembers.length === 0) {
       return await sock.sendMessage(
         remoteJid,
         { text: '📋 _Tidak ada member sider di grup ini._' },
         { quoted: message },
       );
     }
-
-    // === PAKAI phoneNumber ===
-    const siderMembers = participants.filter(
-      (participant) =>
-        !listNotSider.some((active) => active.phoneNumber === participant.phoneNumber),
-    );
 
     const memberList = siderMembers
       .map((p) => {

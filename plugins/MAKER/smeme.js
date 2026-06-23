@@ -1,108 +1,166 @@
-import ApiAutoresbotModule from "api-autoresbot";
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import fs from 'fs';
+import path from 'path';
 
-import config from "../../config.js";
-import { sendImageAsSticker } from "../../lib/exif.js";
+import config from '../../config.js';
+import { sendImageAsSticker } from '../../lib/exif.js';
+import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
 
-import {
-  downloadQuotedMedia,
-  downloadMedia,
-  uploadTmpFile,
-} from "../../lib/utils.js";
+function detectMime(buffer) {
+  if (!buffer || buffer.length < 12) return null;
 
-import sharp from "sharp";
+  // PNG
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return 'image/png';
+  }
 
-import fs from "fs";
-import path from "path";
+  // JPG
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+
+  // GIF
+  if (
+    buffer.subarray(0, 6).toString() === 'GIF87a' ||
+    buffer.subarray(0, 6).toString() === 'GIF89a'
+  ) {
+    return 'image/gif';
+  }
+
+  // WEBP
+  if (buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WEBP') {
+    return 'image/webp';
+  }
+
+  return null;
+}
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, type, isQuoted, content, prefix, command } =
-    messageInfo;
+  const { remoteJid, message, type, isQuoted, content, prefix, command } = messageInfo;
+
   try {
-    // Cek jika tidak ada teks/konten
     if (!content) {
-      return sock.sendMessage(
+      return await sock.sendMessage(
         remoteJid,
         {
-          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-            prefix + command
-          } resbot*_`,
+          text: `_⚠️ Format Penggunaan:_\n\n_💬 Contoh:_ *${prefix + command} atas|bawah*`,
         },
-        { quoted: message }
+        { quoted: message },
       );
     }
 
     await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
+      react: {
+        text: '⏰',
+        key: message.key,
+      },
     });
 
     const mediaType = isQuoted ? isQuoted.type : type;
 
-    // Hanya proses image dan sticker
-    if (mediaType !== "image" && mediaType !== "sticker") {
-      return sock.sendMessage(
+    if (!['image', 'sticker'].includes(mediaType)) {
+      return await sock.sendMessage(
         remoteJid,
         {
-          text: `⚠️ _Kirim/Balas gambar dengan caption *${prefix + command}*_`,
+          text: `⚠️ Kirim atau balas gambar/sticker dengan caption *${prefix + command}*`,
         },
-        { quoted: message }
+        { quoted: message },
       );
     }
 
-    // Pisahkan teks smeme
-    const [smemeText1 = "", smemeText2 = ""] = (content || "").split("|");
+    const [text1 = '', text2 = ''] = content.split('|');
 
-    // Unduh media
-    const media = isQuoted
-      ? await downloadQuotedMedia(message)
-      : await downloadMedia(message);
+    const media = isQuoted ? await downloadQuotedMedia(message) : await downloadMedia(message);
 
-    const mediaPath = path.join("tmp", media);
+    const mediaPath = path.join('tmp', media);
     if (!fs.existsSync(mediaPath)) {
-      throw new Error("File media tidak ditemukan setelah diunduh.");
+      throw new Error('File media tidak ditemukan setelah diunduh.');
     }
 
     const api = new ApiAutoresbot(config.APIKEY);
-    const response = await api.tmpUpload(mediaPath);
 
-    if (!response || response.code !== 200) {
-      throw new Error("File upload gagal atau tidak ada URL.");
+    const uploadResult = await api.tmpUpload(mediaPath);
+
+    if (
+      !uploadResult ||
+      uploadResult.code !== 200 ||
+      !uploadResult.data ||
+      !uploadResult.data.url
+    ) {
+      throw new Error('Upload media gagal.');
     }
-    const url = response.data.url;
 
-    if (url) {
-      // Ambil buffer hasil API smeme
+    const imageUrl = uploadResult.data.url;
 
-      const buffer = await api.getBuffer("/api/maker/smeme", {
-        text: smemeText1,
-        text2: smemeText2,
-        pp: url,
-        width: 500,
-        height: 500,
-      });
+    const buffer = await api.getBuffer('/api/maker/smeme', {
+      text: text1,
+      text2,
+      pp: imageUrl,
+      width: 500,
+      height: 500,
+    });
 
-      // Konversi ke webp
-      const webpBuffer = await sharp(buffer).webp().toBuffer();
+    const mime = detectMime(buffer);
 
-      const options = {
-        packname: config.sticker_packname,
-        author: config.sticker_author,
-      };
-
-      await sendImageAsSticker(sock, remoteJid, webpBuffer, options, message);
+    if (!buffer || !Buffer.isBuffer(buffer)) {
+      throw new Error('API smeme tidak mengembalikan buffer yang valid.');
     }
+
+    if (mime === 'image/webp') {
+      // Kirimkan stiker sebagai respon
+      await sock.sendMessage(
+        remoteJid,
+        {
+          sticker: buffer,
+        },
+        { quoted: message },
+      );
+    } else if (mime === 'image/png') {
+      await sendImageAsSticker(
+        sock,
+        remoteJid,
+        buffer,
+        {
+          packname: config.sticker_packname,
+          author: config.sticker_author,
+        },
+        message,
+      );
+    }
+
+    // await sock.sendMessage(remoteJid, {
+    //   react: {
+    //     text: '✅',
+    //     key: message.key,
+    //   },
+    // });
   } catch (error) {
+    console.error('[SMEME ERROR]', error);
+
     await sock.sendMessage(
       remoteJid,
-      { text: "Maaf, terjadi kesalahan. Coba lagi nanti!" },
-      { quoted: message }
+      {
+        text: `❌ Gagal membuat sticker meme.\n\n${error.message}`,
+      },
+      { quoted: message },
     );
+
+    try {
+      await sock.sendMessage(remoteJid, {
+        react: {
+          text: '❌',
+          key: message.key,
+        },
+      });
+    } catch {}
+  } finally {
   }
 }
 
 export default {
   handle,
-  Commands: ["smeme"],
+  Commands: ['smeme'],
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,

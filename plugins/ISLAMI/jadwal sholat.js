@@ -3,6 +3,7 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
 import config from "../../config.js";
 import { logCustom } from "../../lib/logger.js";
+import { retryRequest } from "../../lib/retry.js"; // FIX: retry sholat API
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, prefix, command, content } = messageInfo;
@@ -29,7 +30,11 @@ async function handle(sock, messageInfo) {
     const api = new ApiAutoresbot(config.APIKEY);
 
     // Memanggil API jadwal sholat
-    const response = await api.get("/api/jadwalsholat", { kota: content });
+    // FIX: retry sholat API - maksimal 3x dengan delay 1s, 2s, 3s
+    const response = await retryRequest(
+      () => api.get("/api/jadwalsholat", { kota: content }),
+      { maxRetry: 3, label: "SHOLAT_RETRY", logFile: "api.log" }
+    );
 
     // Validasi respons
     const prayerSchedule = response?.data?.jadwal;

@@ -75,7 +75,8 @@ async function process(sock, messageInfo) {
         const isSlr = await SLRcheckMessage(remoteJid);
         if (isSlr) {
           const groupMetadata = await getGroupMetadata(sock, remoteJid);
-          const participants = groupMetadata.participants;
+          // FIX: participants validation - groupMetadata bisa null
+          const participants = groupMetadata?.participants || [];
           const isAdmin = participants.some(
             (participant) => participant.id === mentionedJid[0] && participant.admin,
           );

@@ -1,4 +1,5 @@
 import { incrementUserChatCount } from '../lib/totalchat.js';
+import { markUserActive } from '../lib/users.js';
 import { addChat } from '../lib/chatManager.js';
 import { downloadMedia } from '../lib/utils.js';
 
@@ -8,6 +9,9 @@ async function process(sock, messageInfo) {
   try {
     if (isGroup) {
       await incrementUserChatCount(remoteJid, sender);
+
+      // Perbarui waktu aktif terakhir user agar deteksi sider (.gcsider) akurat
+      markUserActive(sender);
 
       let newMessage;
       if (type === 'sticker') {

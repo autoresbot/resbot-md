@@ -1,6 +1,6 @@
 import mess from "../../strings.js";
 import config from "../../config.js";
-import { getActiveUsers } from "../../lib/users.js";
+import { filterSiderParticipants } from "../../lib/users.js";
 import { sendMessageWithMention } from "../../lib/utils.js";
 import { getGroupMetadata } from "../../lib/cache.js";
 
@@ -41,11 +41,8 @@ async function handle(sock, messageInfo) {
       return;
     }
 
-    const listNotSider = await getActiveUsers(TOTAL_HARI_SIDER);
-
-    const memberList = participants
-      .filter((p) => !listNotSider.some((active) => active.id === p.id))
-      .map((p) => p.id);
+    // Sider = participant yang tidak aktif (updated_at) >= TOTAL_HARI_SIDER hari
+    const memberList = filterSiderParticipants(participants, TOTAL_HARI_SIDER).map((p) => p.id);
 
     const countSider = memberList.length;
     const totalMember = participants.length;

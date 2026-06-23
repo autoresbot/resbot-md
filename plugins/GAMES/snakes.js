@@ -7,7 +7,9 @@ import fs from 'fs';
 import path from 'path';
 
 import { getProfilePictureUrl } from '../../lib/cache.js';
-import { getBuffer, sendMessageWithMention, sendImagesWithMention } from '../../lib/utils.js';
+// Pemain disimpan sebagai JID lengkap (senderLid), jadi mention memakai
+// daftar JID eksplisit -> akurat untuk JID maupun LID.
+import { getBuffer, sendTextWithMentions, sendImageWithMentions } from '../../lib/utils.js';
 import { addUser, updateUser, deleteUser, findUser } from '../../lib/users.js';
 
 const snakes = {
@@ -58,7 +60,7 @@ async function kirimSticker(sock, remoteJid, namaFile, message) {
 }
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, sender, senderLid, isGroup, message, content, senderType } = messageInfo;
+  const { remoteJid, senderLid, isGroup, message, content } = messageInfo;
   if (!isGroup) return;
 
   let game = DATABASE[remoteJid];
@@ -94,7 +96,7 @@ async function handle(sock, messageInfo) {
     infoText += `\nStatus: ${game.started ? '🟢 Dimulai' : '🔴 Belum dimulai'}`;
     infoText += `\n\n✅ Gunakan *.snakes join* untuk bergabung\n🚀 Gunakan *.snakes start* untuk memulai game\ndan *.snakes reset* untuk mereset permainan`;
 
-    return await sendMessageWithMention(sock, remoteJid, infoText, message, senderType);
+    return await sendTextWithMentions(sock, remoteJid, infoText, game.players, message);
   }
 
   // Join game
@@ -123,12 +125,12 @@ async function handle(sock, messageInfo) {
 
     game.players.push(senderLid);
     game.positions[senderLid] = 1;
-    return await sendMessageWithMention(
+    return await sendTextWithMentions(
       sock,
       remoteJid,
       `✅ @${senderLid.split('@')[0]} berhasil bergabung. Total pemain: ${game.players.length}`,
+      [senderLid],
       message,
-      senderType,
     );
   }
 
@@ -150,14 +152,14 @@ async function handle(sock, messageInfo) {
     }
     game.started = true;
     game.turnIndex = 0;
-    return await sendMessageWithMention(
+    return await sendTextWithMentions(
       sock,
       remoteJid,
       `🎲 Permainan dimulai!\nGiliran pertama: @${
         game.players[0].split('@')[0]
       } ketik ".snakes play" untuk lempar dadu.`,
+      [game.players[0]],
       message,
-      senderType,
     );
   }
 
@@ -172,12 +174,12 @@ async function handle(sock, messageInfo) {
     }
 
     if (game.players[game.turnIndex] !== senderLid) {
-      return await sendMessageWithMention(
+      return await sendTextWithMentions(
         sock,
         remoteJid,
         `🔄 Bukan giliranmu. Sekarang giliran: @${game.players[game.turnIndex].split('@')[0]}`,
+        [game.players[game.turnIndex]],
         message,
-        senderType,
       );
     }
 
@@ -215,12 +217,12 @@ async function handle(sock, messageInfo) {
       } else {
       }
 
-      return await sendMessageWithMention(
+      return await sendTextWithMentions(
         sock,
         remoteJid,
         `🏆 @${senderLid.split('@')[0]} menang! 🎉🎉\n\nAnda Dapat ${MONEY_MENANG} Money `,
+        [senderLid],
         message,
-        senderType,
       );
     }
 
@@ -257,13 +259,13 @@ async function handle(sock, messageInfo) {
         game.positions[senderLid]
       } ${moveInfo}\n➡️ Giliran selanjutnya: @${game.players[game.turnIndex].split('@')[0]}`;
 
-      const result = await sendImagesWithMention(
+      const result = await sendImageWithMentions(
         sock,
         remoteJid,
         buffer,
         customizedMessage,
+        [senderLid, game.players[game.turnIndex]],
         message,
-        senderType,
       );
 
       if (result) {

@@ -22,6 +22,7 @@ import {
 } from '../../lib/utils.js';
 import { findMessageById, editMessageById } from '../../lib/chatManager.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
+import { logHandlerError } from '../../lib/errorLogger.js'; // FIX: error logger global
 
 const notifiedUsers = new Set();
 const rateLimit_blacklist = {};
@@ -55,12 +56,23 @@ async function process(sock, messageInfo) {
     mentionedJid,
     senderType,
   } = messageInfo;
+
   let { remoteJid } = messageInfo;
 
   const result = findParticipantLatest(senderLid);
   if (result && isTagSw) {
     remoteJid = result.groupId;
     // await sock.sendMessage(result.groupId, { text : 'TES' }, { quoted: message });
+  }
+
+  // FIX: remoteJid undefined protection
+  if (!remoteJid || typeof remoteJid !== 'string') {
+    logHandlerError('[REMOTE_JID_MISSING]', {
+      plugin: 'MODE ON/handler.js',
+      command,
+      sender,
+    });
+    return true;
   }
 
   const messagesDefault = toText(message);
@@ -84,7 +96,19 @@ async function process(sock, messageInfo) {
 
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata.participants;
+
+    // FIX: participants validation - groupMetadata bisa null (broadcast/gagal fetch)
+    const participants = groupMetadata?.participants || [];
+    if (!Array.isArray(participants) || participants.length === 0) {
+      logHandlerError('[PARTICIPANTS_UNDEFINED]', {
+        plugin: 'MODE ON/handler.js',
+        command,
+        sender,
+        remoteJid,
+      });
+      return true; // Lanjutkan ke plugin berikutnya tanpa crash
+    }
+
     const isAdmin = participants.some(
       (p) => (p.phoneNumber === sender || p.id === senderLid) && p.admin,
     );
@@ -446,6 +470,7 @@ async function process(sock, messageInfo) {
     // Anti-anti
     const antiFeatures = {
       image: fitur.antifoto,
+      viewonce: fitur.antifoto,
       video: fitur.antivideo,
       audio: fitur.antiaudio,
       document: fitur.antidocument,

@@ -1,6 +1,4 @@
-import { createBackup } from '../../lib/utils.js';
-import config from '../../config.js';
-import { listOwner } from '../../lib/users.js';
+import { createAndSendBackup } from '../../lib/backupService.js';
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message } = messageInfo;
@@ -10,9 +8,8 @@ async function handle(sock, messageInfo) {
       react: { text: '⏰', key: message.key },
     });
 
-    const owners = listOwner();
-
-    const backupFilePath = await createBackup();
+    // Sumber logika backup tunggal: buat file + kirim ke nomor bot & owner
+    const backupFilePath = await createAndSendBackup(sock, { type: 'Manual' });
 
     await sock.sendMessage(
       remoteJid,
@@ -25,26 +22,6 @@ Time : ${backupFilePath.time}
       },
       { quoted: message },
     );
-
-    const documentPath = backupFilePath.path;
-
-    // kirim ke nomor bot
-    await sock.sendMessage(`${config.phone_number_bot}@s.whatsapp.net`, {
-      document: { url: documentPath },
-      fileName: 'File Backup',
-      mimetype: 'application/zip',
-    });
-
-    // kirim ke semua owner
-    if (owners && owners.length > 0) {
-      for (const owner of owners) {
-        await sock.sendMessage(owner, {
-          document: { url: documentPath },
-          fileName: 'File Backup',
-          mimetype: 'application/zip',
-        });
-      }
-    }
   } catch (err) {
     console.error('Backup failed:', err);
 

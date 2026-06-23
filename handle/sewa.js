@@ -46,7 +46,8 @@ async function process(sock, messageInfo) {
     const selisihHariSewa = selisihHari(dataSewa.expired);
 
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata.participants;
+    // FIX: participants validation - groupMetadata bisa null
+    const participants = groupMetadata?.participants || [];
 
     if (timeRemaining <= notificationMs && timeRemaining > 0) {
       if (!notifiedGroups.has(remoteJid)) {

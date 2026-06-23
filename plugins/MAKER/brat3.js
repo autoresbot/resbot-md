@@ -1,15 +1,14 @@
 import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
-
 import config from '../../config.js';
-import { getProfilePictureUrl } from '../../lib/cache.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
+import { logCustom } from '../../lib/logger.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, sender, content, isQuoted, prefix, command, pushName } = messageInfo;
+  const { remoteJid, message, content, isQuoted, prefix, command } = messageInfo;
 
   try {
-    const text = content && content.trim() !== '' ? content : (isQuoted?.text ?? null);
+    const text = content ?? isQuoted?.text ?? null;
 
     // Validasi input konten
     if (!text) {
@@ -28,14 +27,13 @@ async function handle(sock, messageInfo) {
       react: { text: '⏰', key: message.key },
     });
 
-    const ppUser = await getProfilePictureUrl(sock, sender);
+    // Bersihkan konten
+    const sanitizedContent = encodeURIComponent(text.trim().replace(/\n+/g, ' '));
 
     // Buat instance API dan ambil data dari endpoint
     const api = new ApiAutoresbot(config.APIKEY);
-    const buffer = await api.getBuffer('/api/maker/qc', {
-      name: pushName,
-      pp: ppUser,
-      text: text,
+    const buffer = await api.getBuffer('/api/maker/brat3', {
+      text: sanitizedContent,
     });
 
     const options = {
@@ -46,7 +44,7 @@ async function handle(sock, messageInfo) {
     // Kirim stiker
     await sendImageAsSticker(sock, remoteJid, buffer, options, message);
   } catch (error) {
-    console.log(error);
+    logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
     // Tangani kesalahan dan kirimkan pesan error ke pengguna
     const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\nError: ${error.message}`;
     await sock.sendMessage(
@@ -61,7 +59,8 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ['qc'],
+  Commands: ['brat3'],
   OnlyPremium: false,
   OnlyOwner: false,
+  limitDeduction: 1,
 };

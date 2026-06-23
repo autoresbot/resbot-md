@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.5
+║ 📦 Version   : 5.2.6
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -96,12 +96,16 @@ if (major < 20) {
   }
 
   // ─── Error Handler ───────────────────────────────
+  // FIX: error logger global - simpan crash global ke logs/error.log
+  const { logError } = await import('./lib/errorLogger.js');
+
   process.on('uncaughtException', (err) => {
     console.log('========== UNCAUGHT EXCEPTION ==========');
     console.log('Message:', err?.message);
     console.log('Code:', err?.code);
     console.log('Stack:', err?.stack);
     console.log('=========================================');
+    logError(err, { plugin: 'process', command: 'uncaughtException' });
   });
 
   process.on('unhandledRejection', (err) => {
@@ -110,6 +114,7 @@ if (major < 20) {
     console.log('Code:', err?.code);
     console.log('Stack:', err?.stack);
     console.log('=========================================');
+    logError(err, { plugin: 'process', command: 'unhandledRejection' });
   });
 
   // ─── Graceful Shutdown: pastikan database di-close saat restart/stop ───

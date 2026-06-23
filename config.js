@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.5
+║ 📦 Version   : 5.2.6
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -20,9 +20,9 @@ import moment from 'moment-timezone';
 
 const CONNECTION = 'pairing'; // qr atau pairing
 const OWNER_NAME = 'Autoresbot';
-const NOMOR_BOT = '628xx'; // 628xx nomor wa - 6285124002201
+const NOMOR_BOT = '6285124002201'; // 628xx nomor wa - 6285124002201
 const DESTINATION = 'group'; // group , private, both
-const APIKEY = ''; // apikey dari autoresbot.com (paket apikey)
+const APIKEY = 'apikey_premium_9c85434f815167809b61a4755b8a8362ds'; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
 const SIMILARITY = true; // Pencarian kemiripan command (true, false)
 const MODE = 'production'; // [production, development] (jangan di ubah kecuali anda developer)

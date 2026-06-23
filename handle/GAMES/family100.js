@@ -1,9 +1,9 @@
 import { removeUser, getUser, isUserPlaying } from '../../database/temporary_db/family100.js';
-import { sendMessageWithMention } from '../../lib/utils.js';
+import { sendTextWithMentions } from '../../lib/utils.js';
 import { addUser, updateUser, deleteUser, findUser } from '../../lib/users.js';
 
 async function process(sock, messageInfo) {
-  const { remoteJid, fullText, message, sender, senderType, senderLid } = messageInfo;
+  const { remoteJid, fullText, message, senderLid } = messageInfo;
 
   // Periksa apakah pengguna sedang bermain
   if (!isUserPlaying(remoteJid)) {
@@ -95,25 +95,28 @@ ${data.answer
     }
   }
 
+  // JID semua user yang sudah menjawab (disimpan sebagai senderLid)
+  const answerers = data.terjawab.filter(Boolean);
+
   if (isWin) {
-    // Kirim pesan dengan mention
-    await sendMessageWithMention(
+    // Mention pemenang (penjawab terakhir)
+    await sendTextWithMentions(
       sock,
       remoteJid,
       `🎉 Selamat! Semua Jawaban telah terjawab. Anda mendapatkan ${MoneyClaim} Money.`,
+      [senderLid],
       message,
-      senderType,
     );
   } else {
     if (!isSurrender) {
       const captionNew = `Jawaban Benar anda dapat ${MoneyClaim} Money\n\n${caption}`;
-      // Kirim pesan dengan mention
-      await sendMessageWithMention(sock, remoteJid, captionNew, message, senderType);
+      // Mention semua penjawab yang tampil pada caption
+      await sendTextWithMentions(sock, remoteJid, captionNew, answerers, message);
       return true;
     }
 
-    // Kirim pesan dengan mention
-    await sendMessageWithMention(sock, remoteJid, caption, message, senderType);
+    // Mention semua penjawab yang tampil pada caption
+    await sendTextWithMentions(sock, remoteJid, caption, answerers, message);
   }
 
   if (isWin || isSurrender) {

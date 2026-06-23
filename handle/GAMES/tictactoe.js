@@ -4,7 +4,7 @@ import {
   isUserPlaying,
   updateGame,
 } from "../../database/temporary_db/tictactoe.js";
-import { sendMessageWithMention } from "../../lib/utils.js";
+import { sendTextWithMentions } from "../../lib/utils.js";
 
 const SYMBOLS = {
   X: "❌",
@@ -21,7 +21,7 @@ const SYMBOLS = {
 };
 
 async function process(sock, messageInfo) {
-  const { remoteJid, fullText, message, sender, senderType } = messageInfo;
+  const { remoteJid, fullText, message, sender } = messageInfo;
 
   // Cek apakah ada permainan aktif
   if (!isUserPlaying(remoteJid)) {
@@ -70,19 +70,20 @@ Menunggu @${data.game.currentTurn.split("@")[0]}
 Ketik *nyerah* untuk menyerah dan mengakui kekalahan
         `.trim();
 
-    await sendMessageWithMention(
+    await sendTextWithMentions(
       sock,
       remoteJid,
       gameBoard,
-      message,
-      senderType
+      [data.game.currentTurn],
+      message
     );
     return false; // Proses selesai
   }
 
   // Handle jawaban ttc - Giliran pemain
 
-  const match = fullText.match(/^\d$/); // Mencocokkan angka 1-9
+  // FIX: startup match error - validasi fullText harus string
+  const match = typeof fullText === 'string' ? fullText.match(/^\d$/) : null; // Mencocokkan angka 1-9
   if (match) {
     const move = parseInt(match[0], 10) - 1; // Ubah ke indeks (0-8)
     const player = sender === data.playerX ? 0 : 1;
@@ -118,16 +119,23 @@ Giliran @${data.game.currentTurn.split("@")[0]}
 Ketik angka 1-9 untuk bermain.
             `.trim();
 
-      await sendMessageWithMention(sock, remoteJid, boardDisplay, message);
+      await sendTextWithMentions(
+        sock,
+        remoteJid,
+        boardDisplay,
+        [data.game.currentTurn],
+        message
+      );
 
       // Cek pemenang
       const winner = data.game.winner;
       if (winner) {
         removeUser(remoteJid);
-        await sendMessageWithMention(
+        await sendTextWithMentions(
           sock,
           remoteJid,
           `Selamat! 🎉 @${winner.split("@")[0]} memenangkan permainan.`,
+          [winner],
           message
         );
       }
