@@ -9,7 +9,7 @@ async function handle(sock, messageInfo) {
   //const CLAIM_COOLDOWN_MINUTES = 120; // 120 atau 2 jam
   const CLAIM_COOLDOWN_MINUTES = 1; // 120 atau 2 jam
   const MIN_CLAIM = 1;
-  const MAX_CLAIM = 100000;
+  const MAX_CLAIM = 10;
   const CLAIM_COOLDOWN = CLAIM_COOLDOWN_MINUTES * 60 * 1000;
 
   if (!senderLid) return;
