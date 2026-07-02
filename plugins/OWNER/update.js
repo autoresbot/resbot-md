@@ -165,4 +165,6 @@ export async function handle(sock, m) {
 export default {
   handle,
   Commands: ['update'],
+  OnlyPremium: false,
+  OnlyOwner: true,
 };

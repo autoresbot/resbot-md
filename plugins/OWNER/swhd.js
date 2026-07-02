@@ -104,6 +104,6 @@ async function handle(sock, messageInfo) {
 export default {
   handle,
   Commands: ['swhd'],
-  OnlyOwner: true,
+  OnlyOwner: false,
   OnlyPremium: false,
 };
