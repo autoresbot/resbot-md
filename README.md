@@ -4,7 +4,7 @@
 ╔═════════════════════════════════╗
 ║ 🛠️ Informasi Script
 ╠═════════════════════════════════╣
-║ 📦 Version    : 5.2.9
+║ 📦 Version    : 5.3.0
 ║ 👨‍💻 Developer  : Azhari Creative
 ║ 🌐 Website    : autoresbot.com
 ║ 💻 GitHub     : github.com/autoresbot/resbot-md
