@@ -114,9 +114,8 @@ import fs from 'fs';
 import path from 'path';
 import mess from '../../strings.js';
 import axios from 'axios';
-import ApiAutoresbotModule from 'api-autoresbot';
-const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 import config from '../../config.js';
+import { uploadImageFile, logShort } from '../../lib/uploader.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -169,16 +168,18 @@ async function handle(sock, messageInfo) {
     }
 
     // ===============================
-    // UPLOAD
+    // UPLOAD (format dinormalisasi otomatis)
     // ===============================
-    const api = new ApiAutoresbot(config.APIKEY);
-    const upload = await api.tmpUpload(mediaPath);
-
-    if (!upload || upload.code !== 200) {
+    // WhatsApp menyimpan setiap imageMessage sebagai .jpg walau isinya
+    // WebP/PNG; server uploader menolak bila isi tidak cocok dengan format
+    // yang dideklarasikan.
+    let imageUrl;
+    try {
+      imageUrl = await uploadImageFile(mediaPath, { convert: true, label: 'AI-IMAGE' });
+    } catch (err) {
+      logShort('AI-IMAGE', `Upload gagal: ${err.serverMessage || err.message}`, err);
       return await reply(m, '❌ Gagal mengupload gambar.\nSilakan coba beberapa saat lagi.');
     }
-
-    const imageUrl = upload.data.url;
 
     // ===============================
     // CREATE JOB
@@ -261,6 +262,8 @@ async function handle(sock, messageInfo) {
       { quoted: message },
     );
   } catch (error) {
+    // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
+    logShort('AI-IMAGE', `Error: ${error?.serverMessage || error?.message || error}`, error);
     await reply(m, '❌ Terjadi kesalahan saat memproses gambar.\nSilakan coba lagi nanti.');
   }
 }

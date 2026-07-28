@@ -140,6 +140,9 @@ function formatView(view) {
     }, '');
 }
 
-export const name = 'Tebak Angka';
+// Nama sebelumnya tertulis 'Tebak Angka' (salin-tempel dari handle/GAMES/tebak
+// angka.js). Nama ini hanya dipakai sebagai label di log/error, tetapi membuat
+// pelacakan masalah menunjuk ke handler yang salah.
+export const name = 'Tebak Bom';
 export const priority = 10;
 export { process };

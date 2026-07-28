@@ -4,6 +4,7 @@ import path from "path";
 import mess from "../../strings.js";
 import ApiAutoresbotModule from "api-autoresbot";
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import { uploadImageFile, logShort } from "../../lib/uploader.js";
 
 import config from "../../config.js";
 
@@ -27,13 +28,16 @@ async function handle(sock, messageInfo) {
       if (!fs.existsSync(mediaPath)) {
         throw new Error("File media tidak ditemukan setelah diunduh.");
       }
-      const api = new ApiAutoresbot(config.APIKEY);
-      const response = await api.tmpUpload(mediaPath);
+      // convert: false — WAJIB. Endpoint /api/convert/giftoimage justru butuh
+      // file WebP/GIF aslinya. Mengonversinya ke JPEG lebih dulu akan membuat
+      // fitur ini kehilangan gunanya. Di sini hanya nama file & content-type
+      // yang dibetulkan agar cocok dengan isi sebenarnya.
+      const url = await uploadImageFile(mediaPath, {
+        convert: false,
+        label: "TOIMG",
+      });
 
-      if (!response || response.code !== 200) {
-        throw new Error("File upload gagal atau tidak ada URL.");
-      }
-      const url = response.data.url;
+      const api = new ApiAutoresbot(config.APIKEY);
       const buffer = await api.getBuffer("/api/convert/giftoimage", { url });
 
       await sock.sendMessage(
@@ -54,7 +58,9 @@ async function handle(sock, messageInfo) {
       );
     }
   } catch (error) {
-    console.log(error);
+    // Sebelumnya `console.log(error)` mencetak seluruh object error.
+    // Sekarang satu baris; detail lengkap masuk logs/api.log.
+    logShort("TOIMG", `Error: ${error?.serverMessage || error?.message || error}`, error);
     await sock.sendMessage(
       remoteJid,
       { text: "Maaf, terjadi kesalahan. Coba lagi nanti!" },

@@ -60,7 +60,10 @@ async function handle(sock, messageInfo) {
 
     try {
       bufferOriginal = await convertAudioToCompatibleFormat(inputPath);
-    } catch {}
+    } catch (err) {
+      // Konversi opsional: kalau gagal, kirim audio asli (bufferOriginal default).
+      console.warn("[BISAKAH] Konversi audio gagal, pakai audio asli:", err.message);
+    }
     await sock.sendMessage(
       remoteJid,
       { audio: { url: bufferOriginal }, mimetype: "audio/mp4" },

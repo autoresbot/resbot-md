@@ -52,5 +52,5 @@ export default {
   handle,
   Commands: ["updatebaileys", "updatebailey"],
   OnlyPremium: false,
-  OnlyOwner: false,
+  OnlyOwner: true,
 };

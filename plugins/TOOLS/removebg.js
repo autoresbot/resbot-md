@@ -5,8 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 
-import ApiAutoresbotModule from 'api-autoresbot';
-const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import { uploadImageFile, logShort } from '../../lib/uploader.js';
 
 import config from '../../config.js';
 
@@ -42,15 +41,11 @@ async function handle(sock, messageInfo) {
       throw new Error('File media tidak ditemukan.');
     }
 
-    // Upload ke tmp
-    const api = new ApiAutoresbot(config.APIKEY);
-    const upload = await api.tmpUpload(mediaPath);
-
-    if (!upload || upload.code !== 200) {
-      throw new Error('Upload gagal.');
-    }
-
-    const imageUrl = upload.data.url;
+    // Upload ke tmp.
+    // Format dinormalisasi lebih dulu: WhatsApp menyimpan setiap imageMessage
+    // sebagai .jpg walau isinya WebP/PNG, dan server uploader menolak bila isi
+    // file tidak cocok dengan format yang dideklarasikan.
+    const imageUrl = await uploadImageFile(mediaPath, { convert: true, label: 'REMOVEBG' });
 
     // ===============================
     // STEP 1: CREATE JOB
@@ -125,6 +120,8 @@ async function handle(sock, messageInfo) {
       { quoted: message },
     );
   } catch (error) {
+    // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
+    logShort('REMOVEBG', `Error: ${error?.serverMessage || error?.message || error}`, error);
     await sock.sendMessage(
       remoteJid,
       { text: 'Maaf, terjadi kesalahan. Coba lagi nanti!' },

@@ -7,6 +7,7 @@ import mess from "../../strings.js";
 import config from "../../config.js";
 
 import { downloadQuotedMedia, downloadMedia, reply } from "../../lib/utils.js";
+import { uploadImageFile, logShort } from "../../lib/uploader.js";
 
 async function handle(sock, messageInfo) {
   const { m, remoteJid, message, content, prefix, command, type, isQuoted } =
@@ -36,14 +37,12 @@ async function handle(sock, messageInfo) {
       throw new Error("File media tidak ditemukan setelah diunduh.");
     }
 
+    // Format dinormalisasi lebih dulu: WhatsApp menyimpan setiap imageMessage
+    // sebagai .jpg walau isinya WebP/PNG, dan server uploader menolak bila isi
+    // file tidak cocok dengan format yang dideklarasikan.
+    const url = await uploadImageFile(mediaPath, { convert: true, label: "WASTED" });
+
     const api = new ApiAutoresbot(config.APIKEY);
-    const response = await api.tmpUpload(mediaPath);
-
-    if (!response || response.code !== 200) {
-      throw new Error("File upload gagal atau tidak ada URL.");
-    }
-    const url = response.data.url;
-
     const MediaBuffer = await api.getBuffer("/api/maker/wasted", { url });
 
     if (!Buffer.isBuffer(MediaBuffer)) {
@@ -59,7 +58,9 @@ async function handle(sock, messageInfo) {
       { quoted: message }
     );
   } catch (error) {
-    console.error("Kesalahan saat memproses perintah Hd:", error);
+    // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
+    // (Label sebelumnya tertulis "Hd" — salin-tempel dari plugin lain.)
+    logShort("WASTED", `Error: ${error?.serverMessage || error?.message || error}`, error);
 
     // Kirim pesan kesalahan yang lebih informatif
     const errorMessage = `_Terjadi kesalahan saat memproses gambar._`;

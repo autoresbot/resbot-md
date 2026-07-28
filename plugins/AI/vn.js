@@ -52,7 +52,10 @@ async function handle(sock, messageInfo) {
     try {
       const convertedPath = await convertAudioToOpus(inputPath);
       bufferFinal = await fs.readFile(convertedPath);
-    } catch (err) {}
+    } catch (err) {
+      // Konversi opsional: kalau gagal, kirim audio asli (bufferFinal default).
+      console.warn('[VN] Konversi ke opus gagal, pakai audio asli:', err.message);
+    }
 
     await sock.sendMessage(
       remoteJid,

@@ -1,6 +1,5 @@
 import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
-import { sendImageAsSticker } from '../../lib/exif.js';
-import sharp from 'sharp';
+import { uploadImageFile, logShort } from '../../lib/uploader.js';
 import fs from 'fs';
 import path from 'path';
 import ApiAutoresbotModule from 'api-autoresbot';
@@ -25,13 +24,16 @@ async function handle(sock, messageInfo) {
         throw new Error('File media tidak ditemukan setelah diunduh.');
       }
 
-      const api = new ApiAutoresbot(config.APIKEY);
-      const response = await api.tmpUpload(mediaPath);
+      // convert: false — WAJIB. Endpoint /api/convert/webptovideo justru butuh
+      // file WebP aslinya; mengonversinya ke JPEG lebih dulu akan merusak
+      // fitur ini. Di sini hanya nama file & content-type yang dibetulkan agar
+      // cocok dengan isi sebenarnya.
+      const url = await uploadImageFile(mediaPath, {
+        convert: false,
+        label: 'TOVID',
+      });
 
-      if (!response || response.code !== 200) {
-        throw new Error('File upload gagal atau tidak ada URL.');
-      }
-      const url = response.data.url;
+      const api = new ApiAutoresbot(config.APIKEY);
       const buffer = await api.getBuffer('/api/convert/webptovideo', {
         url,
       });
@@ -56,7 +58,9 @@ async function handle(sock, messageInfo) {
       );
     }
   } catch (error) {
-    console.log(error);
+    // Sebelumnya `console.log(error)` mencetak seluruh object error.
+    // Sekarang satu baris; detail lengkap masuk logs/api.log.
+    logShort('TOVID', `Error: ${error?.serverMessage || error?.message || error}`, error);
     await sock.sendMessage(
       remoteJid,
       { text: 'Maaf, terjadi kesalahan. Coba lagi nanti!' },

@@ -4,7 +4,8 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 import config from '../../config.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
 
-import { downloadQuotedMedia, downloadMedia, uploadTmpFile } from '../../lib/utils.js';
+import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
+import { uploadImageFile, logShort } from '../../lib/uploader.js';
 
 import sharp from 'sharp';
 
@@ -39,13 +40,15 @@ async function handle(sock, messageInfo) {
       throw new Error('File media tidak ditemukan setelah diunduh.');
     }
 
-    const api = new ApiAutoresbot(config.APIKEY);
-    const response = await api.tmpUpload(mediaPath);
+    // convert: false — plugin ini menerima gambar MAUPUN sticker, dan sticker
+    // (WebP) harus tetap dikirim apa adanya. Yang dibetulkan hanya nama file &
+    // content-type agar cocok dengan isi sebenarnya.
+    const url = await uploadImageFile(mediaPath, {
+      convert: false,
+      label: 'STICKERCIRCLE',
+    });
 
-    if (!response || response.code !== 200) {
-      throw new Error('File upload gagal atau tidak ada URL.');
-    }
-    const url = response.data.url;
+    const api = new ApiAutoresbot(config.APIKEY);
 
     if (url) {
       // Ambil buffer hasil API stickercircle
@@ -65,6 +68,8 @@ async function handle(sock, messageInfo) {
       await sendImageAsSticker(sock, remoteJid, webpBuffer, options, message);
     }
   } catch (error) {
+    // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
+    logShort('STICKERCIRCLE', `Error: ${error?.serverMessage || error?.message || error}`, error);
     await sock.sendMessage(
       remoteJid,
       { text: 'Maaf, terjadi kesalahan. Coba lagi nanti!' },

@@ -4,8 +4,13 @@ import { findGroup, addGroup, isUserBlocked, isFiturBlocked, DEFAULT_FITUR } fro
 import { logWithTime, warning, logTracking } from '../lib/utils.js';
 import mess from '../strings.js';
 import { getGroupMetadata } from '../lib/cache.js';
+import { createBoundedSet } from '../lib/boundedStore.js';
+import { logHandlerError } from '../lib/errorLogger.js';
 
-const notifiedUsers = new Set();
+// Penanda "sudah dinotifikasi" dengan batas & TTL. Sebelumnya Set biasa yang
+// tidak pernah dibersihkan, sehingga tiap kombinasi grup+user baru menambah
+// entri permanen selama proses hidup.
+const notifiedUsers = createBoundedSet({ max: 5000, ttl: 6 * 60 * 60 * 1000 });
 
 async function process(sock, messageInfo) {
   const { remoteJid, sender, senderLid, isGroup, pushName, command, message, mentionedJid } =
@@ -128,7 +133,16 @@ async function process(sock, messageInfo) {
 
     return true; // Lanjutkan ke plugin berikutnya
   } catch (error) {
-    logWithTime('System', `Error dalam proses register`);
+    // Handler ini menghentikan seluruh pemrosesan pesan saat error (return
+    // false). Versi lama tidak mencatat error-nya sama sekali, sehingga bot
+    // yang "tiba-tiba tidak merespons" tidak bisa ditelusuri penyebabnya.
+    logWithTime('System', `Error dalam proses register: ${error?.message || error}`);
+    logHandlerError(error, {
+      plugin: 'handle/usersHandle.js',
+      command: messageInfo?.command,
+      sender: messageInfo?.sender,
+      remoteJid: messageInfo?.remoteJid,
+    });
     return false; // Jika ada error, hentikan proses
   }
 }

@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.8
+║ 📦 Version   : 5.2.9
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -50,6 +50,32 @@ if (major < 20) {
     // }
   }
 
+  // ─── Error Handler ───────────────────────────────
+  // FIX: error logger global - simpan crash global ke logs/error.log
+  // Didaftarkan SEBELUM start_app(): proses startup (koneksi WhatsApp, load
+  // plugin, migrasi database) juga bisa melempar unhandledRejection /
+  // uncaughtException, dan sebelumnya error di tahap itu hilang tanpa jejak
+  // karena handler baru dipasang setelah start_app() selesai.
+  const { logError } = await import('./lib/errorLogger.js');
+
+  process.on('uncaughtException', (err) => {
+    console.log('========== UNCAUGHT EXCEPTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
+    logError(err, { plugin: 'process', command: 'uncaughtException' });
+  });
+
+  process.on('unhandledRejection', (err) => {
+    console.log('========== UNHANDLED REJECTION ==========');
+    console.log('Message:', err?.message);
+    console.log('Code:', err?.code);
+    console.log('Stack:', err?.stack);
+    console.log('=========================================');
+    logError(err, { plugin: 'process', command: 'unhandledRejection' });
+  });
+
   // ─── Start App ───────────────────────────────────
   try {
     clearDirectory('./tmp');
@@ -91,31 +117,10 @@ if (major < 20) {
     await start_app();
   } catch (err) {
     console.error('Error dalam proses start_app:', err.message);
+    logError(err, { plugin: 'process', command: 'start_app' });
     await reportCrash('inactive');
     process.exit(1);
   }
-
-  // ─── Error Handler ───────────────────────────────
-  // FIX: error logger global - simpan crash global ke logs/error.log
-  const { logError } = await import('./lib/errorLogger.js');
-
-  process.on('uncaughtException', (err) => {
-    console.log('========== UNCAUGHT EXCEPTION ==========');
-    console.log('Message:', err?.message);
-    console.log('Code:', err?.code);
-    console.log('Stack:', err?.stack);
-    console.log('=========================================');
-    logError(err, { plugin: 'process', command: 'uncaughtException' });
-  });
-
-  process.on('unhandledRejection', (err) => {
-    console.log('========== UNHANDLED REJECTION ==========');
-    console.log('Message:', err?.message);
-    console.log('Code:', err?.code);
-    console.log('Stack:', err?.stack);
-    console.log('=========================================');
-    logError(err, { plugin: 'process', command: 'unhandledRejection' });
-  });
 
   // ─── Graceful Shutdown: pastikan database di-close saat restart/stop ───
   const gracefulShutdown = async (signal) => {

@@ -35,7 +35,10 @@ async function process(sock, messageInfo) {
       }
     }
   } catch (error) {
-    console.error('Error dalam proses Chat:');
+    // Pesan error-nya wajib ikut dicetak: versi lama hanya mencetak label tanpa
+    // isi error, sehingga kegagalan di sini (mis. downloadMedia) tidak bisa
+    // dilacak sama sekali.
+    console.error('Error dalam proses Chat:', error?.message || error);
   }
 
   return true; // Lanjutkan ke plugin berikutnya

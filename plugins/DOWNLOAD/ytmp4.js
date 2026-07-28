@@ -62,12 +62,13 @@ async function handle(sock, messageInfo) {
       api,
       '/api/downloader/ytmp4',
       { url: validLink },
-      6,
+      12,
       9000,
     );
 
     if (response.status) {
       const url_media = response.data.url;
+     
       const videoBuffer = await downloadToBuffer(url_media, 'mp4');
 
       await sock.sendMessage(

@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.2.8
+║ 📦 Version   : 5.2.9
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -19,6 +19,7 @@ Script **Autoresbot** resmi menjadi **Open Source** dan dapat digunakan secara g
 import moment from 'moment-timezone';
 
 const CONNECTION = 'pairing'; // qr atau pairing
+const PAIRING_CODE = 'RESBOTMD'; // kode pairing max 8 karakter (opsional)
 const OWNER_NAME = 'Autoresbot';
 const NOMOR_BOT = '628xx'; // 628xx nomor wa - 6285124002201
 const DESTINATION = 'group'; // group , private, both
@@ -31,7 +32,7 @@ const VERSION = global.version; // don't edit
 const EMAIL = 'autoresbot@gmail.com';
 const REGION = 'Indonesia';
 const WEBSITE = 'autoresbot.com';
-const DATA_OWNER = ['69243815079978']; // cara ambil owner https://youtu.be/qrRXPCSFvRo?si=KOWdFhrScHN7Ugd4
+const DATA_OWNER = ['69243815079978']; // cara ambil owner https://youtu.be/qrRXPCSFvRo?si=KOWdFhrScHN7Ugd4 
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
@@ -69,6 +70,7 @@ const config = {
   APIKEY,
   phone_number_bot: NOMOR_BOT,
   type_connection: CONNECTION,
+  pairing_code: PAIRING_CODE,
   bot_destination: DESTINATION,
   owner_name: OWNER_NAME,
   owner_number: DATA_OWNER,

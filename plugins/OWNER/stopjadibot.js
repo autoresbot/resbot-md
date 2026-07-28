@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { determineUser } from "../../lib/utils.js";
 import { sessions } from "../../lib/cache.js";
+import { updateJadibot } from "../../lib/jadibot.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -72,7 +73,6 @@ async function handle(sock, messageInfo) {
     // Hapus sesi aktif
     const sockSesi = sessions.get(`session/${senderId}`);
     if (sockSesi) {
-      const { updateJadibot } = require("@lib/jadibot");
       await updateJadibot(senderId, "stop");
       await sockSesi.ws.close(); // Tutup WebSocket
       sessions.delete(`session/${senderId}`); // Hapus dari daftar sesi
@@ -85,7 +85,6 @@ async function handle(sock, messageInfo) {
         { text: `✅ _${senderId} berhasil di stop_` },
         { quoted: message }
       );
-      const { updateJadibot } = require("@lib/jadibot");
       await updateJadibot(senderId, "stop");
     } else {
       await sock.sendMessage(

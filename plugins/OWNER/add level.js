@@ -2,13 +2,15 @@ import { findUser, updateUser } from '../../lib/users.js';
 import { sendMessageWithMention } from '../../lib/utils.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, content, prefix, command, senderType } = messageInfo;
+  const { remoteJid, message, content, prefix, command, senderLid, senderType } = messageInfo;
 
   // --- Validasi input ---
   if (!content?.trim()) {
     const tex =
       `_⚠️ Format: *${prefix + command} tag 30*_\n\n` +
-      `_💬 Contoh: *${prefix + command} @tag 30*_`;
+      `_💬 Contoh: *${prefix + command} @tag 30*_\n` +
+      `_💬 Contoh: *${prefix + command} me 1*_\n\n` +
+      `_me = menambahkan level ke akun Anda sendiri_`;
     return sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
   }
 
@@ -37,8 +39,19 @@ async function handle(sock, messageInfo) {
     );
   }
 
+  // --- Tentukan target ---
+  // `me` merujuk ke pengirim command (senderLid), bukan nomor bot atau owner di config.
+  const targetId = rawNumber.toLowerCase() === 'me' ? senderLid : rawNumber;
+  if (!targetId) {
+    return sock.sendMessage(
+      remoteJid,
+      { text: `⚠️ _Target tidak valid, tidak bisa mengenali akun Anda._` },
+      { quoted: message },
+    );
+  }
+
   // --- Ambil data user ---
-  const dataUsers = await findUser(rawNumber);
+  const dataUsers = await findUser(targetId);
   if (!dataUsers) {
     return sock.sendMessage(
       remoteJid,
@@ -49,12 +62,22 @@ async function handle(sock, messageInfo) {
     );
   }
 
-  const [docId, userData] = dataUsers;
+  const userData = Array.isArray(dataUsers) ? dataUsers[1] : {};
 
   // --- Update data user ---
-  await updateUser(rawNumber, {
+  const updated = await updateUser(targetId, {
     level: (userData.level || 0) + levelToAdd,
   });
+
+  if (!updated) {
+    return sock.sendMessage(
+      remoteJid,
+      {
+        text: `⚠️ _Pengguna dengan id ${rawNumber} tidak ditemukan._`,
+      },
+      { quoted: message },
+    );
+  }
 
   // --- Kirim pesan konfirmasi ---
   await sendMessageWithMention(

@@ -3,6 +3,7 @@ import path from "path";
 
 import { determineUser, deleteFolderRecursive } from "../../lib/utils.js";
 import { sessions } from "../../lib/cache.js";
+import { updateJadibot, deleteJadibot } from "../../lib/jadibot.js";
 
 async function handle(sock, messageInfo) {
   const {
@@ -73,7 +74,6 @@ async function handle(sock, messageInfo) {
     // Hapus sesi aktif
     const sockSesi = sessions.get(`session/${senderId}`);
     if (sockSesi) {
-      const { updateJadibot } = require("@lib/jadibot");
       await updateJadibot(senderId, "stop");
       await sockSesi.ws.close(); // Tutup WebSocket
       sessions.delete(`session/${senderId}`); // Hapus dari daftar sesi
@@ -87,7 +87,6 @@ async function handle(sock, messageInfo) {
         { text: `✅ _Folder sesi untuk ${senderId} berhasil dihapus._` },
         { quoted: message }
       );
-      const { deleteJadibot } = require("@lib/jadibot");
       await deleteJadibot(senderId);
     } else {
       await sock.sendMessage(

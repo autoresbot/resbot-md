@@ -5,11 +5,13 @@ import chalk from "chalk";
 import { logTracking } from "../lib/utils.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createBoundedMap } from "../lib/boundedStore.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const lastMessageTime = {};
+// Rate limit per chat dengan batas & TTL (sebelumnya object yang terus tumbuh).
+const lastMessageTime = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 
 async function process(sock, messageInfo) {
   const { remoteJid, message, fullText } = messageInfo;
@@ -29,13 +31,12 @@ async function process(sock, messageInfo) {
 
     // RATE LIMIT
     const now = Date.now();
-    if (lastMessageTime[remoteJid]) {
-      if (now - lastMessageTime[remoteJid] < config.rate_limit) {
-        console.log(chalk.redBright(`Rate limit respon : ${keyword}`));
-        return false;
-      }
+    const lastTime = lastMessageTime.get(remoteJid);
+    if (lastTime && now - lastTime < config.rate_limit) {
+      console.log(chalk.redBright(`Rate limit respon : ${keyword}`));
+      return false;
     }
-    lastMessageTime[remoteJid] = now;
+    lastMessageTime.set(remoteJid, now);
 
     if (media) {
       const buffer = await getMediaBuffer(media);

@@ -29,8 +29,8 @@ async function handle(sock, messageInfo) {
     });
 
     // Bersihkan konten
-    const sanitizedContent = encodeURIComponent(text.trim().replace(/\n+/g, ' '));
-
+    const sanitizedContent = text.trim().replace(/\n+/g, " ");
+    
     // Buat instance API dan ambil data dari endpoint
     const api = new ApiAutoresbot(config.APIKEY);
     const buffer = await api.getBuffer('/api/maker/bratvid', {

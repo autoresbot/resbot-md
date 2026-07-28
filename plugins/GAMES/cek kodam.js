@@ -15,9 +15,9 @@ async function handle(sock, messageInfo) {
   if (!fullText.includes('odam')) return true;
 
   const nameCekodam = content.trim() || pushName;
-  console.log(
-    `📥 Received command 'cek kodam' from ${pushName} (${remoteJid}) with input: ${nameCekodam}`,
-  );
+  // console.log(
+  //   `📥 Received command 'cek kodam' from ${pushName} (${remoteJid}) with input: ${nameCekodam}`,
+  // );
 
   try {
     await sock.sendMessage(remoteJid, {
@@ -48,7 +48,10 @@ async function handle(sock, messageInfo) {
     try {
       const convertedPath = await convertAudioToCompatibleFormat(inputPath);
       bufferFinal = await fs.readFile(convertedPath);
-    } catch (err) {}
+    } catch (err) {
+      // Konversi opsional: kalau gagal, kirim audio asli (bufferFinal default).
+      console.warn('[CEK KODAM] Konversi audio gagal, pakai audio asli:', err.message);
+    }
 
     await sock.sendMessage(
       remoteJid,

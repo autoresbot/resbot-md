@@ -6,6 +6,7 @@ import path from 'path';
 import config from '../../config.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
 import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
+import { uploadImageFile, logShort } from '../../lib/uploader.js';
 
 function detectMime(buffer) {
   if (!buffer || buffer.length < 12) return null;
@@ -78,20 +79,16 @@ async function handle(sock, messageInfo) {
       throw new Error('File media tidak ditemukan setelah diunduh.');
     }
 
+    // convert: false — plugin ini menerima gambar MAUPUN sticker, dan sticker
+    // (WebP) harus tetap dikirim apa adanya. Yang dibetulkan hanya nama file &
+    // content-type agar cocok dengan isi sebenarnya; untuk sticker hasilnya
+    // sama seperti sebelumnya, untuk gambar ber-isi WebP/PNG inilah perbaikannya.
+    const imageUrl = await uploadImageFile(mediaPath, {
+      convert: false,
+      label: 'SMEME',
+    });
+
     const api = new ApiAutoresbot(config.APIKEY);
-
-    const uploadResult = await api.tmpUpload(mediaPath);
-
-    if (
-      !uploadResult ||
-      uploadResult.code !== 200 ||
-      !uploadResult.data ||
-      !uploadResult.data.url
-    ) {
-      throw new Error('Upload media gagal.');
-    }
-
-    const imageUrl = uploadResult.data.url;
 
     const buffer = await api.getBuffer('/api/maker/smeme', {
       text: text1,
@@ -136,7 +133,8 @@ async function handle(sock, messageInfo) {
     //   },
     // });
   } catch (error) {
-    console.error('[SMEME ERROR]', error);
+    // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
+    logShort('SMEME', `Error: ${error?.serverMessage || error?.message || error}`, error);
 
     await sock.sendMessage(
       remoteJid,
@@ -153,8 +151,10 @@ async function handle(sock, messageInfo) {
           key: message.key,
         },
       });
-    } catch {}
-  } finally {
+    } catch (err) {
+      // Reaksi ❌ hanya kosmetik; kegagalannya tidak boleh menutupi error asli.
+      console.warn('[SMEME] Gagal mengirim reaksi error:', err.message);
+    }
   }
 }
 

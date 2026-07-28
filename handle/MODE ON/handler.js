@@ -23,11 +23,18 @@ import {
 import { findMessageById, editMessageById } from '../../lib/chatManager.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
 import { logHandlerError } from '../../lib/errorLogger.js'; // FIX: error logger global
+import { createBoundedMap, createBoundedSet } from '../../lib/boundedStore.js';
+import { isDestinationAllowed } from '../../lib/destination.js';
 
-const notifiedUsers = new Set();
-const rateLimit_blacklist = {};
-const notifiedBlacklistUsers = new Set();
-const notifiedBirthdayUsers = new Set();
+// Semua penanda di bawah ini memakai penyimpanan berbatas (TTL + jumlah maks).
+// Versi lama memakai Set/object biasa yang tidak pernah dibersihkan, sehingga
+// setiap user & grup baru menambah entri permanen selama bot hidup.
+const notifiedUsers = createBoundedSet({ max: 5000, ttl: 6 * 60 * 60 * 1000 });
+const rateLimit_blacklist = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
+const notifiedBlacklistUsers = createBoundedSet({ max: 5000, ttl: 6 * 60 * 60 * 1000 });
+// TTL 24 jam: penanda ucapan ulang tahun memang hanya relevan untuk hari ini,
+// dan sudah dilapisi userData.lastBirthdayWish yang tersimpan di database.
+const notifiedBirthdayUsers = createBoundedSet({ max: 5000, ttl: 24 * 60 * 60 * 1000 });
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,6 +87,14 @@ async function process(sock, messageInfo) {
     // lanjut
   } else {
     return true; // Abaikan jika bukan grup
+  }
+
+  // Mulai titik ini seluruh tindakan handler menyasar GRUP (hapus pesan, kick,
+  // kirim peringatan). Jalur tag status (isTagSw) lolos dari filter destination
+  // di autoresbot.js karena remoteJid-nya 'status@broadcast' (bukan grup), lalu
+  // dialihkan ke grup di atas — jadi filternya diulang di sini.
+  if (!isDestinationAllowed(true)) {
+    return true;
   }
 
   const now = Date.now();
@@ -826,10 +841,11 @@ async function process(sock, messageInfo) {
       return false;
     }
 
-    if (rateLimit_blacklist[sender] && now - rateLimit_blacklist[sender] < 5000) {
+    const lastBlacklistCheck = rateLimit_blacklist.get(sender);
+    if (lastBlacklistCheck && now - lastBlacklistCheck < 5000) {
       return true;
     } else {
-      rateLimit_blacklist[sender] = now;
+      rateLimit_blacklist.set(sender, now);
     }
   } catch (error) {
     console.error('Terjadi kesalahan pada proses Handler.js:', error.message);

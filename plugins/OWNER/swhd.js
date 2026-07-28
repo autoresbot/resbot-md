@@ -1,12 +1,34 @@
-import crypto from 'node:crypto';
-import * as baileys from 'baileys';
 import fs from 'fs';
 import path from 'path';
 
-import { downloadQuotedMedia, downloadMedia } from '../../lib/utils.js';
+import {
+  downloadQuotedMedia,
+  downloadMedia,
+  getContextInfo,
+  extractMedia,
+} from '../../lib/utils.js';
+
+/**
+ * Tentukan bentuk asli media.
+ *
+ * Kalau media memang sudah bukan document (mis. reply ke audio/gambar langsung),
+ * pakai jenisnya apa adanya. Kalau berupa document, bentuk aslinya ditebak dari
+ * mimetype — inilah kasus utama fitur ini: file yang dikirim sebagai document
+ * dikembalikan menjadi media yang bisa diputar/dilihat.
+ */
+function detectKind(mediaType, mimeType) {
+  if (mediaType && mediaType !== 'document') return mediaType;
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType === 'image/webp') return 'sticker'; // webp hampir selalu sticker
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return null;
+}
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, content, type, isQuoted, prefix, command } = messageInfo;
+  const { remoteJid, message, content, isQuoted, prefix, command } = messageInfo;
+
+  let mediaPath = null;
 
   try {
     const mediaFile = isQuoted ? await downloadQuotedMedia(message) : await downloadMedia(message);
@@ -34,7 +56,7 @@ async function handle(sock, messageInfo) {
     /**
      * MEDIA MODE
      */
-    const mediaPath = path.join('tmp', mediaFile);
+    mediaPath = path.join('tmp', mediaFile);
 
     if (!fs.existsSync(mediaPath)) {
       throw new Error(`Media tidak ditemukan: ${mediaPath}`);
@@ -43,17 +65,18 @@ async function handle(sock, messageInfo) {
     const buffer = fs.readFileSync(mediaPath);
 
     /**
-     * AMBIL QUOTED MESSAGE (SUPER SAFE)
+     * AMBIL INFO MEDIA
+     *
+     * Pakai helper yang sama dengan downloader (getContextInfo + extractMedia)
+     * supaya mimetype selalu berasal dari media yang benar-benar didownload.
+     * Helper ini juga sudah membuka wrapper ephemeral/viewOnce/documentWithCaption
+     * dan membaca contextInfo dari tipe pesan apa pun, bukan cuma extendedTextMessage.
      */
-    const quoted = message?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    // message.message.extendedTextMessage.contextInfo.quotedMessage.documentWithCaptionMessage.message.documentMessage.mimetype
+    const source = isQuoted ? getContextInfo(message)?.quotedMessage : message;
+    const media = extractMedia(source);
 
-    const doc =
-      quoted?.documentMessage ||
-      quoted?.documentWithCaptionMessage?.message?.documentMessage ||
-      quoted?.documentWithCaptionMessage?.message?.message?.documentMessage;
+    const mimeType = media?.mediaMessage?.mimetype || '';
 
-    const mimeType = doc?.mimetype || '';
     /**
      * VALIDASI FINAL
      */
@@ -62,32 +85,29 @@ async function handle(sock, messageInfo) {
     }
 
     /**
-     * AUTO RESEND BERDASARKAN MIME TYPE
+     * AUTO RESEND BERDASARKAN BENTUK ASLI
      */
-    if (mimeType.startsWith('video/')) {
+    const kind = detectKind(media?.mediaType, mimeType);
+    const caption = content || '';
+
+    if (kind === 'video') {
+      await sock.sendMessage(remoteJid, { video: buffer, caption }, { quoted: message });
+    } else if (kind === 'image') {
+      await sock.sendMessage(remoteJid, { image: buffer, caption }, { quoted: message });
+    } else if (kind === 'sticker') {
+      await sock.sendMessage(remoteJid, { sticker: buffer }, { quoted: message });
+    } else if (kind === 'audio') {
+      // WhatsApp memakai ogg/opus khusus untuk voice note, format lain (mp3, m4a)
+      // dikirim sebagai audio biasa. Audio tidak mendukung caption.
+      const isVoiceNote = /ogg|opus/i.test(mimeType);
       await sock.sendMessage(
         remoteJid,
-        {
-          video: buffer,
-          caption: content || '',
-        },
-        { quoted: message },
-      );
-    } else if (mimeType.startsWith('image/')) {
-      await sock.sendMessage(
-        remoteJid,
-        {
-          image: buffer,
-          caption: content || '',
-        },
+        { audio: buffer, mimetype: mimeType, ptt: isVoiceNote },
         { quoted: message },
       );
     } else {
       throw new Error(`Tipe tidak didukung: ${mimeType}`);
     }
-
-    // optional cleanup
-    fs.unlink(mediaPath, () => {});
   } catch (err) {
     console.error('[SWHD WGC ERROR]', err);
 
@@ -98,6 +118,9 @@ async function handle(sock, messageInfo) {
       },
       { quoted: message },
     );
+  } finally {
+    // Bersihkan file sementara, termasuk saat konversi gagal di tengah jalan
+    if (mediaPath) fs.unlink(mediaPath, () => {});
   }
 }
 

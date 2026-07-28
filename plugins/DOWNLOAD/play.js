@@ -98,7 +98,7 @@ async function handle(sock, messageInfo) {
       api,
       '/api/downloader/ytplay',
       { url: video.url, format: 'm4a' },
-      7,
+      14,
       9000,
     );
 

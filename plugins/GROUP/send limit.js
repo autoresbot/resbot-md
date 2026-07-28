@@ -2,7 +2,8 @@ import { transferBalance } from '../../lib/users.js';
 import { convertToJid } from '../../lib/utils.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, content, senderLid, command, prefix } = messageInfo;
+  const { remoteJid, message, content, sender, senderLid, mentionedJid, command, prefix } =
+    messageInfo;
 
   // Validasi input kosong
   if (!content || content.trim() === '') {
@@ -30,18 +31,18 @@ async function handle(sock, messageInfo) {
 
     const target = args[0]; // Nomor penerima atau tag
     const receiverJid = await convertToJid(sock, target);
-    if (!receiverJid) {
-      return await sock.sendMessage(
-        remoteJid,
-        { text: `⚠️ _User tidak ditemukan, pastikan target sudah chat di grub ini_` },
-        { quoted: message },
-      );
-    }
+
+    // Satu orang bisa punya dua record: versi LID (dibuat saat user chat di grup,
+    // dan inilah yang dibaca `.me`) dan versi nomor telpon. Kandidat diurutkan
+    // dari ruang identitas LID dulu agar limit masuk ke record yang benar-benar
+    // dilihat penerima, bukan ke record duplikat versi nomor.
+    const receiverCandidates = [mentionedJid?.[0], target, receiverJid];
+    const receiverLabel = String(receiverJid || target).replace(/\D/g, '') || target;
 
     const limitToSend = parseInt(args[1], 10);
 
     // Transaksi atomic: pengirim & penerima ter-update bersama atau tidak sama sekali
-    const result = transferBalance(senderLid, receiverJid, limitToSend, 'limit');
+    const result = transferBalance([senderLid, sender], receiverCandidates, limitToSend, 'limit');
 
     if (!result.ok) {
       const messages = {
@@ -59,7 +60,7 @@ async function handle(sock, messageInfo) {
       console.error(
         `[SENDLIMIT] Failed: ${result.reason}${
           result.detail ? ` (${result.detail})` : ''
-        } | from=${senderLid} to=${receiverJid} amount=${limitToSend}`,
+        } | from=${senderLid} to=${receiverCandidates.filter(Boolean).join('|')} amount=${limitToSend}`,
       );
 
       return await sock.sendMessage(
@@ -70,7 +71,7 @@ async function handle(sock, messageInfo) {
     }
 
     console.log(
-      `[SENDLIMIT] Success | from=${senderLid} to=${receiverJid} amount=${limitToSend} | ` +
+      `[SENDLIMIT] Success | from=${result.fromDocId} to=${result.toDocId} amount=${limitToSend} | ` +
         `sender ${result.fromBefore}->${result.fromAfter} recipient ${result.toBefore}->${result.toAfter}`,
     );
 
@@ -78,9 +79,7 @@ async function handle(sock, messageInfo) {
     return await sock.sendMessage(
       remoteJid,
       {
-        text: `✅ _Berhasil mengirim ${limitToSend} limit ke ${
-          receiverJid.split('@')[0]
-        }._\n\nKetik *.me* untuk melihat detail akun Anda.`,
+        text: `✅ _Berhasil mengirim ${limitToSend} limit ke ${receiverLabel}._\n\nKetik *.me* untuk melihat detail akun Anda.`,
       },
       { quoted: message },
     );

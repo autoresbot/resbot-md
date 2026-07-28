@@ -13,8 +13,10 @@ import { getGroupMetadata } from '../lib/cache.js';
 import config from '../config.js';
 import { sendImageAsSticker } from '../lib/exif.js';
 import chalk from 'chalk';
+import { createBoundedMap } from '../lib/boundedStore.js';
 
-const lastMessageTime = {};
+// Rate limit per grup dengan batas & TTL (sebelumnya object yang terus tumbuh).
+const lastMessageTime = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 
 async function process(sock, messageInfo) {
   const { remoteJid, sender, isGroup, message, fullText, senderType } = messageInfo;
@@ -36,13 +38,12 @@ async function process(sock, messageInfo) {
 
     // RATE LIMIT
     const now = Date.now();
-    if (lastMessageTime[remoteJid]) {
-      if (now - lastMessageTime[remoteJid] < config.rate_limit) {
-        console.log(chalk.redBright(`Rate limit list : ${keyword}`));
-        return false;
-      }
+    const lastTime = lastMessageTime.get(remoteJid);
+    if (lastTime && now - lastTime < config.rate_limit) {
+      console.log(chalk.redBright(`Rate limit list : ${keyword}`));
+      return false;
     }
-    lastMessageTime[remoteJid] = now;
+    lastMessageTime.set(remoteJid, now);
 
     const { text, media } = currentList.list[searchResult[0]].content;
 
@@ -129,7 +130,6 @@ async function process(sock, messageInfo) {
       await sendMessageWithMention(sock, remoteJid, customizedMessage, message, senderType);
       return false;
     }
-    return false;
   } catch (error) {
     console.error('Error processing message:', error);
   }
