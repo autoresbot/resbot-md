@@ -131,9 +131,6 @@ Khusus .tourl ada bug tambahan:
   lib/imageNormalizer.js  - deteksi & konversi format gambar
   lib/uploader.js         - upload ke tmp-files (pengganti api.tmpUpload)
 
-  AUDIT_REPORT.md         - laporan audit lengkap
-  CHANGELOG_AUDIT.md      - rincian tiap perubahan
-
 
 ==================================================
 7. YANG TIDAK DIUBAH
