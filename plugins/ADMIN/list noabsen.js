@@ -31,15 +31,18 @@ async function handle(sock, messageInfo) {
     const absenMembers = data?.member || [];
 
     // Dapatkan daftar yang belum absen
+// Ambil peserta yang belum absen.
+// Pencocokan pakai digit saja karena data absen bisa berupa JID nomor
+// (@s.whatsapp.net) maupun LID (@lid) tergantung asal pesannya.
+const normalizeNumber = (jid) => String(jid || '').split('@')[0].replace(/\D/g, '');
+const absenNumbers = new Set(absenMembers.map(normalizeNumber));
 
-
-// Ambil peserta yang belum absen
 const filteredMembers = participants
   .map((p) => {
-    const jid = p.phoneNumber || p.id;
+    const jid = p.id || p.phoneNumber;
     return { jid };
   })
-  .filter((p) => p.jid && !absenMembers.includes(p.jid));
+  .filter((p) => p.jid && !absenNumbers.has(normalizeNumber(p.jid)));
 
 // Format text
 const noAbsenMembers = filteredMembers.map(

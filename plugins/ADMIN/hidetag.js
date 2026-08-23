@@ -61,7 +61,7 @@ async function handle(sock, messageInfo) {
       remoteJid,
       '⚠️ Terjadi kesalahan: ' + error.message,
       message,
-      participants,
+      [],
     );
   }
 }
