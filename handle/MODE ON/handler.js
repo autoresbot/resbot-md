@@ -190,12 +190,14 @@ async function process(sock, messageInfo) {
     if (!isAdmin && fitur.antilinkch && isWhatsappSaluran) {
       logWithTime('SYSTEM', `Deteksi fitur antilinkch : ${fullText}`);
       await deleteMessage();
+      return false;
     }
 
     // Anti-link wa : Hapus pesan jika URL whatsapp terdeteksi
     if (!isAdmin && fitur.antilinkwa && isWhatsappLink) {
       logWithTime('SYSTEM', `Deteksi fitur antilinkwa : ${fullText}`);
       await deleteMessage();
+      return false;
     }
 
     // Anti-link V2: Hapus pesan + kick pengguna

@@ -210,7 +210,7 @@ async function handle(sock, messageInfo) {
       attempt++;
 
       try {
-        const pollRes = await http.get('https://api.autoresbot.com/api/tools/remini', {
+        const pollRes = await http.get('https://api.autoresbot.com/api/ai-image', {
           params: { job_id: jobId },
           headers: {
             Authorization: `Bearer ${config.APIKEY}`,
@@ -225,7 +225,7 @@ async function handle(sock, messageInfo) {
         }
 
         if (data.status === 'failed') {
-          return await reply(m, '❌ Proses HD gagal.\nSilakan coba lagi.');
+          return await reply(m, '❌ Proses AI image gagal.\nSilakan coba lagi.');
         }
       } catch (pollError) {
         if (pollError.code !== 'ECONNRESET') {

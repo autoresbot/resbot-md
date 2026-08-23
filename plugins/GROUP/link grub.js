@@ -16,6 +16,19 @@ async function handle(sock, messageInfo) {
 
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
+
+    const isAdmin = groupMetadata?.participants?.some(
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+    );
+
+    if (!isAdmin) {
+      return await sock.sendMessage(
+        remoteJid,
+        { text: mess.general.isAdmin },
+        { quoted: message }
+      );
+    }
+
     const groupInviteCode = await sock.groupInviteCode(remoteJid);
 
     // Membuat teks balasan

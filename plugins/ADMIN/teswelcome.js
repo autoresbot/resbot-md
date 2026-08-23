@@ -1,10 +1,25 @@
 import { getGroupMetadata, getProfilePictureUrl } from "../../lib/cache.js";
+import mess from "../../strings.js";
 import axios from "axios";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, sender, message, pushName, content, prefix, command } =
     messageInfo;
   try {
+    const groupMetadata = await getGroupMetadata(sock, remoteJid);
+
+    const isAdmin = groupMetadata?.participants?.some(
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+    );
+
+    if (!isAdmin) {
+      return await sock.sendMessage(
+        remoteJid,
+        { text: mess.general.isAdmin },
+        { quoted: message }
+      );
+    }
+
     // Validasi input konten
     if (!content) {
       await sock.sendMessage(
@@ -25,7 +40,6 @@ async function handle(sock, messageInfo) {
     });
 
     // Ambil metadata grup dan profil pengguna
-    const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const { size, subject, desc } = groupMetadata;
     const ppUser = await getProfilePictureUrl(sock, sender);
     const ppGroup = await getProfilePictureUrl(sock, remoteJid);

@@ -8,37 +8,41 @@ import {
 } from "../../lib/utils.js";
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, isQuoted, prefix, command } = messageInfo;
-
-  const mediaType = isQuoted ? isQuoted.type : type;
-  if (mediaType !== "audio") {
-    return await reply(
-      m,
-      `⚠️ _Balas Audio dengan caption *${prefix + command}*_`
-    );
-  }
-
-  await sock.sendMessage(remoteJid, {
-    react: { text: "⏰", key: message.key },
-  });
-
-  // Download & Upload media
-  const media = isQuoted
-    ? await downloadQuotedMedia(message)
-    : await downloadMedia(message);
-
-  const mediaPath = path.join("tmp", media);
-  if (!fs.existsSync(mediaPath)) {
-    throw new Error("File media tidak ditemukan setelah diunduh.");
-  }
-
-  const baseDir = process.cwd(); // Menggunakan direktori kerja saat ini
-  const inputPath = path.join(baseDir, mediaPath); // File asli
+  const { m, remoteJid, message, isQuoted, prefix, command, type } = messageInfo;
 
   try {
+    const mediaType = isQuoted ? isQuoted.type : type;
+    if (mediaType !== "audio") {
+      return await reply(
+        m,
+        `⚠️ _Balas Audio dengan caption *${prefix + command}*_`
+      );
+    }
+
+    await sock.sendMessage(remoteJid, {
+      react: { text: "⏰", key: message.key },
+    });
+
+    // Download & Upload media
+    const media = isQuoted
+      ? await downloadQuotedMedia(message)
+      : await downloadMedia(message);
+
+    if (!media) {
+      throw new Error("Gagal mengunduh media.");
+    }
+
+    const mediaPath = path.join("tmp", media);
+    const baseDir = process.cwd(); // Menggunakan direktori kerja saat ini
+    const inputPath = path.join(baseDir, mediaPath); // File asli
+
     // Pastikan folder tmp ada
     if (!fs.existsSync(path.join(baseDir, "tmp"))) {
       fs.mkdirSync(path.join(baseDir, "tmp"), { recursive: true });
+    }
+
+    if (!fs.existsSync(inputPath)) {
+      throw new Error("File media tidak ditemukan setelah diunduh.");
     }
 
     const output = await convertAudioToCompatibleFormat(inputPath);
