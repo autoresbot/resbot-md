@@ -1,5 +1,6 @@
-import { reply } from '../../lib/utils.js';
-import { findUser, updateUser } from '../../lib/users.js';
+import { reply, extractNumber } from '../../lib/utils.js';
+import { findUser, updateUser, isOwner } from '../../lib/users.js';
+import config from '../../config.js';
 
 async function handle(sock, messageInfo) {
   const { m, prefix, command, content, mentionedJid, senderType } = messageInfo;
@@ -20,6 +21,15 @@ _gunakan fitur *ban* untuk memblokir user di grub ini saja_`,
     // Tentukan nomor target
     let targetNumber = (mentionedJid?.[0] || content).replace(/\D/g, '');
     const originalNumber = targetNumber;
+
+    const botNumber = extractNumber(config.phone_number_bot);
+    if (botNumber && botNumber === targetNumber) {
+      return await reply(m, `_⚠️ Tidak dapat block nomor bot._`);
+    }
+
+    if (isOwner(`${targetNumber}@s.whatsapp.net`)) {
+      return await reply(m, `_⚠️ Tidak dapat block nomor owner._`);
+    }
 
     // Ambil data user dari database
     const dataUsers = await findUser(originalNumber);
