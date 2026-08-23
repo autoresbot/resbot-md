@@ -1,5 +1,74 @@
 import axios from "axios";
+import dns from "dns";
+import net from "net";
 import { reply, isURL } from "../../lib/utils.js";
+
+function isBlockedHost(hostname) {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  return (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "metadata" ||
+    host.endsWith(".internal")
+  );
+}
+
+function isPrivateAddress(address) {
+  if (net.isIPv4(address)) {
+    const [a, b] = address.split(".").map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  const low = address.toLowerCase();
+  return (
+    low === "::" ||
+    low === "::1" ||
+    low.startsWith("fc") ||
+    low.startsWith("fd") ||
+    low.startsWith("fe80") ||
+    low.startsWith("::ffff:")
+  );
+}
+
+async function assertPublicUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error("URL tidak valid.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Hanya protokol http/https yang diizinkan.");
+  }
+
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
+
+  if (isBlockedHost(hostname)) {
+    throw new Error("Akses ke alamat internal tidak diizinkan.");
+  }
+
+  if (net.isIP(hostname)) {
+    if (isPrivateAddress(hostname)) {
+      throw new Error("Akses ke alamat internal tidak diizinkan.");
+    }
+    return;
+  }
+
+  const resolved = await dns.promises.lookup(hostname, { all: true });
+  if (resolved.some(({ address }) => isPrivateAddress(address))) {
+    throw new Error("Akses ke alamat internal tidak diizinkan.");
+  }
+}
 
 async function handle(sock, messageInfo) {
   const { m, remoteJid, message, prefix, command, content } = messageInfo;
@@ -15,6 +84,8 @@ async function handle(sock, messageInfo) {
         } https://autoresbot.com_`
       );
     }
+
+    await assertPublicUrl(content);
 
     // Mengirim reaksi loading
     await sock.sendMessage(remoteJid, {
