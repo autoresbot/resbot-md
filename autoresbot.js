@@ -103,7 +103,7 @@ async function processMessage(sock, messageInfo) {
     messageInfo;
 
   const isPremiumUsers = isPremiumUser(senderLid);
-  const isOwnerUsers = isOwner(senderLid);
+  const isOwnerUsers = isOwner(senderLid) || isOwner(sender);
 
   try {
     // ─── Handle Destination ──────────────────────────────────────────────
@@ -137,13 +137,14 @@ async function processMessage(sock, messageInfo) {
     let truncatedContent = fullText.length > 10 ? fullText.slice(0, 10) + '...' : fullText;
 
     const currentTime = Date.now();
-    const lastTime = lastMessageTime.get(remoteJid);
+    const rateLimitKey = senderLid || sender || remoteJid;
+    const lastTime = lastMessageTime.get(rateLimitKey);
     if (lastTime && currentTime - lastTime < config.rate_limit && prefix && !isOwnerUsers) {
       danger(pushName, `Rate limit : ${truncatedContent}`);
       return;
     }
     if (prefix) {
-      lastMessageTime.set(remoteJid, currentTime);
+      lastMessageTime.set(rateLimitKey, currentTime);
     }
 
     if (truncatedContent.trim() && prefix) {
