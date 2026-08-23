@@ -26,6 +26,10 @@ async function handle(sock, messageInfo) {
       ? await downloadQuotedMedia(message)
       : await downloadMedia(message);
 
+    if (!media) {
+      throw new Error("Gagal mengunduh media.");
+    }
+
     // Folder sementara di root project
     const tmpFolder = path.join(process.cwd(), "tmp");
     if (!fs.existsSync(tmpFolder)) fs.mkdirSync(tmpFolder, { recursive: true });
@@ -37,7 +41,6 @@ async function handle(sock, messageInfo) {
   
     // Nama file unik
     const inputPath = path.join(tmpFolder, `${uuidv4()}.mp4`);
-    const outputPath = path.join(tmpFolder, `${uuidv4()}.opus`);
 
     // Simpan buffer media ke inputPath
     const mediaBuffer = fs.readFileSync(mediaPath);
@@ -58,24 +61,27 @@ async function handle(sock, messageInfo) {
             },
             { quoted: message }
           );
+
+      await fs.unlink(inputPath).catch(() => {});
+      await fs.unlink(convertedPath).catch(() => {});
       return;
     } catch (err) {
       console.log("Konversi ke Opus gagal, melanjutkan dengan file asli.");
     }
 
-    // Kirim audio
+    // Kirim file asli bila konversi gagal
+    const originalBuffer = await fs.readFile(mediaPath);
     await sock.sendMessage(
       remoteJid,
       {
-        audio: { url: outputPath },
+        audio: originalBuffer,
         mimetype: "audio/mp4",
       },
       { quoted: message }
     );
 
     // Hapus file sementara
-    await fs.unlink(inputPath);
-    await fs.unlink(outputPath);
+    await fs.unlink(inputPath).catch(() => {});
   } catch (error) {
     console.error("Error in handler:", error);
     await sock.sendMessage(

@@ -44,7 +44,7 @@ async function handle(sock, messageInfo) {
 
     const outputImagePath = `tmp/tmp_flipx${Date.now()}.jpg`;
 
-    await sharp(mediaPath).flip().toFile(outputImagePath); // Vertikal
+    await sharp(mediaPath).flop().toFile(outputImagePath); // Horizontal (kiri-kanan)
 
     // Pastikan file hasil ada dan valid
     if (fs.existsSync(outputImagePath)) {

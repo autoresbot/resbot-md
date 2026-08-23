@@ -1,11 +1,45 @@
 const batasPeringatan = 3;
 
 import mess from "../../strings.js";
+import config from "../../config.js";
 import { getGroupMetadata } from "../../lib/cache.js";
 import { sendMessageWithMention, determineUser } from "../../lib/utils.js";
+import { isOwner } from "../../lib/users.js";
 
-// Warning list disimpan di memori (RAM)
+// Warning list disimpan di memori (RAM), key per grup agar hitungan
+// tidak tercampur antar grup.
 const warningList = {};
+
+function getWarningKey(remoteJid, userJid) {
+  return `${remoteJid}:${userJid}`;
+}
+
+function splitWarningKey(key) {
+  const idx = key.indexOf(":");
+  return idx === -1 ? [key, ""] : [key.slice(0, idx), key.slice(idx + 1)];
+}
+
+function isProtectedTarget(sock, userJid) {
+  const targetNumber = String(userJid).split("@")[0].replace(/\D/g, "");
+  if (!targetNumber) return true;
+
+  for (const jid of [sock?.user?.id, sock?.user?.lid]) {
+    const botNumber = String(jid || "")
+      .split("@")[0]
+      .split(":")[0]
+      .replace(/\D/g, "");
+    if (botNumber && botNumber === targetNumber) return true;
+  }
+
+  if (
+    /^\d+$/.test(config.phone_number_bot || "") &&
+    config.phone_number_bot === targetNumber
+  ) {
+    return true;
+  }
+
+  return isOwner(userJid);
+}
 
 async function handle(sock, messageInfo) {
   const {
@@ -56,14 +90,16 @@ async function handle(sock, messageInfo) {
     let mentions = [];
     let found = false;
 
-    for (const user in warningList) {
-      if (warningList[user] > 0) {
-        warningText += `👤 @${user.split("@")[0]}: ${
-          warningList[user]
-        }/${batasPeringatan} peringatan\n`;
-        mentions.push(user);
-        found = true;
-      }
+    for (const key in warningList) {
+      const count = warningList[key];
+      if (count <= 0) continue;
+
+      const [keyGroup, userJid] = splitWarningKey(key);
+      if (keyGroup !== remoteJid) continue;
+
+      warningText += `👤 @${userJid.split("@")[0]}: ${count}/${batasPeringatan} peringatan\n`;
+      mentions.push(userJid);
+      found = true;
     }
 
     if (!found) warningText = "✅ Tidak ada pengguna yang memiliki peringatan.";
@@ -94,8 +130,10 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    if (warningList[userToDelete]) {
-      delete warningList[userToDelete];
+    const deleteKey = getWarningKey(remoteJid, userToDelete);
+
+    if (warningList[deleteKey]) {
+      delete warningList[deleteKey];
       await sendMessageWithMention(
         sock,
         remoteJid,
@@ -132,10 +170,22 @@ async function handle(sock, messageInfo) {
 
     const whatsappJid = userToWarn;
 
-    try {
-      warningList[whatsappJid] = (warningList[whatsappJid] || 0) + 1;
+    if (isProtectedTarget(sock, whatsappJid)) {
+      return await sendMessageWithMention(
+        sock,
+        remoteJid,
+        `⚠️ _Tidak dapat memperingati @${whatsappJid.split("@")[0]}._`,
+        message,
+        senderType
+      );
+    }
 
-      if (warningList[whatsappJid] >= batasPeringatan) {
+    const warningKey = getWarningKey(remoteJid, whatsappJid);
+
+    try {
+      warningList[warningKey] = (warningList[warningKey] || 0) + 1;
+
+      if (warningList[warningKey] >= batasPeringatan) {
         await sendMessageWithMention(
           sock,
           remoteJid,
@@ -146,7 +196,7 @@ async function handle(sock, messageInfo) {
           senderType
         );
         await sock.groupParticipantsUpdate(remoteJid, [whatsappJid], "remove");
-        delete warningList[whatsappJid];
+        delete warningList[warningKey];
         return;
       }
 
@@ -154,7 +204,7 @@ async function handle(sock, messageInfo) {
         sock,
         remoteJid,
         `⚠️ @${whatsappJid.split("@")[0]} telah diperingati (${
-          warningList[whatsappJid]
+          warningList[warningKey]
         }/${batasPeringatan})`,
         message,
         senderType

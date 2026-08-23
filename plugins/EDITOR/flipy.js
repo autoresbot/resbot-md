@@ -42,9 +42,9 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    const outputImagePath = `tmp/tmp_flipx${Date.now()}.jpg`;
+    const outputImagePath = `tmp/tmp_flipy${Date.now()}.jpg`;
 
-    await sharp(mediaPath).flop().toFile(outputImagePath); // Vertikal
+    await sharp(mediaPath).flip().toFile(outputImagePath); // Vertikal (atas-bawah)
 
     // Pastikan file hasil ada dan valid
     if (fs.existsSync(outputImagePath)) {
