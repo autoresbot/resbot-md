@@ -7,20 +7,68 @@ import config from "../../config.js";
 import { textToAudio } from "../../lib/features.js";
 import { logCustom } from "../../lib/logger.js";
 import {
-  convertAudioToCompatibleFormat,
   convertAudioToOpus,
   generateUniqueFilename,
 } from "../../lib/utils.js";
+
+/**
+ * Ambil audio TTS. Utamakan /api/tts, kalau gagal baru fallback ke textToAudio.
+ * @param {string} text
+ * @returns {Promise<Buffer|null>}
+ */
+async function getVoiceBuffer(text) {
+  try {
+    const api = new ApiAutoresbot(config.APIKEY);
+    const buffer = await api.getBuffer("/api/tts", { text });
+    if (buffer?.length) return buffer;
+  } catch (err) {
+    console.warn("[VN] /api/tts gagal:", err.message);
+  }
+
+  try {
+    const buffer = await textToAudio(text);
+    if (buffer?.length) return buffer;
+  } catch (err) {
+    console.warn("[VN] fallback textToAudio gagal:", err.message);
+  }
+
+  return null;
+}
+
+/**
+ * Konversi ke opus (format asli VN WhatsApp).
+ * Konversi bersifat opsional: kalau gagal, audio asli tetap dipakai.
+ * @param {Buffer} buffer
+ * @returns {Promise<Buffer>}
+ */
+async function toOpus(buffer) {
+  const inputPath = path.join(process.cwd(), generateUniqueFilename());
+  let outputPath = null;
+
+  try {
+    await fs.writeFile(inputPath, buffer);
+    outputPath = await convertAudioToOpus(inputPath);
+    return await fs.readFile(outputPath);
+  } catch (err) {
+    console.warn("[VN] Konversi ke opus gagal, pakai audio asli:", err.message);
+    return buffer;
+  } finally {
+    await Promise.all(
+      [inputPath, outputPath]
+        .filter(Boolean)
+        .map((file) => fs.unlink(file).catch(() => {}))
+    );
+  }
+}
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command, isQuoted } =
     messageInfo;
 
-  const text =
-    content && content.trim() !== "" ? content : isQuoted?.text ?? null;
+  const text = content?.trim() || isQuoted?.text?.trim() || null;
 
   try {
-    if (!text || text.trim().length < 1) {
+    if (!text) {
       return await sock.sendMessage(
         remoteJid,
         {
@@ -37,27 +85,19 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    let bufferOriginal = await textToAudio(text);
+    const bufferOriginal = await getVoiceBuffer(text);
 
     if (!bufferOriginal) {
-      const api = new ApiAutoresbot(config.APIKEY);
-      bufferOriginal = await api.getBuffer("/api/tts", { text: text });
+      return await sock.sendMessage(
+        remoteJid,
+        { text: "_⚠️ Gagal mengubah teks menjadi suara. Coba lagi nanti._" },
+        { quoted: message }
+      );
     }
 
-    const inputPath = path.join(process.cwd(), generateUniqueFilename());
-    await fs.writeFile(inputPath, bufferOriginal);
+    const bufferFinal = await toOpus(bufferOriginal);
 
-    let bufferFinal = bufferOriginal; // Default menggunakan bufferOriginal
-
-    try {
-      const convertedPath = await convertAudioToOpus(inputPath);
-      bufferFinal = await fs.readFile(convertedPath);
-    } catch (err) {
-      // Konversi opsional: kalau gagal, kirim audio asli (bufferFinal default).
-      console.warn('[VN] Konversi ke opus gagal, pakai audio asli:', err.message);
-    }
-
-    await sock.sendMessage(
+    return await sock.sendMessage(
       remoteJid,
       {
         audio: bufferFinal,

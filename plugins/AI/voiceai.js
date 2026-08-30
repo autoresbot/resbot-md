@@ -4,13 +4,37 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 import { textToAudio } from "../../lib/features.js";
 import config from "../../config.js";
 import { logCustom } from "../../lib/logger.js";
+
 const api = new ApiAutoresbot(config.APIKEY);
+
+/**
+ * Ambil audio TTS. Utamakan /api/tts, kalau gagal baru fallback ke textToAudio.
+ * @param {string} text
+ * @returns {Promise<Buffer|null>}
+ */
+async function getVoiceBuffer(text) {
+  try {
+    const buffer = await api.getBuffer("/api/tts", { text });
+    if (buffer?.length) return buffer;
+  } catch (err) {
+    console.warn("[VOICEAI] /api/tts gagal:", err.message);
+  }
+
+  try {
+    const buffer = await textToAudio(text);
+    if (buffer?.length) return buffer;
+  } catch (err) {
+    console.warn("[VOICEAI] fallback textToAudio gagal:", err.message);
+  }
+
+  return null;
+}
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, prefix, command, content } = messageInfo;
 
   try {
-    if (!content.trim()) {
+    if (!content?.trim()) {
       return await sock.sendMessage(
         remoteJid,
         {
@@ -27,37 +51,33 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    // Memanggil API dengan penanganan kesalahan dan pengecekan respons
+    // Jawaban AI dibuat sesingkat mungkin agar aman untuk TTS
     const contentShort = `${content} dan tulis sesingkat mungkin`;
     const response = await api.get("/api/gemini", { text: contentShort });
 
-    if (response && response.data) {
-      //await sock.sendMessage(remoteJid, { text:response.data }, { quoted: message });
-
-      let bufferAudioResult;
-      try {
-        const bufferAudio = await textToAudio(response.data);
-        if (bufferAudio) {
-          bufferAudioResult = bufferAudio;
-        }
-      } catch {
-        const buffer = await api.getBuffer("/api/tts", { text: response.data });
-        bufferAudioResult = buffer;
-      }
-
-      return await sock.sendMessage(
-        remoteJid,
-        { audio: bufferAudioResult, mimetype: "audio/mp4" },
-        { quoted: message }
-      );
-    } else {
-      // Mengirim pesan default jika respons data kosong atau tidak ada
+    if (!response?.data) {
       return await sock.sendMessage(
         remoteJid,
         { text: "Maaf, tidak ada respons dari server." },
         { quoted: message }
       );
     }
+
+    const bufferAudio = await getVoiceBuffer(response.data);
+
+    if (!bufferAudio) {
+      return await sock.sendMessage(
+        remoteJid,
+        { text: "_⚠️ Gagal mengubah teks menjadi suara. Coba lagi nanti._" },
+        { quoted: message }
+      );
+    }
+
+    return await sock.sendMessage(
+      remoteJid,
+      { audio: bufferAudio, mimetype: "audio/mp4" },
+      { quoted: message }
+    );
   } catch (error) {
     logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
 

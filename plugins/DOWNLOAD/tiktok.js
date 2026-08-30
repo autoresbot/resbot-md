@@ -1,7 +1,10 @@
-import { tiktok } from "../../lib/scrape/tiktok.js";
 
 import { logCustom } from "../../lib/logger.js";
 import { extractLink, downloadToBuffer } from "../../lib/utils.js";
+
+import ApiAutoresbotModule from 'api-autoresbot';
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import config from '../../config.js';
 /**
  * Mengirim pesan dengan kutipan (quoted message)
  * @param {object} sock - Instance koneksi WhatsApp
@@ -59,19 +62,26 @@ async function handle(sock, messageInfo) {
     await sock.sendMessage(remoteJid, {
       react: { text: "⏰", key: message.key },
     });
+      const api = new ApiAutoresbot(config.APIKEY);
 
     // Memanggil API untuk mendapatkan data video TikTok
-    const response = await tiktok(validLink);
+     const response = await api.get('/api/downloader/tiktok', {
+        url: content,
+      });
+
+      if (!response || response.code !== 200 || !response.data) {
+        throw new Error('Fallback tidak mengembalikan data valid');
+      }
 
     // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(response.no_watermark, "mp4");
+    const audioBuffer = await downloadToBuffer(response.data.url, "mp4");
 
     // Mengirim video tanpa watermark dan caption
     await sock.sendMessage(
       remoteJid,
       {
         video: audioBuffer,
-        caption: response.title,
+        caption: response.data.title,
       },
       { quoted: message }
     );
