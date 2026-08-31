@@ -10,6 +10,9 @@ const IMAGE_BY_COMMAND = {
   bratbahlil: 'bahlil',
   bratcewek: 'cewek',
   bratanime: 'anime',
+  bratnailong: 'nailong',
+  bratdoraemon: 'doraemon',
+  bratmasha: 'masha',
 };
 
 /**
@@ -134,7 +137,7 @@ async function handle(sock, messageInfo) {
 
 export default {
   handle,
-  Commands: ['bratcewek', 'bratbahlil', 'bratanime'],
+  Commands: ['bratcewek', 'bratbahlil', 'bratanime','bratnailong','bratdoraemon','bratmasha'],
   OnlyPremium: false,
   OnlyOwner: false,
   limitDeduction: 1,
