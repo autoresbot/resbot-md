@@ -33,7 +33,7 @@ const ladders = {
   74: 93,
 };
 
-let pendingDelete = null;
+const pendingDelete = {}; // key per grup agar tidak saling menimpa antar grup
 
 // Fungsi kirim sticker
 async function kirimSticker(sock, remoteJid, namaFile, message) {
@@ -269,18 +269,18 @@ async function handle(sock, messageInfo) {
       );
 
       if (result) {
-        if (pendingDelete) {
+        if (pendingDelete[remoteJid]) {
           await sock.sendMessage(remoteJid, {
             delete: {
               remoteJid: remoteJid,
               fromMe: true,
-              id: pendingDelete,
+              id: pendingDelete[remoteJid],
               participant: undefined, // tidak perlu disertakan
             },
           });
         }
 
-        pendingDelete = result?.key?.id;
+        pendingDelete[remoteJid] = result?.key?.id;
       }
     } catch (err) {
       console.error(err);

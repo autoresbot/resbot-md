@@ -55,11 +55,12 @@ async function handle(sock, messageInfo) {
     const response = await api.get("/api/downloader/facebook", {
       url: content,
     });
-    // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(response.data[0], "mp4");
 
-    // Menangani respons API
-    if (response.code === 200 && response.data) {
+    // Menangani respons API sebelum mengunduh media
+    if (response.code === 200 && Array.isArray(response.data) && response.data.length > 0) {
+      // Download file ke buffer
+      const audioBuffer = await downloadToBuffer(response.data[0], "mp4");
+
       await sock.sendMessage(
         remoteJid,
         {

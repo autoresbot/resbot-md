@@ -1,5 +1,6 @@
 import { getGroupMetadata } from "../../lib/cache.js";
 import { getDb, safeJsonParse } from "../../lib/database.js";
+import mess from "../../strings.js";
 
 function getGroupSchedule(remoteJid) {
   try {
@@ -18,12 +19,24 @@ function getGroupSchedule(remoteJid) {
 }
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message } = messageInfo;
+  const { remoteJid, isGroup, message, sender } = messageInfo;
   if (!isGroup) return; // Only Grub
 
   try {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
+
+    const isAdmin = groupMetadata?.participants?.some(
+      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
+    );
+
+    if (!isAdmin) {
+      return await sock.sendMessage(
+        remoteJid,
+        { text: mess.general.isAdmin },
+        { quoted: message }
+      );
+    }
 
     const { openTime, closeTime } = getGroupSchedule(remoteJid);
 

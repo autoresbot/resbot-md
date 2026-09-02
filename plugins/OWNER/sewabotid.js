@@ -72,7 +72,7 @@ async function handle(sock, messageInfo) {
     // Proses penambahan sewa ke database
     await addSewa(linkGrub, {
       linkGrub: linkGrub,
-      start: hariini,
+      start: hariini(),
       expired: timestampExpiration,
     });
 

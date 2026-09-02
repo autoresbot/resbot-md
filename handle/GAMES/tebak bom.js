@@ -15,9 +15,9 @@ async function process(sock, messageInfo) {
     if (guessedNumber < 1 || guessedNumber > 9) return;
 
     if (guessedNumber === data.posisiBom) {
-      handleUserLoss(senderLid, data, sock, message, remoteJid);
+      await handleUserLoss(senderLid, data, sock, message, remoteJid);
     } else {
-      handleUserGuess(senderLid, guessedNumber, data, sock, message, remoteJid);
+      await handleUserGuess(senderLid, guessedNumber, data, sock, message, remoteJid);
     }
 
     return false; // Menghentikan plugin berikutnya

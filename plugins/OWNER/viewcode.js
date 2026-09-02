@@ -18,8 +18,11 @@ async function handle(sock, messageInfo) {
   const baseDir = path.resolve(process.cwd());
   const targetPath = path.resolve(baseDir, content);
 
-  // Proteksi agar tidak bisa keluar dari folder kerja
-  if (!targetPath.startsWith(baseDir)) {
+  // Proteksi agar tidak bisa keluar dari folder kerja.
+  // path.relative lebih ketat daripada startsWith (yang lolos untuk
+  // direktori sibling dengan prefix nama sama).
+  const relativePath = path.relative(baseDir, targetPath);
+  if (!relativePath || relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     return await reply(m, "_Akses file ditolak: path tidak valid._");
   }
 

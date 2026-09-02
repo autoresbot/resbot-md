@@ -6,12 +6,20 @@ import path from 'path';
 import mess from '../../strings.js';
 
 async function handle(sock, messageInfo) {
-  const { m, remoteJid, message, sender, prefix, command, type, isQuoted } = messageInfo;
+  const { m, remoteJid, message, sender, prefix, command, type, isQuoted, isGroup } = messageInfo;
 
   try {
+    if (!isGroup) {
+      return await sock.sendMessage(
+        remoteJid,
+        { text: mess.general.isGroup },
+        { quoted: message }
+      );
+    }
+
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata.participants;
+    const participants = groupMetadata?.participants || [];
     const isAdmin = participants.some(
       (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
     );

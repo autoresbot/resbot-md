@@ -42,7 +42,7 @@ _Fitur *blacklist* akan membuat user akan di kick di semua grub (wajib .on detec
       );
     }
 
-    if (isOwner(targetNumber)) {
+    if (isOwner(`${targetNumber}@s.whatsapp.net`)) {
       return await sock.sendMessage(
         remoteJid,
         { text: `⚠️ _Tidak dapat blacklist nomor owner_` },

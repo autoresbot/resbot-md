@@ -10,8 +10,8 @@
 //   const TELEGRAM_BOT_TOKEN = '123456789:AAE-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 //   const TELEGRAM_CHAT_ID   = '123456789';
 //
-const TELEGRAM_BOT_TOKEN = '8822823396:AAGwsrmOWZp9npz5tVkf591Y2JxrwioboSc';
-const TELEGRAM_CHAT_ID = '6398972009';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 // ════════════════════════════════════════════════════════════════════
 
 import FormData from 'form-data';

@@ -111,13 +111,15 @@ _Buat Pengguna dengan mengetik *.createuser*_`
 
     const serverName = `${username} - ${ram}`;
     const memory = isNaN(ram) ? 0 : 1024 * parseFloat(ram);
+    const cpuValue =
+      String(cpu).toLowerCase() === "unlimited" ? 0 : parseFloat(cpu);
 
     const resources = {
       memory,
       swap: 0,
       disk: config.PANEL.default_disk,
       io: 500,
-      cpu: config.PANEL.cpu_default,
+      cpu: isNaN(cpuValue) ? config.PANEL.cpu_default : cpuValue,
     };
 
     // Buat server
@@ -127,7 +129,7 @@ _Buat Pengguna dengan mengetik *.createuser*_`
       await saveServer();
     }
 
-    if (nowa) {
+    if (server && nowa) {
       // Tambahkan '@s.whatsapp.net' jika belum ada
       const remoteJid_User = nowa.endsWith("@s.whatsapp.net")
         ? nowa

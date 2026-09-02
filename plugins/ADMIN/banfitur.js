@@ -60,7 +60,7 @@ async function handle(sock, messageInfo) {
     await sendMessageWithMention(
       sock,
       remoteJid,
-      `❌ _Tidak dapat ban nomor_ @${whatsappJid.split("@")[0]}`,
+      `❌ _Tidak dapat ban fitur *${content}*_`,
       message,
       senderType
     );

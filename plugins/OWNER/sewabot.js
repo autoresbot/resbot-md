@@ -97,7 +97,7 @@ async function handle(sock, messageInfo) {
     // Proses penambahan sewa ke database
     await addSewa(res_linkgc, {
       linkGrub: linkGrub,
-      start: hariini,
+      start: hariini(),
       expired: timestampExpiration,
     });
 

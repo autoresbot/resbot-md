@@ -56,11 +56,11 @@ async function handle(sock, messageInfo) {
       url: content,
     });
 
-    // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(response.data[0], "mp4");
+    // Menangani respons API sebelum mengunduh media
+    if (response.code === 200 && Array.isArray(response.data) && response.data.length > 0) {
+      // Download file ke buffer
+      const audioBuffer = await downloadToBuffer(response.data[0], "mp4");
 
-    // Menangani respons API
-    if (response.code === 200 && response.data) {
       await sock.sendMessage(
         remoteJid,
         {

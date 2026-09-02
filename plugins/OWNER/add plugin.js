@@ -25,7 +25,11 @@ export default {
   }
 
   // Bagian pertama adalah nama perintah baru (newCommand)
-  let newCommand = parts[0];
+  let newCommand = path.basename(parts[0]).replace(/[^a-zA-Z0-9._-]/g, "");
+
+  if (!newCommand) {
+    return await reply(m, "_Nama plugin tidak valid._");
+  }
 
   // Periksa apakah newCommand tidak diakhiri dengan '.js'
   if (!newCommand.endsWith(".js")) {

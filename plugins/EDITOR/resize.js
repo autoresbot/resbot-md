@@ -25,11 +25,23 @@ async function validateMediaType(
 async function validateSizeInput(content, sock, remoteJid, message) {
   const [width, height] = content.split(" ").map(Number);
 
+  // Batas atas mencegah alokasi raster raksasa yang bisa menghabiskan memori
+  const MAX_DIMENSION = 8000;
+
   // Check for invalid or missing input
-  if (isNaN(width) || isNaN(height) || width < 1 || height < 1) {
+  if (
+    isNaN(width) ||
+    isNaN(height) ||
+    width < 1 ||
+    height < 1 ||
+    width > MAX_DIMENSION ||
+    height > MAX_DIMENSION
+  ) {
     await sock.sendMessage(
       remoteJid,
-      { text: "⚠️ _Masukkan ukuran yang valid. Contoh: .resize 100 200_" },
+      {
+        text: `⚠️ _Masukkan ukuran yang valid (1-${MAX_DIMENSION}). Contoh: .resize 100 200_`,
+      },
       { quoted: message }
     );
     return false;

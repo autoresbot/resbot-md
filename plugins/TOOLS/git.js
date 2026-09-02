@@ -34,7 +34,7 @@ async function handle(sock, messageInfo) {
     }
 
     let [, user, repo] = match;
-    repo = repo.replace(/.git$/, "");
+    repo = repo.replace(/\.git$/, "");
     const url = `https://api.github.com/repos/${user}/${repo}/zipball`;
 
     // Ambil nama file dari header respons

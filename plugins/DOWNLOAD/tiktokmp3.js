@@ -3,8 +3,9 @@ import { logCustom } from "../../lib/logger.js";
 import {
   forceConvertToM4a,
   extractLink,
-  downloadToBuffer,
 } from "../../lib/utils.js";
+import fs from "fs";
+import path from "path";
 
 /**
  * Mengirim pesan teks dengan quote
@@ -73,9 +74,11 @@ async function handle(sock, messageInfo) {
     let outputUrl = response.music;
 
     try {
-      // Konversi ke M4A jika memungkinkan
-      outputUrl = await forceConvertToM4a({ url: response.music });
-      const audioBuffer = await downloadToBuffer(outputUrl, "mp3");
+      // Konversi ke M4A jika memungkinkan.
+      // forceConvertToM4a mengembalikan path lokal (tmp/...), bukan URL HTTP,
+      // jadi file dibaca langsung dari disk.
+      const convertedPath = await forceConvertToM4a({ url: response.music });
+      const audioBuffer = fs.readFileSync(path.resolve(process.cwd(), convertedPath));
 
       await sock.sendMessage(
         remoteJid,
@@ -86,6 +89,8 @@ async function handle(sock, messageInfo) {
         },
         { quoted: message }
       );
+
+      fs.unlink(path.resolve(process.cwd(), convertedPath), () => {});
     } catch (conversionError) {
       await sock.sendMessage(
         remoteJid,

@@ -19,8 +19,13 @@ const reactLoading = (sock, jid, message) =>
   });
 
 const detectType = (url = '') => {
-  const ext = url.split('.').pop()?.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? 'image' : 'video';
+  try {
+    const pathname = new URL(url).pathname;
+    const ext = pathname.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? 'image' : 'video';
+  } catch {
+    return 'video';
+  }
 };
 
 const sendMedia = async (sock, jid, message, buffer, type) => {

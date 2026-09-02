@@ -50,7 +50,10 @@ async function process(sock, messageInfo) {
     const participants = groupMetadata?.participants || [];
 
     if (timeRemaining <= notificationMs && timeRemaining > 0) {
-      if (!notifiedGroups.has(remoteJid)) {
+      // Key per periode sewa: setelah renewal (expired baru), grup bisa
+      // menerima notifikasi lagi untuk periode berikutnya.
+      const notifKey = `${remoteJid}-${dataSewa.expired}`;
+      if (!notifiedGroups.has(notifKey)) {
         if (mess.handler.sewa_notif) {
           let warningMessage = mess.handler.sewa_notif.replace(
             "@date",
@@ -64,7 +67,7 @@ async function process(sock, messageInfo) {
           );
         }
 
-        notifiedGroups.add(remoteJid); // Tandai grup sebagai sudah menerima notifikasi
+        notifiedGroups.add(notifKey); // Tandai grup sebagai sudah menerima notifikasi
         return false;
       }
     } else if (timeRemaining <= 0) {

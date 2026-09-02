@@ -20,6 +20,7 @@ async function process(sock, messageInfo) {
         },
         { quoted: message },
       );
+      return false;
     }
     if (fullText.toLowerCase() == data.jawaban) {
       const hadiah = data.hadiah;
