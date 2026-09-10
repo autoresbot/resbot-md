@@ -1,0 +1,51 @@
+Update Resbot MD 5.4.0
+
+
+Fitur Perbaikan
+- migrasi dari baileys ke zapo-js
+- sesi lama otomatis dikonversi saat pertama jalan, tidak perlu pairing ulang
+- auth baileys dicadangkan otomatis ke folder session-baileys-backup-<tanggal>
+- perbaikan koneksi di Node 20 (WebSocket) dan kode pairing yang tidak muncul
+- validasi PAIRING_CODE saat start, langsung memberi tahu karakter yang salah
+  (0, I, O, U tidak boleh dipakai)
+- perbaikan bot tidak merespon sama sekali (pesan masuk terbaca lagi)
+- perbaikan tipe pesan salah baca, sebelumnya semua plugin ikut salah jalan
+- perbaikan deteksi admin, sebelumnya admin selalu ditolak "Hanya Untuk Admin"
+- perbaikan tag/mention: nomor tampil sebagai tag, bukan "@+225 xxx"
+- perbaikan kirim media tanpa mimetype (49 file terdampak)
+- perbaikan download media dari pesan yang di-reply
+- perbaikan error saat ada anggota keluar grup
+
+Perbaikan Fitur
+- .setppbot dan .setppgrub
+- .sewabot, .inspect, .addpremgrub, .tambahsewa
+- .creategrub
+- .swgc (caption sekarang apa adanya, tidak ditambah-tambah)
+- .allmenu
+- .listprem, .listblacklist, .listblock
+- .listmember, .listalluser, .listban, .listadmin
+- .ban, .unban, .warn, .promote, .demote
+- .clearchat dan .clearsesi (tidak lagi menghapus sesi bot)
+- .jpm dan .jpmtag, sebelumnya tidak terkirim ke grup mana pun
+- .owner menampilkan nama, bukan "Owner 1", "Owner 2"
+
+Menu
+- menu tidak lagi menampilkan command duplikat dari satu fitur
+- nama command di menu lebih jelas (contoh: caklontong, bukan cak)
+- 10 game tebak yang sebelumnya menyusut jadi satu entri kini tampil semua
+- plugin multi fitur tampil lengkap: anime, textpro, random, berita, brat,
+  ai image generator, panel
+- plugin bisa mengatur sendiri lewat MenuCommands: "all" atau ["a","b"]
+
+Config
+- tambahan OWNER_NAMES (opsional) untuk nama owner di .owner
+- config.js lama tetap jalan tanpa error
+
+Lainnya
+- notifikasi sewa hampir habis tidak lagi terkirim berulang kali
+- notifikasi sewa tetap tercatat walau bot restart
+- logging development di folder logs/dev (aktif saat MODE = development)
+- perbaikan otomatis better-sqlite3 saat install di panel pterodactyl
+
+Catatan
+- detail lengkap tiap perubahan ada di perubahan.md
