@@ -3,7 +3,7 @@ import { SLRcheckMessage } from '../lib/slr.js';
 import { findGroup, addGroup, isUserBlocked, isFiturBlocked, DEFAULT_FITUR } from '../lib/group.js';
 import { logWithTime, warning, logTracking } from '../lib/utils.js';
 import mess from '../strings.js';
-import { getGroupMetadata } from '../lib/cache.js';
+import { getGroupMetadata, pesertaAdalahAdmin } from '../lib/cache.js';
 import { createBoundedSet } from '../lib/boundedStore.js';
 import { logHandlerError } from '../lib/errorLogger.js';
 
@@ -82,9 +82,10 @@ async function process(sock, messageInfo) {
           const groupMetadata = await getGroupMetadata(sock, remoteJid);
           // FIX: participants validation - groupMetadata bisa null
           const participants = groupMetadata?.participants || [];
-          const isAdmin = participants.some(
-            (participant) => participant.id === mentionedJid[0] && participant.admin,
-          );
+          // Dicocokkan lewat semua bentuk identitas: di grup ber-alamat LID,
+          // `participant.id` berupa @lid sedangkan mention membawa nomor
+          // telepon, sehingga perbandingan `id === mention` selalu meleset.
+          const isAdmin = pesertaAdalahAdmin(participants, mentionedJid[0]);
           if (isAdmin) {
             logTracking(`User Handler - SLR Fitur on`);
             await sock.sendMessage(remoteJid, { text: isSlr }, { quoted: message });

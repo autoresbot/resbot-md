@@ -4,6 +4,7 @@ import { clearCache } from "../../lib/globalCache.js";
 import { resetUsers, resetOwners } from "../../lib/users.js";
 import { resetGroup } from "../../lib/group.js";
 import { resetAllTotalChat } from "../../lib/totalchat.js";
+import { resetAlarm } from "../../lib/alarm.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command } = messageInfo;
@@ -30,6 +31,7 @@ async function handle(sock, messageInfo) {
     resetOwners();
     resetGroup();
     resetAllTotalChat();
+    resetAlarm();
 
     clearCache();
 

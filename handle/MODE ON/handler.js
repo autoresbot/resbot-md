@@ -15,6 +15,7 @@ import { getGroupMetadata, findParticipantLatest } from '../../lib/cache.js';
 import {
   logWithTime,
   isUrlInText,
+  isUrlInTextSelainWa,
   toText,
   sendMessageWithMention,
   sendMessageWithMentionNotQuoted,
@@ -217,6 +218,9 @@ async function process(sock, messageInfo) {
         isAdmin,
         fullTextPreview: String(fullText).slice(0, 120),
         isUrl: isUrlInText(fullText),
+        // antilink & antilinkv2 memakai nilai INI, bukan `isUrl`: link grup
+        // dan saluran WhatsApp sengaja dilewatkan ke antilinkwa/antilinkch.
+        isUrlSelainWa: isUrlInTextSelainWa(fullText),
         isWhatsappLink,
         isWhatsappSaluran,
         fitur: {
@@ -257,7 +261,12 @@ async function process(sock, messageInfo) {
     }
 
     // Anti-link V2: Hapus pesan + kick pengguna
-    if (!isAdmin && fitur.antilinkv2 && isUrlInText(fullText)) {
+    //
+    // Link grup & saluran WhatsApp TIDAK dihitung di sini — keduanya punya
+    // penangan sendiri (antilinkwav2 / antilinkchv2). Sebelumnya antilink umum
+    // ikut menangkapnya, sehingga menyalakan antilink saja sudah membuat
+    // setelan antilinkwa/antilinkch tidak ada gunanya.
+    if (!isAdmin && fitur.antilinkv2 && isUrlInTextSelainWa(fullText)) {
       logWithTime('SYSTEM', `Deteksi fitur Anti-link V2`);
       await deleteMessage();
       await kickParticipant();
@@ -265,7 +274,8 @@ async function process(sock, messageInfo) {
     }
 
     // Anti-link: Hapus pesan jika URL terdeteksi
-    if (!isAdmin && fitur.antilink && isUrlInText(fullText)) {
+    // (kecuali link grup/saluran WhatsApp — lihat catatan di Anti-link V2)
+    if (!isAdmin && fitur.antilink && isUrlInTextSelainWa(fullText)) {
       logWithTime('SYSTEM', `Deteksi fitur antilink`);
       await deleteMessage();
       return false;

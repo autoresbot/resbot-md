@@ -1,130 +1,78 @@
-# 🛠️ Informasi Script
+# Resbot MD
+
+Bot WhatsApp berbasis plugin yang ringan dan mudah dikembangkan.
 
 ```plaintext
 ╔═════════════════════════════════╗
 ║ 🛠️ Informasi Script
 ╠═════════════════════════════════╣
-║ 📦 Version    : 5.4.0
+║ 📦 Version    : 5.4.1
 ║ 👨‍💻 Developer  : Azhari Creative
 ║ 🌐 Website    : autoresbot.com
 ║ 💻 GitHub     : github.com/autoresbot/resbot-md
 ╚═════════════════════════════════╝
 ```
 
-```javascript
-⚠️ Peringatan:
-SCRIPT INI TIDAK BOLEH DIPERJUALBELIKAN.
-[👉 autoresbot.com](https://autoresbot.com)
-```
+> ⚠️ Script ini **open source dan gratis**, TIDAK BOLEH DIPERJUALBELIKAN.
 
-# API USE from api.autoresbot.com
+## Fitur
 
-Dokumentasi penggunaan API dari **api.autoresbot.com** untuk integrasi ke dalam proyek Anda.
+Downloader, AI, sticker & maker, editor foto, game, anime, berita, islami,
+tools, panel Pterodactyl, push kontak, store, textpro, dan manajemen grup —
+semuanya tersusun rapi sebagai plugin di folder [plugins/](plugins/).
+
+## Kebutuhan
+
+- Node.js **20 ke atas**
+- API key dari [autoresbot.com](https://autoresbot.com) (untuk sebagian fitur)
 
 ## Instalasi
 
-Pastikan Anda sudah menginstal package `api-autoresbot` melalui npm:
-
 ```bash
-npm install api-autoresbot
+git clone https://github.com/autoresbot/resbot-md
+cd resbot-md
+npm install
+npm start
 ```
 
-## Menggunakan API
+Sebelum dijalankan, atur dulu [config.js](config.js):
 
-```javascript
-const response = await api.get('/api/random/zikir');
+| Pengaturan   | Keterangan                          |
+| ------------ | ----------------------------------- |
+| `NOMOR_BOT`  | Nomor WhatsApp bot (contoh `628xx`) |
+| `DATA_OWNER` | Nomor/LID pemilik bot               |
+| `APIKEY`     | API key dari autoresbot.com         |
+| `CONNECTION` | `pairing` atau `qr`                 |
+
+## Jalan di Panel Pterodactyl
+
+Script ini berjalan lancar di panel Pterodactyl (pakai **Docker Image Node.js 20**).
+Belum punya panel? Bisa beli di:
+
+- 🌐 [autoresbot.com](https://autoresbot.com)
+- 🌐 [panelbot.id](https://panelbot.id)
+
+## Struktur Folder
+
+```
+index.js      → entry point
+config.js     → semua pengaturan bot
+plugins/      → fitur bot (per kategori)
+handle/       → penanganan pesan sebelum masuk plugin
+lib/          → modul inti (koneksi, database, cache, utils)
+database/     → penyimpanan data & aset
+docs/         → dokumentasi teknis
 ```
 
-## Menggunakan API dengan Parameter
+## Dokumentasi
 
-```javascript
-const response = await api.get('/api/gemini', { text: content });
-```
+- [docs/architecture.md](docs/architecture.md) — alur kerja & struktur script
+- [docs/troubleshooting-panel.md](docs/troubleshooting-panel.md) — masalah umum di panel
+- [docs/snippets.md](docs/snippets.md) — contoh kode untuk membuat plugin
+- [catatan.txt](catatan.txt) — catatan perubahan tiap versi
 
-## Menggunakan API dengan response buffer
+## Kontak & Update
 
-```javascript
-const response = await api.getBuffer('/api/maker/attp2', { text: content });
-```
-
-## Menggunakan API untuk upload media sementara
-
-```javascript
-const response = await api.tmpUpload(mediaPath);
-```
-
-# =======================
-
-## Mengirim pesan teks
-
-```javascript
-await sock.sendMessage(remoteJid, { text: 'Example' });
-await sock.sendMessage(remoteJid, { text: 'Example' }, { quoted: message });
-```
-
-## Mengirim gambar dari URL dan buffer
-
-```javascript
-await sock.sendMessage(remoteJid, {
-  image: { url: 'https://example.com/tes.jpg' },
-  caption: `Caption`,
-});
-await sock.sendMessage(
-  remoteJid,
-  { image: { url: 'https://example.com/tes.jpg' }, caption: `Caption` },
-  { quoted: message },
-);
-
-await sock.sendMessage(remoteJid, { image: buffer, caption: `Caption` });
-await sock.sendMessage(remoteJid, { image: buffer, caption: `Caption` }, { quoted: message });
-```
-
-## Mengirim audio dari URL dan buffer
-
-```javascript
-await sock.sendMessage(
-  remoteJid,
-  { audio: { url: '' }, mimetype: 'audio/mp4' },
-  { quoted: message },
-);
-await sock.sendMessage(remoteJid, { audio: bufferAudio }, { quoted: message });
-```
-
-## Menambahkan reaction pada pesan
-
-```javascript
-await sock.sendMessage(remoteJid, { react: { text: '⏰', key: message.key } });
-```
-
-## Mengirim pesan terusan
-
-```javascript
-sock.sendMessage(
-  remoteJid,
-  {
-    text: `Ini adalah contoh pesan terusan`,
-    contextInfo: {
-      forwardingScore: 7,
-      isForwarded: true,
-      mentionedJid: [remoteJid],
-    },
-  },
-  { quoted: message },
-);
-```
-
-## Menggunakan cache untuk metadata grup
-
-```javascript
-import { getGroupMetadata, getProfilePictureUrl, groupFetchAllParticipating } from './cache.js';
-
-getGroupMetadata(sock, remoteJid);
-```
-
-## Handler untuk proses handle (folder handle)
-
-```javascript
-return false; // Menghentikan proses handler tanpa lanjut ke plugin
-return true; // Menghentikan proses handler dan lanjut ke plugin
-return; // Lanjut ke handler lain dan plugin
-```
+- 📢 Saluran WhatsApp: https://www.whatsapp.com/channel/0029VaDSRuf05MUekJbazP1D
+- 🌐 Website: https://autoresbot.com
+- 📧 Email: autoresbot@gmail.com

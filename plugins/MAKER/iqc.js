@@ -1,111 +1,124 @@
-import ApiAutoresbotModule from "api-autoresbot";
+import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
-import config from "../../config.js";
-import mess from "../../strings.js";
+import FileType from 'file-type';
+
+import config from '../../config.js';
+import mess from '../../strings.js';
+import { getProfilePictureUrl } from '../../lib/cache.js';
 
 // Fungsi untuk buat angka acak dalam range
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Fungsi untuk format waktu "HH:mm"
-function randomTime(baseDate = new Date()) {
-  let hour = randomInt(0, 23);
-  let minute = randomInt(0, 59);
-  return `${hour.toString().padStart(2, "0")}:${minute
-    .toString()
-    .padStart(2, "0")}`;
+/** Waktu WIB "HH:mm" untuk jam status bar & gelembung chat. */
+function getWaktuIndonesia() {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date());
 }
 
 async function handle(sock, messageInfo) {
-  const {
-    remoteJid,
-    message,
-    sender,
-    content,
-    isQuoted,
-    prefix,
-    command,
-    pushName,
-  } = messageInfo;
+  const { remoteJid, message, sender, content, isQuoted, prefix, command, pushName } = messageInfo;
+
+  /**
+   * Kirim yang BOLEH gagal tanpa menggagalkan perintah.
+   *
+   * Penting untuk reaksi ⏰ dan pesan error: kalau sesi sedang putus, zapo
+   * melempar "sendMessage requires registered meJid". Dulu error itu keluar
+   * dari blok catch (saat mencoba MENGIRIM pesan errornya) sehingga lolos ke
+   * processMessage dan yang terlihat di console cuma "Kesalahan di
+   * processMessage: sendMessage requires registered meJid".
+   */
+  const kirimAman = async (isi, opsi) => {
+    try {
+      return await sock.sendMessage(remoteJid, isi, opsi);
+    } catch (error) {
+      console.log(`[IQC] Gagal mengirim: ${error?.message || error}`);
+      return null;
+    }
+  };
 
   try {
-    const text =
-      content && content.trim() !== "" ? content : isQuoted?.text ?? null;
+    const text = content && content.trim() !== '' ? content : (isQuoted?.text ?? null);
 
     // Validasi input konten
     if (!text) {
-      await sock.sendMessage(
-        remoteJid,
-        {
-          text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-            prefix + command
-          } resbot*_`,
-        },
-        { quoted: message }
+      await kirimAman(
+        { text: `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${prefix + command} resbot*_` },
+        { quoted: message },
       );
       return;
     }
 
-    // Kirimkan pesan loading dengan reaksi emoji
-    await sock.sendMessage(remoteJid, {
-      react: { text: "⏰", key: message.key },
-    });
+    // Reaksi loading — murni kosmetik, jangan sampai menggagalkan perintah.
+    await kirimAman({ react: { text: '⏰', key: message.key } });
 
-    // Fungsi format waktu WIB (GMT+7)
-    function getWaktuIndonesia() {
-      const date = new Date();
-      // Ubah ke GMT+7
-      const options = { timeZone: "Asia/Jakarta", hour12: false };
-      const formatter = new Intl.DateTimeFormat("id-ID", {
-        ...options,
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      return formatter.format(date);
+    // Foto profil: dipakai sebagai avatar di kartu chat. getProfilePictureUrl
+    // sudah punya fallback sendiri (foto default) bila WhatsApp menolak atau
+    // pengguna memang tidak punya foto, tapi kegagalan tak terduga di sini pun
+    // tidak boleh membatalkan perintah — kartunya masih masuk akal tanpa avatar.
+    let ppUser = null;
+    try {
+      ppUser = await getProfilePictureUrl(sock, sender);
+    } catch (error) {
+      console.log(`[IQC] Foto profil tidak terambil, lanjut tanpa avatar: ${error?.message}`);
     }
 
-    // Di dalam handle():
-    const chatTime = getWaktuIndonesia();
-    const statusBarTime = getWaktuIndonesia();
-
-    // Random value
-    const batteryLevel = randomInt(5, 100).toString(); // antara 5% - 100%
+    const waktu = getWaktuIndonesia();
 
     // Buat instance API dan ambil data dari endpoint
     const api = new ApiAutoresbot(config.APIKEY);
-    const buffer = await api.getBuffer("/api/maker/iqc", {
+    const buffer = await api.getBuffer('/api/maker/iqc', {
       text,
-      chatTime,
-      statusBarTime,
-      batteryLevel,
-      operator: "Telkomsel 4G",
-      language: "ID", // ID & EN
+      chatTime: waktu,
+      statusBarTime: waktu,
+      batteryLevel: randomInt(5, 100).toString(),
+      operator: 'Telkomsel 4G',
+      language: 'ID', // ID & EN
+      name: pushName || '',
+      ...(ppUser ? { pp: ppUser } : {}),
     });
 
-    await sock.sendMessage(
-      remoteJid,
+    // Server bisa membalas JSON error dengan status 200; tanpa pemeriksaan ini
+    // isinya dikirim sebagai "gambar" dan WhatsApp menolaknya dengan pesan yang
+    // tidak menjelaskan apa-apa.
+    const tipe = buffer ? await FileType.fromBuffer(buffer) : null;
+    if (!tipe?.mime?.startsWith('image/')) {
+      const pesanServer = buffer ? buffer.toString('utf8').slice(0, 200) : 'balasan kosong';
+      console.log(`[IQC] Balasan API bukan gambar: ${pesanServer}`);
+      await kirimAman(
+        { text: '_⚠️ Server sedang tidak bisa membuat gambar iqc. Coba lagi nanti._' },
+        { quoted: message },
+      );
+      return;
+    }
+
+    await kirimAman(
       {
         image: buffer,
         caption: `${mess.general.success}`,
       },
-      { quoted: message }
+      { quoted: message },
     );
   } catch (error) {
     console.log(error);
-    const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\nError: ${error.message}`;
-    await sock.sendMessage(
-      remoteJid,
-      { text: errorMessage },
-      { quoted: message }
+    await kirimAman(
+      {
+        text: `Maaf, terjadi kesalahan saat memproses permintaan Anda. Coba lagi nanti.\n\nError: ${error.message}`,
+      },
+      { quoted: message },
     );
   }
 }
 
 export default {
   handle,
-  Commands: ["iqc"],
+  Commands: ['iqc'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

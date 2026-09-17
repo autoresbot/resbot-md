@@ -12,7 +12,7 @@ import { isOwner, isPremiumUser } from '../lib/users.js';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { proto } from 'zapo-js';
+import { buatThumbnailJpeg } from '../lib/zapo/mediaProcessor.js';
 
 /* =========================
    CONFIG
@@ -184,6 +184,11 @@ async function sendInteractiveMenu(sock, jid, quoted, pushName, text, imageBuffe
       mimetype: 'image/jpeg',
     });
 
+    // Pesan ini dirakit sendiri sebagai proto mentah, jadi zapo tidak
+    // menjalankan media processor-nya. Tanpa jpegThumbnail, header menu
+    // tampil kosong sampai penerima menekan unduh.
+    const jpegThumbnail = await buatThumbnailJpeg(imageBuffer);
+
     const imageMessage = {
       url: uploaded.url,
       directPath: uploaded.directPath,
@@ -193,39 +198,45 @@ async function sendInteractiveMenu(sock, jid, quoted, pushName, text, imageBuffe
       fileLength: uploaded.fileLength,
       mediaKeyTimestamp: uploaded.mediaKeyTimestamp,
       mimetype: uploaded.mimetype ?? 'image/jpeg',
+      ...(jpegThumbnail ? { jpegThumbnail } : {}),
     };
 
     // create message
+    //
+    // Ditulis sebagai objek biasa, BUKAN `proto.X.create({...})`. Encoder proto
+    // zapo ditulis tangan dan tidak punya helper `create()` ala protobufjs
+    // (Baileys) — memanggilnya melempar "create is not a function", sehingga
+    // menu interaktif ini selalu gagal diam-diam dan jatuh ke fallback.
     const content = {
       viewOnceMessage: {
         message: {
-          interactiveMessage: proto.Message.InteractiveMessage.create({
-              body: proto.Message.InteractiveMessage.Body.create({
-                text,
-              }),
+          interactiveMessage: {
+            body: {
+              text,
+            },
 
-              footer: proto.Message.InteractiveMessage.Footer.create({
-                text: `Resbot ${global.version}`,
-              }),
+            footer: {
+              text: `Resbot ${global.version}`,
+            },
 
-              header: proto.Message.InteractiveMessage.Header.create({
-                title: `Halo ${pushName}`,
-                hasMediaAttachment: true,
-                imageMessage,
-              }),
+            header: {
+              title: `Halo ${pushName}`,
+              hasMediaAttachment: true,
+              imageMessage,
+            },
 
-              nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                buttons: [
-                  {
-                    name: 'cta_url',
-                    buttonParamsJson: JSON.stringify({
-                      display_text: 'Join Channel',
-                      url: GROUP_LINK,
-                    }),
-                  },
-                ],
-              }),
-          }),
+            nativeFlowMessage: {
+              buttons: [
+                {
+                  name: 'cta_url',
+                  buttonParamsJson: JSON.stringify({
+                    display_text: 'Join Channel',
+                    url: GROUP_LINK,
+                  }),
+                },
+              ],
+            },
+          },
         },
       },
     };

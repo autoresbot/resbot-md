@@ -1,6 +1,9 @@
-import { tiktokSearch } from "../../lib/scrape/tiktok.js";
 import { logCustom } from "../../lib/logger.js";
 import { downloadToBuffer } from "../../lib/utils.js";
+
+import ApiAutoresbotModule from "api-autoresbot";
+const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
+import config from "../../config.js";
 
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
   await sock.sendMessage(remoteJid, { text }, { quoted: message });
@@ -27,18 +30,29 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
+    // Inisialisasi API
+    const api = new ApiAutoresbot(config.APIKEY);
+
     // Memanggil API untuk mendapatkan data video TikTok
-    const response = await tiktokSearch(content);
+    const response = await api.get("/api/search/tiktoksearch", {
+      text: content,
+    });
+
+    const result = response?.data || response;
+
+    if (!result || !result.no_watermark) {
+      throw new Error("API tidak mengembalikan data valid");
+    }
 
     // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(response.no_watermark, "mp4");
+    const audioBuffer = await downloadToBuffer(result.no_watermark, "mp4");
 
     // Mengirim video tanpa watermark dan caption
     await sock.sendMessage(
       remoteJid,
       {
         video: audioBuffer,
-        caption: response.title,
+        caption: result.title,
       },
       { quoted: message }
     );

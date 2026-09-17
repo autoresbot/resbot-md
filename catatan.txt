@@ -1,51 +1,199 @@
-Update Resbot MD 5.4.0
+Update Resbot MD 5.4.1
 
 
-Fitur Perbaikan
-- migrasi dari baileys ke zapo-js
-- sesi lama otomatis dikonversi saat pertama jalan, tidak perlu pairing ulang
-- auth baileys dicadangkan otomatis ke folder session-baileys-backup-<tanggal>
-- perbaikan koneksi di Node 20 (WebSocket) dan kode pairing yang tidak muncul
-- validasi PAIRING_CODE saat start, langsung memberi tahu karakter yang salah
-  (0, I, O, U tidak boleh dipakai)
-- perbaikan bot tidak merespon sama sekali (pesan masuk terbaca lagi)
-- perbaikan tipe pesan salah baca, sebelumnya semua plugin ikut salah jalan
-- perbaikan deteksi admin, sebelumnya admin selalu ditolak "Hanya Untuk Admin"
-- perbaikan tag/mention: nomor tampil sebagai tag, bukan "@+225 xxx"
-- perbaikan kirim media tanpa mimetype (49 file terdampak)
-- perbaikan download media dari pesan yang di-reply
-- perbaikan error saat ada anggota keluar grup
+Perbaikan Sticker
+- sticker sekarang bisa disimpan penerima tanpa premium
+  (sebelumnya ikut terkirim penanda "sticker AI", dan WhatsApp melarang
+   sticker AI disimpan ke koleksi)
+- ukuran sticker mengikuti standar WhatsApp 512x512, sebelumnya 320x320
+- sticker animasi (webp) tidak lagi gagal kirim dan animasinya tetap jalan
+- id paket sticker kini unik per packname/author, sebelumnya sama semua
+  sehingga pengelompokan paket di WhatsApp kacau
+- berlaku untuk semua fitur sticker, bukan cuma .bratdeluxe
+  (.brat, .brat2, .brat3, .bratcustom, .bratimage, .bratvid, .sticker, dll)
 
-Perbaikan Fitur
-- .setppbot dan .setppgrub
-- .sewabot, .inspect, .addpremgrub, .tambahsewa
-- .creategrub
-- .swgc (caption sekarang apa adanya, tidak ditambah-tambah)
-- .allmenu
-- .listprem, .listblacklist, .listblock
-- .listmember, .listalluser, .listban, .listadmin
-- .ban, .unban, .warn, .promote, .demote
-- .clearchat dan .clearsesi (tidak lagi menghapus sesi bot)
-- .jpm dan .jpmtag, sebelumnya tidak terkirim ke grup mana pun
-- .owner menampilkan nama, bukan "Owner 1", "Owner 2"
+Perbaikan Info Grup
+- .inspect sebelumnya menampilkan semua data undefined, sekarang normal
+  (Name, Desc, Owner, Created, Size, ID)
+- .inspect kolom Desc kini menampilkan deskripsi grup, sebelumnya salah
+  menampilkan tanggal
+- .sewabot dan .tambahsewa sebelumnya menyimpan sewa sebagai "undefined@g.us",
+  sehingga .ceksewa di grup aslinya tidak menemukan data dan notifikasi masa
+  sewa tidak pernah jalan
+- .addpremgrub sebelumnya tidak menemukan grup yang dimaksud
 
-Menu
-- menu tidak lagi menampilkan command duplikat dari satu fitur
-- nama command di menu lebih jelas (contoh: caklontong, bukan cak)
-- 10 game tebak yang sebelumnya menyusut jadi satu entri kini tampil semua
-- plugin multi fitur tampil lengkap: anime, textpro, random, berita, brat,
-  ai image generator, panel
-- plugin bisa mengatur sendiri lewat MenuCommands: "all" atau ["a","b"]
+Perbaikan Status Online
+- bot sekarang selalu tampil "Aktif" di menu Perangkat Tertaut,
+  sebelumnya selalu terlihat tidak aktif
+- status online dijaga otomatis selama bot jalan (disegarkan tiap 10 menit)
+  dan langsung dipulihkan setiap kali bot reconnect
+- bisa dimatikan lewat ALWAYS_ONLINE = false di config.js bila ingin bot
+  tidak terlihat online
 
-Config
-- tambahan OWNER_NAMES (opsional) untuk nama owner di .owner
-- config.js lama tetap jalan tanpa error
+Perbaikan Sticker Animasi (.bratdeluxe dkk)
+- sticker animasi kini terkirim persis seperti hasil aslinya dari API,
+  sebelumnya muncul border/latar putih tambahan yang tidak ada di aslinya
+- penyebabnya: saat nama paket & author ditempel, berkas sticker ditulis
+  ulang dan penanda transparansinya ikut hilang
+- sekarang gambarnya tidak diutak-atik sama sekali, hanya nama paketnya
+  yang ditambahkan
+- berlaku untuk semua sticker animasi, bukan cuma .bratdeluxe
 
-Lainnya
-- notifikasi sewa hampir habis tidak lagi terkirim berulang kali
-- notifikasi sewa tetap tercatat walau bot restart
-- logging development di folder logs/dev (aktif saat MODE = development)
-- perbaikan otomatis better-sqlite3 saat install di panel pterodactyl
+Perbaikan Preview Gambar & Video
+- gambar/video yang dikirim bot kini punya preview kecil yang langsung
+  terlihat, sebelumnya kotaknya kosong/abu-abu sampai ditekan unduh
+- berlaku untuk semua fitur yang mengirim gambar atau video, termasuk
+  .menu dan .allmenu
+- menu interaktif (.menu / .allmenu dengan tombol Join Channel) sekarang
+  benar-benar jalan; sebelumnya selalu gagal diam-diam dan turun ke
+  tampilan gambar biasa
+
+Perbaikan Auto Read
+- AUTO_READ kini bekerja di GRUP juga (centang biru), sebelumnya hanya
+  jalan di chat pribadi walau setelannya sudah true
+- penyebabnya: tanda "sudah dibaca" untuk grup harus menyebutkan pengirim
+  pesannya, dan bagian itu belum dikirim sehingga diabaikan WhatsApp
+- kalau tanda baca gagal dikirim, pesannya tetap diproses seperti biasa
+  (dulu command ikut batal jalan)
+- catatan: centang biru tetap tidak muncul bila "Laporan dibaca" di
+  pengaturan privasi WhatsApp nomor bot dimatikan
+
+Perbaikan Deteksi Admin Grup
+- user yang baru dijadikan admin langsung terbaca sebagai admin,
+  sebelumnya masih dianggap user biasa sampai kurang lebih 1 jam
+- begitu juga sebaliknya: admin yang diturunkan langsung kehilangan
+  akses fitur admin
+- penyebabnya: data admin di memori tidak ikut berubah karena nomor
+  pada pemberitahuan grup dan nomor tersimpan berbeda bentuk
+- pengecekan admin sekarang mencocokkan semua bentuk nomor anggota,
+  jadi grup jenis baru (@lid) ikut terbaca benar
+- kalau ada anggota yang tetap tidak dikenali, data grup diambil ulang
+  otomatis, bukan dibiarkan basi
+
+Perbaikan Antilink
+- antilink sekarang menangkap semua link KECUALI link grup WhatsApp
+  (chat.whatsapp.com) dan link saluran (whatsapp.com/channel)
+- dua jenis link itu memang sudah punya fitur sendiri: antilinkwa dan
+  antilinkch, jadi tidak ikut dihapus antilink biasa
+- kalau satu pesan memuat link grup DAN link lain, link lainnya tetap
+  kena antilink
+- berlaku juga untuk antilinkv2 (hapus + kick), yang pasangannya adalah
+  antilinkwav2 dan antilinkchv2
+- link wa.me tetap dihitung link biasa (yang ditangani antilinkwa hanya
+  link undangan grup)
+
+Fitur Baru: Alarm Grup (menu admin)
+- .addalarm untuk membuat pesan otomatis yang dikirim tiap hari pada
+  jam tertentu (khusus admin grup / owner)
+- format: .addalarm nama | pesan | jam | opsi
+  contoh: .addalarm pagi | Selamat pagi semua! | 06:00 | --tagall
+- opsi tag: kosong = pesan biasa, --tagall = tag semua anggota,
+  --hidetag = tag semua tapi daftarnya disembunyikan
+- jam memakai format 24 jam WIB, boleh ditulis 06:00, 6:00, atau 06.00
+- urutannya bebas: jam dikenali dari bentuknya dan opsi boleh ditaruh
+  di mana saja, termasuk di baris terpisah
+- .alarm untuk melihat daftar alarm grup: satu baris per alarm
+  (nomor, nama, jam, dan ikon mode tag) tanpa isi pesannya
+- .delalarm untuk menghapus, bisa pakai nama (.delalarm pagi),
+  nomor (.delalarm 1), atau semua sekaligus (.delalarm all)
+- nama alarm yang sama akan menimpa alarm lama, maksimal 20 per grup
+- alarm tetap tersimpan setelah bot restart dan dijadwalkan ulang
+  otomatis saat bot tersambung
+
+Perbaikan .del
+- .del sekarang bisa menghapus pesan anggota, sebelumnya hanya berhasil
+  untuk pesan bot sendiri
+- kalau bot belum jadi admin, bot memberi tahu dengan jelas bahwa pesan
+  anggota tidak bisa dihapus (bukan diam saja)
+- kalau penghapusan gagal, alasannya ikut ditampilkan, tidak lagi
+  "silakan coba lagi"
+- pengecekan admin ikut diperbaiki agar benar di grup jenis baru (@lid)
+
+Perbaikan .iqc & Error "sendMessage requires registered meJid"
+- .iqc tidak lagi gagal total saat foto profil tidak bisa diambil,
+  gambarnya tetap dibuat dan dikirim
+- kalau server balas bukan gambar, bot memberi tahu dengan jelas
+  (dulu dikirim apa adanya lalu ditolak WhatsApp tanpa penjelasan)
+- reaksi ⏰ yang gagal terkirim tidak lagi membatalkan perintah
+- pesan masuk yang tiba saat bot sedang putus/menyambung ulang kini
+  dilewati, penyebab error "sendMessage requires registered meJid"
+  yang muncul di console
 
 Catatan
+- untuk sewa yang didaftarkan sebelum update ini, cek ulang dengan .ceksewa
+  di grupnya. Bila tidak terbaca, daftarkan ulang dengan .sewabot
 - detail lengkap tiap perubahan ada di perubahan.md
+
+Fitur .tiktoksearch pindah ke API Autoresbot
+- pencarian TikTok (.tiktoksearch / .ttsearch / .tts) tidak lagi memakai
+  scraper sendiri, sekarang menembak API resmi Autoresbot
+  (/api/search/tiktoksearch) memakai APIKEY dari config, sama seperti .ssweb
+- kalau API balas data kosong, bot memberi tahu dengan jelas
+  (dulu error mentah karena data tidak ada)
+
+Perbaikan Antiforward (link saluran masih lolos)
+- kiriman/teruskan dari SALURAN (channel) kini ikut terdeteksi. Sebelumnya
+  lolos karena WhatsApp tidak menandainya sebagai "pesan terusan" biasa,
+  hanya menitipkan info salurannya saja
+- pesan terusan di grup yang memakai "pesan sementara" (ephemeral) dan
+  pesan sekali lihat kini juga terdeteksi, dulu lolos
+- pesan terusan yang hanya membawa hitungan terusan (tanpa penanda) ikut
+  tertangkap
+- membalas/mengutip pesan terusan TIDAK dianggap meneruskan, jadi tidak
+  kena hapus salah sasaran
+- berlaku untuk .antiforward maupun .antiforward2 (yang ikut kick)
+
+Perbaikan .reset tidak menghapus database alarm
+- .reset sekarang ikut menghapus seluruh alarm (.addalarm) di semua grup.
+  Sebelumnya tabel alarm satu-satunya yang terlewat, jadi alarm lama tetap
+  ada walau database sudah direset
+- jadwalnya juga ikut dibatalkan saat itu juga, bukan cuma datanya dihapus.
+  Dulu kalau cuma barisnya yang hilang, alarm lama masih bisa berbunyi
+  sampai bot direstart
+
+Perbaikan .bratdeluxe (garis kecil di atas teks)
+- garis/serpihan tipis yang muncul tepat di atas teks pada stiker
+  .bratdeluxe sudah hilang
+- penyebabnya dari animasi stiker itu sendiri: tiap gerakan hanya
+  menggambar ulang sebagian kotak, dan potongan gambar lama di luar kotak
+  itu tidak pernah terhapus sehingga tertinggal di layar
+- sekarang tampilan akhir stiker digambar ulang sepenuh bidang, jadi sisa
+  gambar lama pasti tertimpa. Animasinya sendiri tidak berubah
+- stiker animasi lain tidak ikut terpengaruh: yang tidak bermasalah
+  dilewati apa adanya, dan animasi yang gambarnya memang menumpuk
+  bertahap sengaja tidak disentuh supaya tidak malah terhapus
+- proses tambahan ini butuh sekitar 0,5-1,3 detik untuk stiker animasi
+- noda/titik samar di pinggir dan di bawah teks (sisa gerakan sebelumnya)
+  ikut hilang, bukan cuma garis yang di atas teks
+- gambar akhir stiker disimpan tanpa kompresi berkurang, supaya tidak
+  muncul riak abu-abu samar di sekeliling teks. Ukuran stiker hanya
+  bertambah sekitar 2 KB
+
+Fitur Baru: .nulis
+- ketik .nulis lalu teksnya, bot mengubah teks itu jadi gambar tulisan
+  tangan di kertas bergaris
+- bisa juga dengan membalas sebuah pesan, isinya otomatis dipakai
+- tekan enter untuk pindah baris, hasilnya ikut pindah baris di kertas
+- maksimal 1000 karakter. Kalau kelebihan, bot memberi tahu jumlah
+  karakternya sekarang, bukan diam atau error
+
+Varian Baru Brat: .bratcomic .bratbubble .bratneon .bratword .bratglitch
+- lima gaya brat baru, cara pakainya sama persis dengan .bratdeluxe
+  (ketik perintahnya lalu teksnya, atau balas sebuah pesan)
+- semuanya sudah muncul di menu MAKER
+- CATATAN PENTING: kelima gaya ini BELUM aktif di server API (masih
+  balasan "tidak ditemukan"). Perintahnya sudah siap dan akan langsung
+  jalan begitu server menyediakannya
+- selama belum aktif, bot menjawab dengan jelas bahwa fiturnya belum
+  tersedia dan menyarankan .bratdeluxe, bukan pesan error teknis
+
+README Dirapikan
+- README.md sebelumnya isinya cuma contoh potongan kode untuk developer,
+  tidak menjelaskan bot ini apa dan cara memasangnya
+- sekarang ringkas dan langsung ke inti: fitur, kebutuhan, cara install,
+  pengaturan wajib di config.js, struktur folder, dan link dokumentasi
+- ditambahkan info bahwa script bisa jalan di panel Pterodactyl beserta
+  saran tempat membeli panel: autoresbot.com dan panelbot.id
+- ditambahkan link saluran WhatsApp resmi untuk info update
+- contoh kode developer (sendMessage, API, cache, handler) dipindah
+  konteksnya ke docs, README tidak lagi dipenuhi potongan kode

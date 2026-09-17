@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.0
+║ 📦 Version   : 5.4.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -47,6 +47,9 @@ const lastMessageTime = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 const lastSent_participantUpdate = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 // Throttle log "Destination handle only" agar tidak membanjiri console.
 const destinationNoticeAt = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
+
+/** Penanda log 'sesi belum siap' supaya console tidak dibanjiri. */
+const sessionNoticeAt = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 const pluginsPath = path.join(process.cwd(), 'plugins');
 let plugins = [];
 
@@ -122,6 +125,20 @@ async function processMessage(sock, messageInfo) {
       if (!lastNotice || Date.now() - lastNotice > 60_000) {
         destinationNoticeAt.set(remoteJid, Date.now());
         logWithTime('SYSTEM', `Destination handle only - ${config.bot_destination} chat`);
+      }
+      return;
+    }
+
+    // Sesi yang sedang putus/reconnect TIDAK bisa mengirim apa pun: zapo
+    // melempar "sendMessage requires registered meJid" begitu ada balasan
+    // dikirim. Pesan yang terlanjur masuk sebelum putus akan menabrak error itu
+    // di tengah plugin — termasuk saat plugin mencoba mengirim pesan errornya
+    // sendiri, sehingga di console cuma terlihat "Kesalahan di processMessage".
+    if (typeof sock.sessionReady === 'function' && !sock.sessionReady()) {
+      const lastNotice = sessionNoticeAt.get(remoteJid);
+      if (!lastNotice || Date.now() - lastNotice > 60_000) {
+        sessionNoticeAt.set(remoteJid, Date.now());
+        logWithTime('SYSTEM', 'Sesi belum siap kirim pesan - pesan masuk dilewati');
       }
       return;
     }

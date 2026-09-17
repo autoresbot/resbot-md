@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.0
+║ 📦 Version   : 5.4.1
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -29,8 +29,8 @@ const CONNECTION = 'pairing'; // qr atau pairing
 // Contoh DITOLAK: 'RESBOTMD' (ada O), 'AZHARI12' (ada I), 'RESB0TMD' (ada 0)
 const PAIRING_CODE = '';
 const OWNER_NAME = 'Autoresbot';
-const NOMOR_BOT = ''; // 628xx nomor wa - 6285124002201, 6282254050481
-const DESTINATION = 'both'; // group , private, both
+const NOMOR_BOT = '628xx'; // 628xx nomor wa - 6285124002201, 6282254050481
+const DESTINATION = 'group'; // group , private, both
 const APIKEY = ''; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
 const SIMILARITY = true; // Pencarian kemiripan command (true, false)
@@ -54,10 +54,11 @@ const OWNER_NAMES = {
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
-const AUTO_READ = false; // jika true (setiap chat akan di baca/centang 2 biru)
+const AUTO_READ = true; // jika true (setiap chat akan di baca/centang 2 biru)
 const AUTO_BACKUP = false; // jika true (setiap restart server, data backup di kirimkan ke wa owner);
 const MIDNIGHT_RESTART = false; // Restart setiap jam 12 malam
 const PRESENCE_UPDATE = ''; // unavailable, available, composing, recording, paused
+const ALWAYS_ONLINE = true; // jika true (bot selalu tampil "aktif" di Perangkat Tertaut)
 const TYPE_WELCOME = '1'; // 1, 2, 3, 4, 5, 6 text dan random
 const BG_WELCOME2 = 'https://api.autoresbot.com/api/maker/bg-default';
 
@@ -110,6 +111,7 @@ const config = {
   autoread: AUTO_READ,
   autobackup: AUTO_BACKUP,
   PresenceUpdate: PRESENCE_UPDATE,
+  always_online: ALWAYS_ONLINE,
   typewelcome: TYPE_WELCOME,
   bgwelcome2: BG_WELCOME2,
   midnight_restart: MIDNIGHT_RESTART,
