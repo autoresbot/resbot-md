@@ -1,22 +1,28 @@
-import { findAbsen, updateAbsen, createAbsen } from "../../lib/absen.js";
+import { findAbsen, updateAbsen, createAbsen, sudahAbsen } from "../../lib/absen.js";
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message, sender } = messageInfo;
+  const { remoteJid, isGroup, message, sender, senderLid } = messageInfo;
   if (!isGroup) return; // Only Grub
 
   try {
     const data = await findAbsen(remoteJid);
     let textNotif;
 
+    // Disimpan sebagai LID supaya sama dengan identitas peserta grup; kalau
+    // LID tidak ada, nomor HP tetap dipakai seperti versi lama.
+    const identitas = senderLid || sender;
+
     if (data) {
       // Jika sudah ada absen
-      // Cek apakah sender sudah absen
-      if (data.member.includes(sender)) {
+      // Cek lewat NOMOR, bukan string mentah: absen lama tersimpan sebagai
+      // nomor HP sedangkan sekarang LID — tanpa ini satu orang bisa absen
+      // dua kali.
+      if (sudahAbsen(data.member, sender, senderLid)) {
         textNotif = "⚠️ _Absen aja terus_ _Anda sudah absen hari ini!_";
       } else {
         // Tambahkan sender ke daftar member yang absen
         const updateData = {
-          member: [...data.member, sender],
+          member: [...data.member, identitas],
         };
         await updateAbsen(remoteJid, updateData);
         textNotif = "✅ _Absen berhasil!_";
@@ -24,7 +30,7 @@ async function handle(sock, messageInfo) {
     } else {
       // Pertama kali absen
       const insertData = {
-        member: [sender],
+        member: [identitas],
       };
       await createAbsen(remoteJid, insertData);
       textNotif = "✅ _Absen berhasil!_";

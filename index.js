@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.1
+║ 📦 Version   : 5.4.2
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -15,7 +15,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 */
 // ─── Import modul internal via path relatif ───────────
 import './lib/version.js';
-import { checkAndInstallModules, clearDirectory } from './lib/utils.js';
+import { checkAndInstallModules, clearDirectory, warning } from './lib/utils.js';
 
 console.log(`[✔] Start App ...`);
 
@@ -100,6 +100,14 @@ if (major < 20) {
       'extract-zip',
     ]);
 
+    // Module dashboard dicek terpisah: kalau gagal diinstal, bot tetap jalan
+    // (dashboard saja yang dilewati).
+    try {
+      await checkAndInstallModules(['express@^5.1.0']);
+    } catch (error) {
+      warning('Dashboard', `Gagal menginstal express: ${error.message}`);
+    }
+
     try {
       const { applyUpdateIfExists } = await import('./plugins/OWNER/update.js');
 
@@ -115,6 +123,12 @@ if (major < 20) {
 
     const { start_app } = await import('./lib/startup.js');
     await start_app();
+
+    // Dashboard web dijalankan paling akhir (menunggu bot terhubung) dan
+    // terpisah dari bot: kegagalan apa pun di sini tidak menghentikan bot.
+    import('./dashboard/index.js')
+      .then(({ startDashboard }) => startDashboard())
+      .catch((err) => warning('Dashboard', `Tidak dijalankan: ${err.message}`));
   } catch (err) {
     console.error('Error dalam proses start_app:', err.message);
     logError(err, { plugin: 'process', command: 'start_app' });

@@ -1,199 +1,433 @@
-Update Resbot MD 5.4.1
+Update Resbot MD 5.4.2
+
+Perbaikan .backup, .backuptele & backup otomatis
+- error "Media upload failed on all hosts" tidak lagi muncul mentah. Kalau
+  upload ke server media WhatsApp ditolak, bot mencoba ulang 3x (jeda 5, 15,
+  dan 30 detik) sambil mengambil server media baru dulu
+- sebelum diupload, file backup diperiksa dulu: ada / tidak kosong / tidak
+  melebihi 90 MB. Kalau kebesaran, bot langsung memberitahu supaya folder
+  tmp/ dan logs/ dikosongkan, atau pakai .backuptele
+- isi zip lebih ramping: node_modules di dalam folder lain (mis. dashboard/)
+  dan file .zip lama tidak ikut dibackup lagi
+- laporan .backup sekarang merinci nomor mana yang berhasil menerima, mana
+  yang gagal beserta alasannya, dan nomor mana yang dilewati
+- setiap pesan gagal kini menyebut TAHAP (konfigurasi / buat zip / periksa
+  file / siapkan tujuan / upload), PENYEBAB, dan SOLUSI-nya
+
+Keamanan pengiriman backup di WhatsApp (cegah banned)
+- nomor tujuan diperiksa dulu ke WhatsApp; nomor yang tidak terdaftar
+  dilewati, jadi tidak ada pengiriman ke target yang salah
+- nomor owner yang ditulis dua kali (atau sama dengan nomor bot) hanya
+  dikirimi satu kali
+- ada jeda acak 5-12 detik antar nomor, dan jumlah tujuan dibatasi 10 nomor
+  per backup supaya tidak terlihat seperti blast
+- kalau satu nomor gagal, nomor lain tetap dikirimi
+
+Backup Telegram (.backuptele)
+- token & chat id pindah ke config.js (TELEGRAM_BOT_TOKEN dan
+  TELEGRAM_CHAT_ID), tidak lagi diisi di dalam file plugin
+- kalau belum diisi, bot menampilkan panduan lengkap cara membuat bot di
+  @BotFather dan cara mengambil chat id
+- token/chat id yang salah format langsung ditolak dengan keterangan jelas,
+  tanpa menunggu proses zip selesai
+- koneksi ke Telegram diuji DULU sebelum file zip dibuat, jadi kalau token
+  tidak valid atau chat tidak ditemukan, kegagalannya diketahui seketika
+- kalau berhasil, bot menyebutkan nama chat/grup tujuannya
+
+Backup otomatis (AUTO_BACKUP)
+- kegagalan backup otomatis kini dilaporkan ke WhatsApp owner (satu nomor
+  saja, supaya aman), dulu hanya lewat di log server
+- ada opsi baru AUTO_BACKUP_TELEGRAM di config.js: bila true, hasil backup
+  otomatis juga dikirim ke Telegram
+- siklus backup tidak akan tumpang tindih kalau backup sebelumnya masih
+  berjalan
 
 
-Perbaikan Sticker
-- sticker sekarang bisa disimpan penerima tanpa premium
-  (sebelumnya ikut terkirim penanda "sticker AI", dan WhatsApp melarang
-   sticker AI disimpan ke koleksi)
-- ukuran sticker mengikuti standar WhatsApp 512x512, sebelumnya 320x320
-- sticker animasi (webp) tidak lagi gagal kirim dan animasinya tetap jalan
-- id paket sticker kini unik per packname/author, sebelumnya sama semua
-  sehingga pengelompokan paket di WhatsApp kacau
-- berlaku untuk semua fitur sticker, bukan cuma .bratdeluxe
-  (.brat, .brat2, .brat3, .bratcustom, .bratimage, .bratvid, .sticker, dll)
+Perbaikan Sticker (penyimpanan panel penuh / ENOSPC)
+- sebelumnya setiap sticker yang dikirim meninggalkan satu file sisa di
+  folder sementara sistem dan tidak pernah dihapus. Lama-lama penyimpanan
+  panel penuh, lalu muncul error "ENOSPC: no space left on device"
+- yang paling cepat kena adalah sticker animasi (.bratdeluxe, .bratcomic,
+  .bratbubble, .bratneon, .bratword, .bratglitch) karena filenya paling
+  besar, sementara .brat biasa masih jalan
+- sekarang file sticker langsung dihapus setelah terkirim, dan sisa
+  konversi yang gagal di tengah jalan juga ikut dibersihkan
+- berlaku untuk semua fitur sticker (.sticker, .brat, .qc, .smeme, dll)
+- panel yang sudah terlanjur penuh: cukup restart server satu kali setelah
+  update, sesudah itu tidak menumpuk lagi
 
-Perbaikan Info Grup
-- .inspect sebelumnya menampilkan semua data undefined, sekarang normal
-  (Name, Desc, Owner, Created, Size, ID)
-- .inspect kolom Desc kini menampilkan deskripsi grup, sebelumnya salah
-  menampilkan tanggal
-- .sewabot dan .tambahsewa sebelumnya menyimpan sewa sebagai "undefined@g.us",
-  sehingga .ceksewa di grup aslinya tidak menemukan data dan notifikasi masa
-  sewa tidak pernah jalan
-- .addpremgrub sebelumnya tidak menemukan grup yang dimaksud
+Perbaikan .snakes (sering "Gagal mengambil gambar papan dari api")
+- gambar papan kini dicoba sampai 3x (jeda 1 & 2 detik) sebelum menyerah,
+  jadi gangguan jaringan sesaat tidak langsung bikin gagal
+- kalau tetap gagal, PERMAINAN TIDAK BERHENTI: hasil lemparan dadu, posisi,
+  dan giliran berikutnya tetap diumumkan dalam bentuk teks
+- pesan gagalnya kini menyebut alasannya (mis. "Server sedang sibuk"),
+  dulu hanya "Gagal mengambil gambar papan dari api." tanpa keterangan
 
-Perbaikan Status Online
-- bot sekarang selalu tampil "Aktif" di menu Perangkat Tertaut,
-  sebelumnya selalu terlihat tidak aktif
-- status online dijaga otomatis selama bot jalan (disegarkan tiap 10 menit)
-  dan langsung dipulihkan setiap kali bot reconnect
-- bisa dimatikan lewat ALWAYS_ONLINE = false di config.js bila ingin bot
-  tidak terlihat online
+Perbaikan .sewabot, .tambahsewa, .sewabotid (sewa tercatat padahal gagal)
+- sebelumnya kalau bot GAGAL masuk grup, kegagalannya diabaikan diam-diam
+  lalu sewa TETAP tercatat di database. Akibatnya ada data sewa untuk grup
+  yang botnya tidak ada di dalamnya
+- sekarang sewa hanya dicatat setelah bot benar-benar berada di grup itu.
+  Kalau gagal, bot menjawab "Sewa TIDAK dicatat"
+- alasan gagalnya disebutkan: bot pernah dikeluarkan/diblokir, link sudah
+  tidak berlaku, link tidak valid, grup penuh, butuh persetujuan admin,
+  atau server tidak membalas
+- .tambahsewa tidak lagi memperpanjang sewa kalau bot sudah tidak di grup
+- .sewabotid tidak lagi mencatat sewa untuk ID grup yang botnya tidak ada
+  di dalamnya (dulu tetap menjawab "Bot Sudah Bergabung"), dan sekarang
+  menampilkan nama grupnya
+- kalau bot memang sudah jadi anggota, sewa tetap bisa dibuat seperti biasa
 
-Perbaikan Sticker Animasi (.bratdeluxe dkk)
-- sticker animasi kini terkirim persis seperti hasil aslinya dari API,
-  sebelumnya muncul border/latar putih tambahan yang tidak ada di aslinya
-- penyebabnya: saat nama paket & author ditempel, berkas sticker ditulis
-  ulang dan penanda transparansinya ikut hilang
-- sekarang gambarnya tidak diutak-atik sama sekali, hanya nama paketnya
-  yang ditambahkan
-- berlaku untuk semua sticker animasi, bukan cuma .bratdeluxe
+Perbaikan .ping
+- sebelumnya .ping <apa saja> sering gagal dengan pesan "Maaf, terjadi
+  kesalahan saat melakukan ping" tanpa penjelasan apa pun
+- sekarang bot menyebut alasannya: domain tidak ditemukan, koneksi ditolak,
+  timeout, DNS bermasalah, sertifikat SSL kedaluwarsa, atau HTTP sekian
+- ada batas waktu 10 detik, jadi tidak menggantung lama
+- .ping <domain> kini benar-benar mengetes domain yang diketik. Dulu isinya
+  diabaikan: .ping tiktok.com tetap menembak google.com lalu melaporkan
+  google sebagai hasilnya
+- .ping tanpa isi menampilkan lama bot aktif & jeda pesan (dulu selalu
+  menampilkan angka ~0.000003 s yang tidak berarti apa-apa)
 
-Perbaikan Preview Gambar & Video
-- gambar/video yang dikirim bot kini punya preview kecil yang langsung
-  terlihat, sebelumnya kotaknya kosong/abu-abu sampai ditekan unduh
-- berlaku untuk semua fitur yang mengirim gambar atau video, termasuk
-  .menu dan .allmenu
-- menu interaktif (.menu / .allmenu dengan tombol Join Channel) sekarang
-  benar-benar jalan; sebelumnya selalu gagal diam-diam dan turun ke
-  tampilan gambar biasa
+Perbaikan .setopengc & .setclosegc (bisa pakai teks sendiri)
+- sekarang jam & teks diatur sekaligus:
+  .setopengc 23:10                    -> pakai teks default
+  .setopengc 23:10 Grup sudah dibuka  -> pakai teks sendiri
+  .setopengc off                      -> hapus jadwalnya
+- sama untuk .setclosegc
+- teksnya bisa memakai variabel: @group, @size, @desc, @time, @date, @day,
+  @greeting. Contoh: .setopengc 07:00 Selamat @greeting anggota @group
+- balasan bot menampilkan jam + teks yang akan dipakai, jadi langsung
+  kelihatan benar atau tidak
+- keduanya tidak lagi menolak admin di grup dengan ID baru (LID)
 
-Perbaikan Auto Read
-- AUTO_READ kini bekerja di GRUP juga (centang biru), sebelumnya hanya
-  jalan di chat pribadi walau setelannya sudah true
-- penyebabnya: tanda "sudah dibaca" untuk grup harus menyebutkan pengirim
-  pesannya, dan bagian itu belum dikirim sehingga diabaikan WhatsApp
-- kalau tanda baca gagal dikirim, pesannya tetap diproses seperti biasa
-  (dulu command ikut batal jalan)
-- catatan: centang biru tetap tidak muncul bila "Laporan dibaca" di
-  pengaturan privasi WhatsApp nomor bot dimatikan
+Fitur Baru: .silent (hapus pesan + abaikan anggota tertentu)
+- .silent @user            -> silent 30 menit (default)
+- .silent @user 45m        -> silent 45 menit
+- .silent @user 2h Toxic   -> silent 2 jam, dengan alasan
+- .silent @user permanent Spam Chat -> silent selamanya
+- bisa juga dengan membalas pesan targetnya: .silent 1d Spam
+- format durasi: m (menit), h (jam), d (hari), permanent/perm/forever/0
+- .unsilent @user  -> batalkan
+- .listsilent      -> daftar yang sedang di-silent + sisa waktunya
+- selama di-silent: setiap pesan orang itu DIHAPUS bot, dan semua
+  command-nya DIABAIKAN (game, AFK, autoai, list, dll ikut diam)
+- masa silent berakhir otomatis, tidak perlu di-unsilent manual
+- khusus admin grup/owner. Admin grup & owner tidak bisa di-silent
+- bot harus jadi admin grup supaya bisa menghapus pesan. Kalau bot bukan
+  admin, pesannya tidak terhapus tapi tetap diabaikan
 
-Perbaikan Deteksi Admin Grup
-- user yang baru dijadikan admin langsung terbaca sebagai admin,
-  sebelumnya masih dianggap user biasa sampai kurang lebih 1 jam
-- begitu juga sebaliknya: admin yang diturunkan langsung kehilangan
-  akses fitur admin
-- penyebabnya: data admin di memori tidak ikut berubah karena nomor
-  pada pemberitahuan grup dan nomor tersimpan berbeda bentuk
-- pengecekan admin sekarang mencocokkan semua bentuk nomor anggota,
-  jadi grup jenis baru (@lid) ikut terbaca benar
-- kalau ada anggota yang tetap tidak dikenali, data grup diambil ulang
-  otomatis, bukan dibiarkan basi
+Fitur Baru: .autodelwelcome & .autodelleft (hapus otomatis pesan sapaan)
+- pesan welcome/left bisa dihapus otomatis setelah sekian waktu, biar grup
+  tidak penuh sapaan
+- .autodelwelcome 10s / 30s / 1m / 5m -> atur durasi
+- .autodelwelcome off  -> matikan
+- .autodelwelcome cek  -> lihat status
+- sama untuk .autodelleft
+- maksimal 60 menit. Tanpa satuan dianggap detik (mis. .autodelwelcome 90)
+- berlaku untuk semua tampilan (teks, gambar template, foto/video sendiri)
+- catatan: kalau bot restart sebelum waktunya, pesan itu tidak jadi terhapus
 
-Perbaikan Antilink
-- antilink sekarang menangkap semua link KECUALI link grup WhatsApp
-  (chat.whatsapp.com) dan link saluran (whatsapp.com/channel)
-- dua jenis link itu memang sudah punya fitur sendiri: antilinkwa dan
-  antilinkch, jadi tidak ikut dihapus antilink biasa
-- kalau satu pesan memuat link grup DAN link lain, link lainnya tetap
-  kena antilink
-- berlaku juga untuk antilinkv2 (hapus + kick), yang pasangannya adalah
-  antilinkwav2 dan antilinkchv2
-- link wa.me tetap dihitung link biasa (yang ditangani antilinkwa hanya
-  link undangan grup)
+Perbaikan .setwelcome & .setleft (lebih mudah + bisa foto/video sendiri)
+- CUKUP balas foto/video/stiker sambil mengetik perintahnya, bot otomatis
+  memakainya. Tidak perlu mengetik kata "foto" atau "video":
+  .setwelcome Selamat datang @name   (sambil membalas foto/video/stiker)
+  .setleft Selamat jalan @name       (sambil membalas foto/video/stiker)
+- stiker diam otomatis diubah jadi gambar, stiker GERAK otomatis diubah
+  jadi video (diputar berulang seperti GIF)
+- pilihan tampilan lain:
+  .setwelcome text <teks>                      -> hanya teks
+  .setwelcome template <teks>                  -> gambar welcome (baru)
+  .setwelcome template <1-7/random> <teks>     -> template lama
+  .setleft text <teks> / .setleft template <teks>
+- BARU: pesan perpisahan (.setleft) kini bisa bergambar juga — sebelumnya
+  hanya teks. Ada gambar GOODBYE otomatis berisi foto profil & nama
+- teks boleh dikosongkan saat ganti tampilan, teks lama tetap dipakai
+- cara lama (.setwelcome Selamat datang @name tanpa media) tetap berfungsi:
+  hanya mengganti teksnya, tampilan tidak berubah
+- .setwelcome / .setleft tanpa isi menampilkan panduan + daftar variabel
+- .teswelcome bisa diketik tanpa angka, dan .tesleft (baru) menampilkan
+  pesan perpisahan sesuai setelan yang sedang dipakai
+- video biasa dikirim sebagai video (ada suara, tidak berulang), GIF tetap
+  dikirim sebagai GIF. Sebelumnya semua video ikut jadi GIF
+- kalau gambar gagal dibuat atau filenya hilang, teksnya tetap dikirim
+  (dulu bisa tidak muncul sama sekali)
+- PENTING: dulu welcome/left DIAM TOTAL kalau teksnya belum pernah diisi,
+  walaupun fitur sudah .on dan tampilan sudah diatur (padahal .teswelcome /
+  .tesleft tetap tampil sehingga terlihat normal). Sekarang bot memakai teks
+  bawaan kalau belum diatur
+- saat beberapa orang masuk/keluar berbarengan, semuanya kini disapa.
+  Dulu hanya orang pertama, sisanya terbuang karena batas 3 detik per grup
+- keduanya tidak lagi menolak admin di grup dengan ID baru (LID)
 
-Fitur Baru: Alarm Grup (menu admin)
-- .addalarm untuk membuat pesan otomatis yang dikirim tiap hari pada
-  jam tertentu (khusus admin grup / owner)
-- format: .addalarm nama | pesan | jam | opsi
-  contoh: .addalarm pagi | Selamat pagi semua! | 06:00 | --tagall
-- opsi tag: kosong = pesan biasa, --tagall = tag semua anggota,
-  --hidetag = tag semua tapi daftarnya disembunyikan
-- jam memakai format 24 jam WIB, boleh ditulis 06:00, 6:00, atau 06.00
-- urutannya bebas: jam dikenali dari bentuknya dan opsi boleh ditaruh
-  di mana saja, termasuk di baris terpisah
-- .alarm untuk melihat daftar alarm grup: satu baris per alarm
-  (nomor, nama, jam, dan ikon mode tag) tanpa isi pesannya
-- .delalarm untuk menghapus, bisa pakai nama (.delalarm pagi),
-  nomor (.delalarm 1), atau semua sekaligus (.delalarm all)
-- nama alarm yang sama akan menimpa alarm lama, maksimal 20 per grup
-- alarm tetap tersimpan setelah bot restart dan dijadwalkan ulang
-  otomatis saat bot tersambung
+Fitur Baru & Perbaikan Absen
+- .resetabsen (baru) -> admin/owner bisa mengosongkan absen hari ini tanpa
+  menunggu pergantian hari
+- sebelumnya .listabsen & .listnoabsen sering menolak admin dengan pesan
+  "Perintah ini Hanya Untuk Admin" walaupun dia benar-benar admin
+- sebelumnya orang yang sudah absen masih ikut muncul di .listnoabsen, dan
+  bisa absen dua kali. Penyebabnya absen disimpan dengan nomor HP sementara
+  anggota grup dikenali dengan ID baru (LID)
+- data absen lama tetap terbaca, tidak perlu absen ulang
+- owner sekarang juga bisa memakai .listabsen, .listnoabsen, .resetabsen
 
-Perbaikan .del
-- .del sekarang bisa menghapus pesan anggota, sebelumnya hanya berhasil
-  untuk pesan bot sendiri
-- kalau bot belum jadi admin, bot memberi tahu dengan jelas bahwa pesan
-  anggota tidak bisa dihapus (bukan diam saja)
-- kalau penghapusan gagal, alasannya ikut ditampilkan, tidak lagi
-  "silakan coba lagi"
-- pengecekan admin ikut diperbaiki agar benar di grup jenis baru (@lid)
+Perbaikan Balasan Dobel (AFK dll)
+- sebelumnya bot kadang membalas dua kali untuk satu pesan. Penyebabnya
+  pesan yang sama dikirim ulang oleh WhatsApp saat koneksi tersendat, lalu
+  diproses bot sebagai dua pesan berbeda
+- sekarang pesan yang sama tidak diproses dua kali. Berlaku untuk semua
+  fitur, bukan hanya AFK
+- khusus AFK: status AFK dimatikan lebih dulu sebelum balasan dikirim, jadi
+  dua chat yang dikirim beruntun tetap dibalas sekali
+- .hidetag di grup besar tidak lagi membuat data user baru untuk setiap
+  orang yang di-tag
 
-Perbaikan .iqc & Error "sendMessage requires registered meJid"
-- .iqc tidak lagi gagal total saat foto profil tidak bisa diambil,
-  gambarnya tetap dibuat dan dikirim
-- kalau server balas bukan gambar, bot memberi tahu dengan jelas
-  (dulu dikirim apa adanya lalu ditolak WhatsApp tanpa penjelasan)
-- reaksi ⏰ yang gagal terkirim tidak lagi membatalkan perintah
-- pesan masuk yang tiba saat bot sedang putus/menyambung ulang kini
-  dilewati, penyebab error "sendMessage requires registered meJid"
-  yang muncul di console
+Fitur Baru: .acc / .unacc (bot hanya aktif di grup yang diizinkan)
+- mulai versi ini bot DIAM di semua grup: tidak membalas command dan tidak
+  menjalankan fitur apa pun (antilink, welcome, list, game, notif sholat,
+  buka/tutup grup otomatis, alarm, dll), sampai owner mengaktifkannya
+- .acc -> ketik di grup untuk mengaktifkan bot di grup itu
+- .unacc -> ketik di grup untuk menonaktifkannya lagi
+- bisa juga dari chat pribadi dengan menyebut grupnya:
+  .acc 120363xxxxxxxxx@g.us  atau  .acc 3 (nomor dari .listacc)
+- .listacc -> daftar SEMUA grup yang diikuti bot, ditandai ✅ aktif /
+  ❌ belum, lengkap dengan nomor urut & ID grup
+- .accall -> aktifkan semua grup sekaligus
+- .unaccall -> nonaktifkan semua grup. Grup sewa sengaja dilewati; kalau
+  ingin ikut dimatikan ketik .unaccall sewa
+- owner tetap bisa memakai bot di grup mana pun (termasuk untuk .acc)
+- chat pribadi tidak terpengaruh
+- terhubung dengan sewa: grup yang disewakan (.tambahsewa / .sewabot)
+  otomatis aktif, dan kembali diam saat sewa habis atau dihapus
+- grup yang sudah punya sewa sebelum update otomatis aktif, grup lainnya
+  perlu di-.acc satu per satu oleh owner
+- untuk pengguna baru: selama DATA_OWNER di config masih kosong, command
+  .id bisa dipakai siapa pun (termasuk di grup yang belum di-.acc). Balasan
+  .id menampilkan ID kamu beserta cara mengisinya ke DATA_OWNER. Setelah
+  DATA_OWNER terisi & bot direstart, .id kembali mengikuti aturan biasa
+
+Perbaikan Status Owner di Chat Pribadi
+- sebelumnya owner terbaca "User" di chat pribadi, sekarang sudah
+  terbaca Owner sama seperti di grup
+- data user yang dulu terpisah (chat pribadi & grup) otomatis digabung
+
+Perbaikan CPU Tinggi di Panel & .hidetag / .h
+- sebelumnya di panel kecil yang ikut banyak grup, CPU tertahan 90%+ terus,
+  koneksi putus-sambung, dan .h sering gagal ("keepalive ping failure",
+  "query timeout", "participants is not defined")
+- sekarang bot jauh lebih ringan: CPU stabil dan .h kembali normal
+- data user tidak lagi dobel, stiker hanya diunduh saat antidelete aktif,
+  dan .menu tidak lagi memuat ulang semua fitur tiap 30 detik
+
+Catatan untuk error "ffmpeg exited with code 1 ... Invalid data found"
+- error ini muncul kalau file lib/exif.js masih versi lama (5.4.0 ke bawah)
+  sementara plugin .bratdeluxe dkk sudah versi baru
+- solusinya: update lib/exif.js juga, jangan hanya menyalin pluginnya
+
+Perbaikan .attp .attp2 .attp3
+- sebelumnya .attp menampilkan gaya milik .attp2, .attp2 menampilkan gaya
+  milik .attp3, dan .attp3 belum ada
+- sekarang tiap perintah menampilkan gayanya masing-masing, dan .attp3
+  sudah bisa dipakai
+- sticker attp kini punya nama paket & author seperti sticker lain, dan
+  berukuran standar 512x512 sehingga bisa disimpan penerima
+- ketiganya tampil di menu
+
+Fitur Baru: .tweet .ship .sertifikat .fakestory
+- .tweet Halo dunia -> gambar postingan X (Twitter) centang biru, pakai
+  nama & foto profil WA. Atur sendiri: .tweet Azhari|autoresbot|Halo dunia
+- .ship Budi|Siti -> gambar pasangan dengan nilai kecocokan acak 1-100%
+- .sertifikat Azhari|Member Teladan -> gambar sertifikat. Tanpa nama
+  (.sertifikat Member Teladan) dipakai nama WA
+- .fakestory Semangat pagi -> gambar story WA pakai nama & foto profil.
+  Atur nama sendiri: .fakestory Azhari|Semangat pagi
+- .tweet dan .fakestory bisa juga dengan membalas pesan
+- semuanya ada di menu maker dan memakai 1 limit
+
+Fitur Baru: .jadian2
+- seperti .jadian (bot memilih pasangan acak di grup), tapi hasilnya
+  berupa gambar ship lengkap dengan foto profil kedua orang dan nilai
+  kecocokan acak 1-100%
+- keduanya di-tag di caption. Hanya bisa dipakai di grup
+
+Fitur Baru: .carbon
+- ubah teks atau potongan kode jadi gambar ala carbon (jendela gelap
+  dengan warna kode), contoh: .carbon console.log('halo')
+- bisa juga dengan membalas pesan berisi kode
+- baris baru dan indentasi tetap terjaga, maksimal 3000 karakter
+- hasilnya dikirim sebagai gambar
+
+Fitur Baru: .ml2 / .stalkml
+- cek akun Mobile Legends lebih lengkap dari .ml, contoh: .ml2 427679814 9954
+  (format 427679814 (9954) juga bisa)
+- menampilkan username, ID server, dan negara akun
+- negara diambil dari region akun. Kalau region kosong, bot otomatis
+  mengambilnya dari data .ml, jadi negara tetap tampil
+- menampilkan status Membership (Weekly Diamond Pass, Weekly Elite,
+  Monthly Epic) apakah masih bisa dibeli
+- menampilkan status Diamond Ganda (50+50 s/d 500+500), ✅ Tersedia berarti
+  bonus top up pertama masih ada, ❌ Tidak berarti sudah terpakai
+- Diamond 1id 1x menampilkan paket 5 sampai 50 diamond, ditulis dengan
+  gaya 5+5, 11+11, 17+17, dst
+- kalau ID atau server salah, bot memberi tahu datanya tidak ditemukan
+
+Fitur Baru: Dashboard Web
+- kelola bot lewat browser dengan tampilan gelap bergaya gaming, nyaman
+  dibuka di HP maupun komputer
+- menu (tombol garis tiga di kiri atas): Dashboard, Config, File,
+  Database, Log, Ganti Password. Di kanan atas ada profil untuk ganti
+  password dan keluar
+- Dashboard: status bot online/offline, jumlah user, premium, grup, sewa,
+  plugin, pemakaian memori dan RAM server
+- Config: pengaturan diisi lewat form per kategori (Bot & Koneksi, Owner,
+  API Key, Chat, Keamanan Grup, Panel Pterodactyl, Dashboard). Contohnya
+  nomor bot, kode pairing, apikey, data owner, prefix. Tidak perlu lagi
+  mengedit config.js secara manual
+- isian dicek sebelum disimpan, misalnya kode pairing yang salah format
+  langsung ditolak. Komentar di config.js tetap utuh
+- File: buka, edit, upload, unduh, ganti nama, hapus
+- Database: lihat, cari, tambah, edit, hapus data user, grup, sewa, dll
+- Ganti Password: langsung berlaku tanpa restart. Perangkat lain yang
+  sedang login otomatis keluar
+- dashboard baru aktif setelah bot terhubung ke WhatsApp dan tidak
+  mengganggu bot. Kalau dashboard gagal jalan, bot tetap berjalan normal
+- di panel pterodactyl otomatis memakai port server. Kalau server panel
+  tidak punya port, dashboard tidak dijalankan
+- buka http://IP-server:port lalu login dengan password
+- kalau DASHBOARD_PASSWORD di config kosong, password dibuat otomatis dan
+  ditampilkan di console saat bot start. Dashboard akan mengingatkan untuk
+  menggantinya
+- salinan file lama disimpan otomatis sebelum ditimpa atau dihapus
+- perubahan config baru berlaku setelah bot direstart
+- dashboard bisa dimatikan dengan DASHBOARD = false di config
+- halaman login bertuliskan Resbot MD beserta versi script. Tombol Masuk
+  menampilkan loading dan tidak bisa diklik dua kali. Salah password 3 kali
+  dalam 1 menit akan dikunci sementara dengan hitung mundur
+  (contoh: "Tunggu 40 detik lagi")
+- menu Custom: ganti gambar menu (.menu / .allmenu) dan audio sapaan
+  (pagi, siang, sore, petang, malam, sahur). Audio bisa diterapkan ke semua
+  sekaligus atau dipilih satu saja. File MP3/M4A/WAV otomatis diubah ke
+  format voice note, gambar PNG/WebP otomatis diubah ke JPG. Langsung
+  berlaku tanpa restart
+- pratinjau gambar menu di halaman Custom kini tampil utuh sesuai bentuk
+  aslinya (landscape/portrait), tidak lagi terpotong jadi kotak
+- menu Strings: ubah teks pesan bot (khusus owner, limit habis, anti spam,
+  AFK, sewa, hasil game, dll) lewat form per kategori. Variabel seperti
+  @sender bisa diklik untuk disisipkan. Berlaku setelah restart
+- File: ikon dan label berwarna per jenis file, editor kode berwarna dengan
+  nomor baris, gambar/audio/video bisa diputar langsung, dan editor otomatis
+  tertutup setelah Simpan
+- Database: tabel di tampilan HP tidak lagi melebar keluar layar
+- pengguna config lama tidak perlu mengubah config: cukup update script,
+  dashboard otomatis aktif dengan port server panel dan password otomatis.
+  Password yang diganti lewat dashboard tetap tersimpan setelah restart
+
+Perbaikan Pengingat Sahur
+- sebelumnya audio pengingat sahur tidak pernah terkirim karena bot mencari
+  file sahur.m4a yang tidak ada (file bawaannya sahur.opus)
+- sekarang bot memakai sahur.opus, dan tetap bisa memakai sahur.m4a lama
+
+Perbaikan Startup (console lebih ringan)
+- pesan "⚠️ Gagal hapus: logs" saat bot dinyalakan tidak muncul lagi. Folder
+  di dalam tmp (seperti tmp/logs) sekarang dilewati, yang dibersihkan hanya
+  file-nya
+- sebelumnya semua fitur (±338 plugin) langsung dimuat saat bot dinyalakan,
+  walaupun nomor bot belum terhubung (masih menunggu kode pairing / scan QR)
+- sekarang fitur baru dimuat setelah bot atau jadibot benar-benar terhubung.
+  Kode pairing tampil lebih cepat dan tidak tercampur log lain, dan bot yang
+  belum pernah terhubung tidak memakai memori untuk fitur yang belum terpakai
+- tampilan "Load All Handler done" dan "Load All Plugins done" diganti satu
+  baris ringkas setelah terhubung, contoh: [✔] Handler & plugin dimuat (338 plugin)
+- pesan yang masuk tepat setelah terhubung tetap diproses normal (menunggu
+  pemuatan selesai beberapa detik)
+
+Perbaikan .hd dan .tourl (pesan error lebih jelas)
+- sebelumnya saat gagal hanya muncul pesan umum seperti "Maaf, terjadi
+  kesalahan. Coba lagi nanti!" atau "Gagal mengupload gambar", tanpa alasan
+- sekarang balasan menyertakan respon dari server/API, contoh:
+  "Respon API: HTTP 400 - Parameter apikey dibutuhkan. (MISSING_API_KEY)"
+- gangguan koneksi juga dijelaskan (timeout, tidak ada internet, koneksi
+  terputus), bukan lagi pesan teknis
+- .hd hanya menyarankan cek .apikey kalau masalahnya memang di apikey. Dulu
+  saran itu muncul untuk semua jenis kegagalan
+- .hd langsung berhenti dan memberi tahu alasannya kalau server menolak
+  proses, tidak lagi menunggu ±70 detik lalu bilang "waktu proses terlalu lama"
+
+Perbaikan Sticker .bratdeluxe dkk (titik hitam kecil)
+- sebelumnya sticker .bratdeluxe, .bratcomic, .bratbubble, .bratneon,
+  .bratword dan .bratglitch di WhatsApp muncul titik/garis hitam kecil di
+  sekitar teks selama animasi, padahal gambar dari API bersih
+- penyebabnya info "gambar ini transparan" hilang saat bot merapikan frame
+  terakhir, sehingga WhatsApp menampilkan bagian yang seharusnya tembus
+  pandang sebagai warna gelap
+- sekarang info transparansi tetap terbawa. Animasi sama persis dengan hasil
+  API, dan frame terakhir tetap bersih dari sisa garis
+- cadangan baru: kalau pembuatan sticker gagal (mis. error ffmpeg "exited
+  with code 1"), bot mencoba cara lain dan sticker tetap terkirim. Error hanya
+  muncul kalau gambarnya memang rusak dan tidak bisa dibaca sama sekali
+
+Perbaikan .qc2
+- sebelumnya .qc2 selalu gagal dengan "Request failed with status code 502"
+  karena server luar yang dipakainya (bot.lyo.su) sedang mati
+- sekarang .qc2 memakai API autoresbot sendiri (terpisah dari .qc)
+- membalas pesan dengan .qc2 tanpa teks sekarang memakai teks pesan yang
+  dibalas (dulu diabaikan)
+- .qc2 sekarang tidak memotong limit, sama seperti .qc
+
+Perbaikan .update (gagal "Request failed with status code 504")
+- error 504 bukan dari server API autoresbot, tapi dari GitHub: file update
+  diunduh dari GitHub, dan server GitHub kadang timeout saat menyiapkan file
+  zip-nya. Sifatnya sementara
+- sekarang download dicoba ulang otomatis sampai 3 kali (jeda 5 lalu 10
+  detik). Owner diberi tahu di chat setiap kali bot mencoba lagi
+- pesan gagal lebih jelas, contoh: "Server GitHub timeout (HTTP 504) saat
+  menyiapkan file update", bukan lagi teks teknis
+- download yang macet (tidak ada data 60 detik) dibatalkan dan dicoba lagi,
+  tidak lagi menggantung tanpa kabar
+- file hasil unduhan dicek dulu. File yang terpotong atau rusak tidak ikut
+  dipasang, dan sisa file update yang gagal langsung dibersihkan
+
+Perbaikan Tampilan Console
+- pesan pemuatan fitur dan dashboard sekarang seragam dengan log lain: ada
+  jam:menit dan warna, contoh:
+    [10:13] System : Koneksi Terhubung
+    [10:13] System : Handler & plugin dimuat (338 plugin)
+    [10:13] Dashboard : Aktif di http://127.0.0.1:3000
+- warna dashboard: hijau = aktif, kuning = tidak dijalankan (mis. port
+  sudah dipakai), merah = error
+
+Fitur Baru: Clone List Antar Grup (.idclone & .clonegc)
+- sekarang list satu grup bisa disalin ke grup lain, tidak perlu ketik
+  .addlist satu per satu
+- caranya: di grup yang list-nya mau disalin, admin ketik .idclone. Bot
+  memberi kode, misalnya K7FQX2
+- lalu di grup tujuan, admin ketik .clonegc K7FQX2 dan semua list ikut
+  tersalin
+- .clonegc tanpa kode akan menampilkan cara pakainya
+- kode berlaku 10 menit dan hanya bisa dipakai sekali. Kalau kedaluwarsa,
+  tinggal minta lagi dengan .idclone
+- keduanya hanya bisa dipakai admin grup (dan owner), di dalam grup
+- list grup tujuan DIGABUNG, bukan diganti: list lama tetap ada, list dari
+  grup sumber ditambahkan
+- kalau ada keyword dengan nama sama, yang dipakai tetap milik grup tujuan
+  (tidak ditimpa). Bot memberitahu berapa yang dilewati
+- kalau memang ingin menimpa, tambahkan kata timpa:
+    .clonegc K7FQX2 timpa
+- gambar/video yang menempel di list ikut disalin sebagai file baru, jadi
+  menghapus list di grup asal tidak merusak list hasil clone
+- yang disalin hanya list. Setelan lain (welcome, antilink, badword, absen,
+  dan lain-lain) tidak ikut
+
+Perubahan: Tampilan .ping Dibuat Simple
+- .ping sekarang hanya membalas satu baris:
+    ⌬ Response Time : 0.000011 s
+- .ping domain.com (misalnya .ping google.com) membalas dua baris:
+    ⌬ Response Time : 0.145781 s
+    ⌬ Ping : https://www.google.com
+- info uptime, jeda pesan, dan status HTTP dihapus supaya balasannya ringkas
+- kalau alamat tidak bisa dihubungi, bot tetap memberi alasan kegagalannya
 
 Catatan
-- untuk sewa yang didaftarkan sebelum update ini, cek ulang dengan .ceksewa
-  di grupnya. Bila tidak terbaca, daftarkan ulang dengan .sewabot
-- detail lengkap tiap perubahan ada di perubahan.md
-
-Fitur .tiktoksearch pindah ke API Autoresbot
-- pencarian TikTok (.tiktoksearch / .ttsearch / .tts) tidak lagi memakai
-  scraper sendiri, sekarang menembak API resmi Autoresbot
-  (/api/search/tiktoksearch) memakai APIKEY dari config, sama seperti .ssweb
-- kalau API balas data kosong, bot memberi tahu dengan jelas
-  (dulu error mentah karena data tidak ada)
-
-Perbaikan Antiforward (link saluran masih lolos)
-- kiriman/teruskan dari SALURAN (channel) kini ikut terdeteksi. Sebelumnya
-  lolos karena WhatsApp tidak menandainya sebagai "pesan terusan" biasa,
-  hanya menitipkan info salurannya saja
-- pesan terusan di grup yang memakai "pesan sementara" (ephemeral) dan
-  pesan sekali lihat kini juga terdeteksi, dulu lolos
-- pesan terusan yang hanya membawa hitungan terusan (tanpa penanda) ikut
-  tertangkap
-- membalas/mengutip pesan terusan TIDAK dianggap meneruskan, jadi tidak
-  kena hapus salah sasaran
-- berlaku untuk .antiforward maupun .antiforward2 (yang ikut kick)
-
-Perbaikan .reset tidak menghapus database alarm
-- .reset sekarang ikut menghapus seluruh alarm (.addalarm) di semua grup.
-  Sebelumnya tabel alarm satu-satunya yang terlewat, jadi alarm lama tetap
-  ada walau database sudah direset
-- jadwalnya juga ikut dibatalkan saat itu juga, bukan cuma datanya dihapus.
-  Dulu kalau cuma barisnya yang hilang, alarm lama masih bisa berbunyi
-  sampai bot direstart
-
-Perbaikan .bratdeluxe (garis kecil di atas teks)
-- garis/serpihan tipis yang muncul tepat di atas teks pada stiker
-  .bratdeluxe sudah hilang
-- penyebabnya dari animasi stiker itu sendiri: tiap gerakan hanya
-  menggambar ulang sebagian kotak, dan potongan gambar lama di luar kotak
-  itu tidak pernah terhapus sehingga tertinggal di layar
-- sekarang tampilan akhir stiker digambar ulang sepenuh bidang, jadi sisa
-  gambar lama pasti tertimpa. Animasinya sendiri tidak berubah
-- stiker animasi lain tidak ikut terpengaruh: yang tidak bermasalah
-  dilewati apa adanya, dan animasi yang gambarnya memang menumpuk
-  bertahap sengaja tidak disentuh supaya tidak malah terhapus
-- proses tambahan ini butuh sekitar 0,5-1,3 detik untuk stiker animasi
-- noda/titik samar di pinggir dan di bawah teks (sisa gerakan sebelumnya)
-  ikut hilang, bukan cuma garis yang di atas teks
-- gambar akhir stiker disimpan tanpa kompresi berkurang, supaya tidak
-  muncul riak abu-abu samar di sekeliling teks. Ukuran stiker hanya
-  bertambah sekitar 2 KB
-
-Fitur Baru: .nulis
-- ketik .nulis lalu teksnya, bot mengubah teks itu jadi gambar tulisan
-  tangan di kertas bergaris
-- bisa juga dengan membalas sebuah pesan, isinya otomatis dipakai
-- tekan enter untuk pindah baris, hasilnya ikut pindah baris di kertas
-- maksimal 1000 karakter. Kalau kelebihan, bot memberi tahu jumlah
-  karakternya sekarang, bukan diam atau error
-
-Varian Baru Brat: .bratcomic .bratbubble .bratneon .bratword .bratglitch
-- lima gaya brat baru, cara pakainya sama persis dengan .bratdeluxe
-  (ketik perintahnya lalu teksnya, atau balas sebuah pesan)
-- semuanya sudah muncul di menu MAKER
-- CATATAN PENTING: kelima gaya ini BELUM aktif di server API (masih
-  balasan "tidak ditemukan"). Perintahnya sudah siap dan akan langsung
-  jalan begitu server menyediakannya
-- selama belum aktif, bot menjawab dengan jelas bahwa fiturnya belum
-  tersedia dan menyarankan .bratdeluxe, bukan pesan error teknis
-
-README Dirapikan
-- README.md sebelumnya isinya cuma contoh potongan kode untuk developer,
-  tidak menjelaskan bot ini apa dan cara memasangnya
-- sekarang ringkas dan langsung ke inti: fitur, kebutuhan, cara install,
-  pengaturan wajib di config.js, struktur folder, dan link dokumentasi
-- ditambahkan info bahwa script bisa jalan di panel Pterodactyl beserta
-  saran tempat membeli panel: autoresbot.com dan panelbot.id
-- ditambahkan link saluran WhatsApp resmi untuk info update
-- contoh kode developer (sendMessage, API, cache, handler) dipindah
-  konteksnya ke docs, README tidak lagi dipenuhi potongan kode
+- detail teknis tiap perubahan ada di perubahan.md

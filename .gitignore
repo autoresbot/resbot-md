@@ -16,3 +16,5 @@ database/bot.db
 database/bot.db-wal
 database/bot.db-shm
 database/_json_backup/
+database/dashboard.json
+database/_dashboard_backup/

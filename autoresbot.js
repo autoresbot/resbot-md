@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.1
+║ 📦 Version   : 5.4.2
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -30,14 +30,22 @@ import { updateParticipant } from './lib/cache.js';
 import path from 'path';
 import { handleActiveFeatures } from './lib/participant_update.js';
 
-import { logWithTime, log, danger, findClosestCommand, logTracking } from './lib/utils.js';
+import {
+  logWithTime,
+  log,
+  danger,
+  success,
+  findClosestCommand,
+  logTracking,
+} from './lib/utils.js';
 
-import { isOwner, isPremiumUser, updateUser, findUser } from './lib/users.js';
+import { isOwner, hasOwner, isPremiumUser, updateUser, findUser } from './lib/users.js';
 
 import { reloadPlugins } from './lib/plugins.js';
 import { logCustom } from './lib/logger.js';
 import { createBoundedMap } from './lib/boundedStore.js';
 import { isDestinationAllowed } from './lib/destination.js';
+import { isAccGroup } from './lib/accGroups.js';
 
 // Variabel global
 // Rate limiter memakai penyimpanan berbatas (TTL + jumlah maksimum). Versi lama
@@ -53,25 +61,44 @@ const sessionNoticeAt = createBoundedMap({ max: 5000, ttl: 60 * 60 * 1000 });
 const pluginsPath = path.join(process.cwd(), 'plugins');
 let plugins = [];
 
-// Kesiapan handler & plugin.
-// Sebelumnya keduanya dipanggil tanpa ditunggu, sehingga pesan yang masuk pada
-// detik-detik awal startup diproses saat `handlers` masih kosong dan `plugins`
-// masih [] — akibatnya handler pengaman (antilink, ban, badword, sewa) terlewat
-// dan command apa pun dianggap tidak ditemukan. Promise-nya disimpan lalu
-// di-await di processMessage: setelah selesai, await pada promise yang sudah
-// resolved praktis tanpa biaya.
-const handlersReady = handler
-  .initHandlers()
-  .catch((error) => console.error('❌ ERROR: Gagal memuat handler:', error));
+// Kesiapan handler & plugin — dimuat MALAS (lazy), sekali saja.
+//
+// Dulu keduanya dimuat saat modul ini di-import, yaitu saat startup, sebelum
+// ada sesi yang terhubung. Ratusan plugin ikut di-import walau bot masih
+// menunggu pairing / scan QR (atau sesinya logout dan tidak pernah tersambung),
+// dan log "Load All ..." bercampur dengan kode pairing di console.
+// Tanpa sesi yang terbuka tidak ada pesan yang bisa masuk, jadi pemuatan cukup
+// dilakukan saat koneksi pertama 'open' (lihat lib/connection.js).
+//
+// processMessage tetap meng-await ensureReady() sebagai pengaman: pesan yang
+// masuk pada detik-detik awal menunggu sampai handler pengaman (antilink, ban,
+// badword, sewa) dan plugin selesai dimuat. Setelah selesai, await pada promise
+// yang sudah resolved praktis tanpa biaya.
+let readyPromise = null;
+let pluginsLoaded = false;
 
-const pluginsReady = reloadPlugins()
-  .then((loadedPlugins) => {
-    plugins = loadedPlugins;
-    console.log(`[✔] Load All Plugins done...`);
-  })
-  .catch((error) => {
-    console.error('❌ ERROR: Gagal memuat plugins:', error);
-  });
+function ensureReady() {
+  if (!readyPromise) {
+    const handlersReady = handler
+      .initHandlers()
+      .catch((error) => console.error('❌ ERROR: Gagal memuat handler:', error));
+
+    const pluginsReady = reloadPlugins()
+      .then((loadedPlugins) => {
+        plugins = loadedPlugins;
+        pluginsLoaded = true;
+        logWithTime('System', `Load All Plugins done... (${plugins.length} plugin)`);
+      })
+      .catch((error) => {
+        console.error('❌ ERROR: Gagal memuat plugins:', error);
+      });
+
+    readyPromise = Promise.all([handlersReady, pluginsReady]).then(() => {
+      success('System', `Handler & plugin dimuat (${plugins.length} plugin)`);
+    });
+  }
+  return readyPromise;
+}
 
 // Hot reload hanya di development
 if (mode === 'development') {
@@ -82,7 +109,9 @@ if (mode === 'development') {
   });
 
   watcher.on('change', (filePath) => {
-    if (filePath.endsWith('.js')) {
+    // Plugin belum pernah dimuat (belum ada sesi terhubung): perubahan file
+    // otomatis ikut terbaca saat pemuatan pertama nanti.
+    if (filePath.endsWith('.js') && pluginsLoaded) {
       logWithTime('System', `File changed: ${filePath}`);
 
       reloadPlugins()
@@ -118,7 +147,15 @@ async function processMessage(sock, messageInfo) {
     // tidak benar-benar mematikan bot di grup: list & respon tetap dibalas,
     // antilink tetap menghapus/kick, autoai/autosimi/autorusuh tetap menjawab,
     // game tetap dijawab, dan notifikasi sewa tetap terkirim.
-    if (!isDestinationAllowed(isGroup) && !isOwnerUsers) {
+    // ─── Mode setup (instalasi baru) ─────────────────────────────────────
+    // Selama DATA_OWNER masih kosong, .id boleh dipakai SIAPA PUN di mana pun
+    // supaya pemilik bot bisa mengambil LID-nya sendiri untuk diisikan ke
+    // DATA_OWNER. Tanpa ini instalasi baru buntu: bot diam di grup yang belum
+    // di-.acc, dan chat pribadi pun bisa tertutup oleh setelan DESTINATION.
+    // Begitu owner terisi, pengecualian ini mati dengan sendirinya.
+    const modeSetup = command === 'id' && !hasOwner();
+
+    if (!isDestinationAllowed(isGroup) && !isOwnerUsers && !modeSetup) {
       // Log dibatasi agar grup yang ramai tidak membanjiri console: cukup
       // sekali per chat per menit, karena isinya selalu sama.
       const lastNotice = destinationNoticeAt.get(remoteJid);
@@ -126,6 +163,14 @@ async function processMessage(sock, messageInfo) {
         destinationNoticeAt.set(remoteJid, Date.now());
         logWithTime('SYSTEM', `Destination handle only - ${config.bot_destination} chat`);
       }
+      return;
+    }
+
+    // ─── Sistem .acc ─────────────────────────────────────────────────────
+    // Bot diam total di grup yang belum diaktifkan owner (.acc): tidak ada
+    // handler (antilink, list, game, autoai, dll) maupun plugin yang jalan.
+    // Owner tetap dilayani supaya bisa mengetik .acc di grup tersebut.
+    if (isGroup && !isOwnerUsers && !isAccGroup(remoteJid) && !modeSetup) {
       return;
     }
 
@@ -144,8 +189,7 @@ async function processMessage(sock, messageInfo) {
     }
 
     // Pastikan handler & plugin selesai dimuat sebelum pesan diproses.
-    await handlersReady;
-    await pluginsReady;
+    await ensureReady();
 
     const shouldContinue = await handler.preProcess(sock, messageInfo);
     if (!shouldContinue) return; // Jika handler.js memutuskan untuk berhenti
@@ -309,13 +353,27 @@ async function participantUpdate(sock, messageInfo) {
       return;
     }
 
+    // Grup yang belum di-.acc: welcome/left/promote/dll tidak dikirim.
+    if (!isAccGroup(id)) {
+      return;
+    }
+
     // Jika grup ditemukan
     if (settingGroups) {
-      const lastSent = lastSent_participantUpdate.get(id);
+      // Dihitung per ORANG per aksi, bukan per grup.
+      //
+      // Dulu kuncinya cuma `id` (grup), sehingga saat beberapa orang
+      // masuk/keluar berdekatan hanya yang PERTAMA disapa — sisanya terbuang
+      // sebagai "rate limit". Yang perlu ditahan sebenarnya hanya event
+      // berulang untuk orang yang sama.
+      const target = participants?.[0];
+      const kunci = `${id}-${action}-${typeof target === 'string' ? target : target?.id || ''}`;
+
+      const lastSent = lastSent_participantUpdate.get(kunci);
       if (lastSent && now - lastSent < config.rate_limit) {
-        return console.log(chalk.redBright(`Rate limit : ${id}`));
+        return console.log(chalk.redBright(`Rate limit : ${kunci}`));
       }
-      lastSent_participantUpdate.set(id, now);
+      lastSent_participantUpdate.set(kunci, now);
 
       await handleActiveFeatures(sock, messageInfo, settingGroups.fitur);
     }
@@ -325,4 +383,4 @@ async function participantUpdate(sock, messageInfo) {
   }
 }
 
-export { processMessage, participantUpdate };
+export { processMessage, participantUpdate, ensureReady };

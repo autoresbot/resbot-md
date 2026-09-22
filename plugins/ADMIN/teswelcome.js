@@ -1,10 +1,53 @@
 import { getGroupMetadata, getProfilePictureUrl } from "../../lib/cache.js";
+import { checkMessage, getWelcomeMedia } from "../../lib/participants.js";
+import config from "../../config.js";
+import fs from "fs";
+import path from "path";
 import axios from "axios";
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, sender, message, pushName, content, prefix, command } =
+  const { remoteJid, sender, message, pushName, prefix, command, isGroup } =
     messageInfo;
+  let { content } = messageInfo;
   try {
+    // Tanpa angka -> tampilkan setelan welcome grup ini apa adanya, supaya
+    // admin bisa langsung mengecek hasil .setwelcome tanpa menghafal nomor.
+    if (!content && isGroup) {
+      content = String(
+        (await checkMessage(remoteJid, "templatewelcome")) || config.typewelcome || "1"
+      );
+
+      // Foto/video milik grup sendiri (.setwelcome foto / video)
+      if (content === "media") {
+        const media = getWelcomeMedia(remoteJid);
+        const filePath = media
+          ? path.join(process.cwd(), "database", "media", media.file)
+          : null;
+        const teks = (await checkMessage(remoteJid, "add")) || "Selamat datang @name";
+
+        if (!filePath || !fs.existsSync(filePath)) {
+          await sock.sendMessage(
+            remoteJid,
+            {
+              text: `⚠️ _File welcome tidak ditemukan. Atur ulang dengan *${prefix}setwelcome foto/video*_`,
+            },
+            { quoted: message }
+          );
+          return;
+        }
+
+        const buffer = fs.readFileSync(filePath);
+        await sock.sendMessage(
+          remoteJid,
+          media.tipe === "video"
+            ? { video: buffer, caption: teks, gifPlayback: media.gif === true }
+            : { image: buffer, caption: teks },
+          { quoted: message }
+        );
+        return;
+      }
+    }
+
     // Validasi input konten
     if (!content) {
       await sock.sendMessage(
@@ -34,6 +77,17 @@ async function handle(sock, messageInfo) {
 
     // Mapping content ke parameter API
     const apiRoutes = {
+      // Template baru: cukup foto profil + nama
+      default: {
+        endpoint: "https://api.autoresbot.com/api/maker/welcome",
+        params: {
+          pp: ppUser,
+          name: pushName,
+          gcname: subject,
+          member: size,
+          ppgc: ppGroup,
+        },
+      },
       1: {
         endpoint: "https://api.autoresbot.com/api/maker/welcome1",
         params: {
@@ -113,7 +167,7 @@ async function handle(sock, messageInfo) {
       await sock.sendMessage(
         remoteJid,
         {
-          text: `_⚠️ Format tidak valid! Pilih angka 1-7._ \n_ atau *text*_`,
+          text: `_⚠️ Format tidak valid! Pilih angka 1-7._ \n_atau *text*, atau *default* untuk template baru_`,
         },
         { quoted: message }
       );

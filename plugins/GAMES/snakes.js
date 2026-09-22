@@ -11,6 +11,48 @@ import { getProfilePictureUrl } from '../../lib/cache.js';
 // daftar JID eksplisit -> akurat untuk JID maupun LID.
 import { getBuffer, sendTextWithMentions, sendImageWithMentions } from '../../lib/utils.js';
 import { addUser, updateUser, deleteUser, findUser } from '../../lib/users.js';
+import axios from 'axios';
+import retryRequest from '../../lib/retry.js';
+
+/**
+ * Ambil gambar papan dari API, dengan percobaan ulang.
+ *
+ * Dulu memakai getBuffer() yang mengembalikan `false` saat gagal (tanpa
+ * alasan), lalu `false` itu diteruskan ke pengiriman gambar dan berakhir
+ * dengan pesan "Gagal mengambil gambar papan dari api." tanpa penjelasan.
+ * Sekarang: dicoba 3x (jeda 1-2 detik), isinya dipastikan benar-benar
+ * gambar, dan alasannya dikembalikan apa adanya.
+ */
+async function ambilPapan(apiUrl) {
+  return retryRequest(
+    async () => {
+      const res = await axios.get(apiUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        validateStatus: () => true,
+      });
+
+      const buffer = Buffer.from(res.data || []);
+
+      // API membalas galat sebagai JSON (kadang tetap dengan status 200).
+      if (buffer[0] === 0x7b) {
+        let pesan = 'API menolak permintaan';
+        try {
+          pesan = JSON.parse(buffer.toString('utf8'))?.message || pesan;
+        } catch {
+          /* biarkan pesan bawaan */
+        }
+        throw new Error(pesan);
+      }
+
+      if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+      if (buffer.length === 0) throw new Error('Balasan API kosong');
+
+      return buffer;
+    },
+    { maxRetry: 3, label: 'SNAKES_PAPAN', logFile: 'api.log' },
+  );
+}
 
 const snakes = {
   99: 41,
@@ -251,7 +293,7 @@ async function handle(sock, messageInfo) {
         await kirimSticker(sock, remoteJid, `${dice}.webp`, message);
       }
 
-      const buffer = await getBuffer(API_URL);
+      const buffer = await ambilPapan(API_URL);
 
       const customizedMessage = `🎲 @${
         senderLid.split('@')[0]
@@ -283,11 +325,27 @@ async function handle(sock, messageInfo) {
         pendingDelete = result?.key?.id;
       }
     } catch (err) {
-      console.error(err);
-      await sock.sendMessage(
+      console.error('[SNAKES] Gagal mengambil papan:', err?.message || err);
+
+      // Gambar papan gagal SETELAH 3x percobaan -> permainan tidak
+      // dihentikan: hasil lemparan tetap diumumkan sebagai teks, supaya
+      // giliran berikutnya bisa jalan terus.
+      const teksCadangan =
+        `🎲 @${senderLid.split('@')[0]} melempar dadu: ${dice}
+` +
+        `📍 Posisi sekarang: ${game.positions[senderLid]} ${moveInfo}
+` +
+        `➡️ Giliran selanjutnya: @${game.players[game.turnIndex].split('@')[0]}
+
+` +
+        `⚠️ _Gambar papan gagal dimuat: ${err?.message || 'tidak diketahui'}_`;
+
+      await sendTextWithMentions(
+        sock,
         remoteJid,
-        { text: '❌ Gagal mengambil gambar papan dari api.' },
-        { quoted: message },
+        teksCadangan,
+        [senderLid, game.players[game.turnIndex]],
+        message,
       );
     }
   }

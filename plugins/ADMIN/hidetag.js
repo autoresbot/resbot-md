@@ -18,8 +18,16 @@ async function handle(sock, messageInfo) {
   if (!isGroup) return; // Only Grub
 
   try {
-    // Mendapatkan metadata grup
+    // Mendapatkan metadata grup (null kalau gagal diambil, mis. timeout)
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
+    if (!groupMetadata?.participants) {
+      await sock.sendMessage(
+        remoteJid,
+        { text: '⚠️ Gagal mengambil data grup, coba lagi beberapa saat.' },
+        { quoted: message },
+      );
+      return;
+    }
     const participants = groupMetadata.participants;
     const isAdmin = participants.some(
       (p) => (p.phoneNumber === sender || p.id === senderLid) && p.admin,
@@ -55,14 +63,12 @@ async function handle(sock, messageInfo) {
       await sendTextMessage(sock, remoteJid, mediaContent, message, participants);
     }
   } catch (error) {
-    console.error('Error:', error.message);
-    await sendTextMessage(
-      sock,
-      remoteJid,
-      '⚠️ Terjadi kesalahan: ' + error.message,
-      message,
-      participants,
-    );
+    // `participants` hanya ada di dalam blok try, jadi pesan error dikirim
+    // tanpa tag semua anggota (dulu memicu "participants is not defined").
+    console.error('Error hidetag:', error.message);
+    await sock
+      .sendMessage(remoteJid, { text: '⚠️ Terjadi kesalahan: ' + error.message }, { quoted: message })
+      .catch(() => {});
   }
 }
 

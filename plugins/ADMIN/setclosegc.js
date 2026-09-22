@@ -1,86 +1,110 @@
-import { setGroupSchedule } from "../../lib/participants.js";
-import { getGroupMetadata } from "../../lib/cache.js";
-import moment from "moment-timezone";
-import mess from "../../strings.js";
-import { convertTime, getTimeRemaining } from "../../lib/utils.js";
+import { setGroupSchedule, setJadwalTeks, getJadwalTeks } from '../../lib/participants.js';
+import { getGroupMetadata, pesertaAdalahAdmin } from '../../lib/cache.js';
+import { isOwner } from '../../lib/users.js';
+import mess from '../../strings.js';
+import { convertTime, getTimeRemaining } from '../../lib/utils.js';
+
+const TIME_REGEX = /^([01]?\d|2[0-3]):[0-5]\d$/; // HH:mm
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message, content, sender, command, prefix } =
-    messageInfo;
+  const { remoteJid, isGroup, message, content, sender, senderLid, command, prefix } = messageInfo;
   if (!isGroup) return; // Hanya untuk grup
 
-  // Mendapatkan metadata grup
   const groupMetadata = await getGroupMetadata(sock, remoteJid);
-  const participants = groupMetadata.participants;
-  const isAdmin = participants.some(
-    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
-  );
-  if (!isAdmin) {
+  if (!groupMetadata?.participants) {
     await sock.sendMessage(
       remoteJid,
-      { text: mess.general.isAdmin },
-      { quoted: message }
+      { text: '⚠️ _Gagal mengambil data grup, coba lagi beberapa saat._' },
+      { quoted: message },
     );
     return;
   }
 
-  const currentTime = moment().tz("Asia/Jakarta").format("HH:mm");
+  // Pola lama (p.id === sender) selalu meleset di grup ber-alamat LID.
+  const isAdmin =
+    pesertaAdalahAdmin(groupMetadata.participants, sender, senderLid) || isOwner(senderLid);
 
-  // Validasi input kosong
-  if (!content || !content.trim()) {
-    const MSG = `_⚠️ Format Penggunaan:_ \n\n_💬 Contoh:_ _*${
-      prefix + command
-    } 23:10*_
-        
-_Bot akan menutup grup secara otomatis pada jam itu setiap harinya_ \n\n_Untuk menghapus silakan ketik *.setclosegc off*_`;
-    return await sock.sendMessage(
-      remoteJid,
-      { text: MSG },
-      { quoted: message }
-    );
+  if (!isAdmin) {
+    await sock.sendMessage(remoteJid, { text: mess.general.isAdmin }, { quoted: message });
+    return;
   }
 
-  if (content.trim() == "off") {
-    // delete
-    await setGroupSchedule(sock, remoteJid, content.trim(), "closeTime");
-    return await sock.sendMessage(
+  const isi = (content || '').trim();
+
+  if (!isi) {
+    await sock.sendMessage(
       remoteJid,
-      { text: `_✅ Close Grub otomatis berhasil di hapus_` },
-      { quoted: message }
+      {
+        text:
+          `_⚠️ Format Penggunaan:_\n\n` +
+          `_💬 Contoh:_\n` +
+          `_*${prefix}${command} 23:10*_\n` +
+          `_*${prefix}${command} 23:10 Grup ditutup, lanjut besok ya*_\n` +
+          `_*${prefix}${command} off*_\n\n` +
+          `_Keterangan:_\n` +
+          `_- Jika hanya isi jam, bot memakai teks default._\n` +
+          `_- Jika isi jam + teks, bot akan mengirim teks custom saat grup ditutup otomatis._\n` +
+          `_- Bot akan menutup grup otomatis pada jam tersebut setiap hari._\n\n` +
+          `_Untuk menghapus jadwal close grup otomatis:_\n_*${prefix}${command} off*_`,
+      },
+      { quoted: message },
     );
     return;
   }
 
-  // Validasi format jam
-  const timeRegex = /^([01]?\d|2[0-3]):[0-5]\d$/; // Format HH:mm
-  if (!timeRegex.test(content.trim())) {
-    const MSG = `_⚠️ Format jam tidak valid!_\n\n_Pastikan format jam adalah HH:mm (contoh: 23:10)_`;
-    return await sock.sendMessage(
+  // ── Hapus jadwal ────────────────────────────────────────────────────────
+  if (isi.toLowerCase() === 'off') {
+    await setGroupSchedule(sock, remoteJid, 'off', 'closeTime');
+    await setJadwalTeks(remoteJid, 'closeText', ''); // teks custom ikut dibuang
+
+    await sock.sendMessage(
       remoteJid,
-      { text: MSG },
-      { quoted: message }
+      { text: '_✅ Close Grub otomatis berhasil di hapus_' },
+      { quoted: message },
     );
+    return;
   }
 
-  // Lanjutkan proses penyimpanan jadwal
-  await setGroupSchedule(sock, remoteJid, content.trim(), "closeTime");
+  // ── Jam + teks (teks opsional) ──────────────────────────────────────────
+  const [jam, ...sisa] = isi.split(/\s+/);
+  const teksCustom = sisa.join(' ').trim();
 
-  const serverTime = convertTime(content.trim());
+  if (!TIME_REGEX.test(jam)) {
+    await sock.sendMessage(
+      remoteJid,
+      {
+        text:
+          `_⚠️ Format jam tidak valid!_\n\n_Pastikan format jam adalah HH:mm (contoh: 23:10)_\n\n` +
+          `_💬 Contoh:_ _*${prefix}${command} 23:10 Grup ditutup*_`,
+      },
+      { quoted: message },
+    );
+    return;
+  }
+
+  await setGroupSchedule(sock, remoteJid, jam, 'closeTime');
+  await setJadwalTeks(remoteJid, 'closeText', teksCustom);
+
+  const serverTime = convertTime(jam);
   const { hours, minutes } = getTimeRemaining(serverTime);
+  const teksDipakai = getJadwalTeks(remoteJid, 'closeText') || mess.action.grub_close;
 
-  // Kirim pesan berhasil
-  return await sock.sendMessage(
+  await sock.sendMessage(
     remoteJid,
     {
-      text: `✅ _Berhasil, Grup otomatis ditutup pada jam *${content.trim()}* WIB_ \n⏰ _Sekitar ${hours} jam ${minutes} menit lagi_\n\n_Pastikan bot sudah admin untuk menggunakan fitur ini_`,
+      text:
+        `✅ _Berhasil, Grup otomatis ditutup pada jam *${jam}* WIB_\n` +
+        `⏰ _Sekitar ${hours} jam ${minutes} menit lagi_\n\n` +
+        `│ Pesan : _${teksDipakai}_${teksCustom ? '' : ' _(default)_'}\n\n` +
+        `_Pastikan bot sudah admin untuk menggunakan fitur ini_`,
     },
-    { quoted: message }
+    { quoted: message },
   );
 }
 
 export default {
   handle,
-  Commands: ["setclosegc"],
+  Commands: ['setclosegc'],
   OnlyPremium: false,
   OnlyOwner: false,
 };

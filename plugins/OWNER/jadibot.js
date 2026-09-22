@@ -44,6 +44,7 @@ async function startNewSession(masterSessions, senderId, type_connection) {
       store: sessionStore,
       sessionId: "default",
       auth: { deviceBrowser: "chrome", deviceOsDisplayName: "Ubuntu" },
+      history: { enabled: false }, // lihat lib/connection.js
     },
     logger
   );

@@ -2,6 +2,7 @@ import { addSewa, findSewa } from "../../lib/sewa.js";
 import config from "../../config.js";
 import { selisihHari, hariini } from "../../lib/utils.js";
 import { deleteCache } from "../../lib/globalCache.js";
+import { gabungGrupViaLink, pastikanAnggota } from "../../lib/gabungGrup.js";
 
 async function handle(sock, messageInfo) {
   let { remoteJid, message, content, sender, prefix, command } = messageInfo;
@@ -90,12 +91,37 @@ async function handle(sock, messageInfo) {
     }
 
     res_linkgc = infoGrub.jid;
-    const res_namegc = infoGrub.subject;
+    let res_namegc = infoGrub.subject;
 
-    await sock
-      .groupAcceptInvite(result_sewa)
-      .then((res) => console.log(""))
-      .catch((err) => console.log(""));
+    // Dulu kegagalan bergabung ditelan (`.catch(() => {})`), sehingga sewa
+    // tetap tercatat walau bot GAGAL masuk grup. Sekarang alasannya dibaca
+    // dan pencatatan dibatalkan.
+    const hasilGabung = await gabungGrupViaLink(sock, result_sewa);
+
+    if (!hasilGabung.ok) {
+      return await sock.sendMessage(
+        remoteJid,
+        {
+          text: `⚠️ _Gagal bergabung ke grup._\n\n${hasilGabung.alasan}\n\n_Sewa TIDAK dicatat._`,
+        },
+        { quoted: message },
+      );
+    }
+
+    // Pengaman terakhir: pastikan bot memang ada di dalam grupnya.
+    const cek = await pastikanAnggota(sock, res_linkgc);
+    if (!cek.ok) {
+      return await sock.sendMessage(
+        remoteJid,
+        {
+          text:
+            `⚠️ _Gagal memastikan bot masuk grup._\n\n${cek.alasan}\n\n` +
+            `_Sewa TIDAK dicatat. Kalau bot ternyata sudah di dalam grup, ketik *${prefix}tambahsewa* di grup itu._`,
+        },
+        { quoted: message },
+      );
+    }
+    res_namegc = cek.subject || res_namegc;
 
     // Proses penambahan sewa ke database
     await addSewa(res_linkgc, {

@@ -50,10 +50,16 @@ _File ini akan otomatis kadaluarsa 1 minggu setelah diunggah. Namun, jika file d
   } catch (error) {
     // Satu baris ringkas di console; detail lengkap masuk logs/api.log.
     // (Label sebelumnya tertulis "translation handler" — salin-tempel dari translate.js.)
-    logShort('TOURL', `Error: ${error?.serverMessage || error?.message || error}`, error);
+    const detail = error?.serverMessage || error?.message || String(error);
+    logShort('TOURL', `Error: ${detail}`, error);
+
+    // Dulu semua kegagalan hanya dibalas "Maaf, terjadi kesalahan", sehingga
+    // pengguna tidak tahu apakah filenya ditolak, terlalu besar, atau server
+    // sedang tidak bisa dihubungi. Sekarang respons server ikut ditampilkan.
+    const label = error?.serverMessage ? 'Respon server' : 'Detail';
     await sock.sendMessage(
       remoteJid,
-      { text: 'Maaf, terjadi kesalahan. Coba lagi nanti!' },
+      { text: `❌ Gagal mengupload file.\n\n*${label}:* ${detail}` },
       { quoted: message },
     );
   }

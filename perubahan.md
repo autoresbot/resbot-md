@@ -520,3 +520,310 @@ diharapkan adalah avatar asli seperti `.qc`, itu perlu dukungan dari sisi API.
 Diuji: sesi mati total (semua `sendMessage` melempar) -> perintah selesai tanpa
 melempar keluar; foto profil gagal -> gambar tetap terkirim; input kosong ->
 pesan format; `sessionReady()` benar untuk kredensial ada/tidak ada.
+
+---
+
+## 18. `ENOSPC: no space left on device` pada stiker (5.4.2)
+
+**Gejala:** di sebagian panel Pterodactyl `.bratdeluxe`, `.bratcomic`,
+`.bratbubble`, `.bratneon`, `.bratword`, `.bratglitch` gagal dengan
+`ENOSPC: no space left on device, write`, sementara `.brat` masih jalan.
+Menghapus `.npm`/`.cache`/`node_modules` lalu restart hanya menolong sementara.
+
+**Penyebab:** berkas stiker hasil `simpanDenganExif` (di `os.tmpdir()`) tidak
+pernah dihapus oleh `sendImageAsSticker` setelah terkirim. `clearDirectory('./tmp')`
+di `index.js` hanya membersihkan `./tmp` proyek, bukan `/tmp` sistem. Jadi setiap
+stiker (dari fitur mana pun) meninggalkan satu berkas. Selain itu `imageToWebp`,
+`videoToWebp`, `gifToWebp`, dan `webpToImage` meninggalkan berkas input/output
+kalau ffmpeg gagal. Stiker animasi paling cepat kena karena berkasnya paling
+besar: saat disk hampir penuh, PNG kecil dari `.brat` masih muat, webp animasi
+tidak. Restart menolong karena container dibuat ulang (tmpfs `/tmp` kosong) atau
+kuota disk jadi lega lagi.
+
+**Perbaikan (`lib/exif.js`):**
+- helper `hapusSementara(...berkas)`: `unlinkSync` yang diam bila berkas tidak ada.
+- `sendImageAsSticker` (jalur gambar & video) menghapus `stickerUrl` di `finally`
+  setelah `sock.sendMessage`. Aman: zapo membaca & mengunggah berkas di dalam
+  `client.message.send`, jadi setelah `await` berkasnya tidak dipakai lagi.
+  Tidak ada pemanggil yang memakai path hasil kembalian.
+- keempat fungsi konversi ffmpeg membersihkan input & output di `finally`.
+- `simpanDenganExif` membersihkan berkas setengah jadi bila penulisan gagal.
+
+**Error terkait `ffmpeg exited with code 1: ... Invalid data found when
+processing input`:** tidak bisa terjadi di kode 5.4.1+ karena webp dialihkan ke
+`webpKeStiker` tanpa ffmpeg. Di 5.4.0 `imageToWebp` memasukkan webp animasi ke
+ffmpeg, yang tidak bisa men-decode-nya. Artinya panel itu memakai plugin baru
+dengan `lib/exif.js` lama. Pesannya juga berasal dari fluent-ffmpeg di bot; error
+ffmpeg dari API berbunyi `ffmpeg gagal (exit N)`. API (`api-secondary`) sudah
+membersihkan folder temp-nya di `finally`, jadi tidak perlu diubah.
+
+Diuji: PNG & webp animasi -> berkas ada saat dikirim, hilang sesudahnya; kirim
+gagal -> berkas tetap terhapus; ffmpeg gagal (jpeg rusak) -> tidak ada sisa di
+tmpdir.
+
+---
+
+## 19. Fitur baru: dashboard web (`dashboard/`)
+
+Express 5 (dependensi baru `express`), dijalankan dari `index.js` setelah
+`start_app()` lewat `import()` dinamis. Seluruh kegagalan hanya di-log
+`[DASHBOARD] ...`; tidak ada handler proses global yang dipasang.
+
+| File | Isi |
+|---|---|
+| [dashboard/index.js](dashboard/index.js) | `startDashboard()`: resolve port, tunggu bot online, pasang route |
+| [dashboard/lib/port.js](dashboard/lib/port.js) | Deteksi Pterodactyl (`P_SERVER_UUID`), port dari `SERVER_PORT`, cek port bebas |
+| [dashboard/lib/auth.js](dashboard/lib/auth.js) | Login password, cookie HMAC, limit 5 gagal / 10 menit per IP |
+| [dashboard/lib/files.js](dashboard/lib/files.js) | `safeResolve` (anti path traversal/symlink), `node --check`, backup |
+| [dashboard/routes/](dashboard/routes/) | `database.js`, `files.js`, `system.js` (status, config, log) |
+| [dashboard/public/](dashboard/public/) | UI tanpa build step (HTML/CSS/JS polos) |
+
+**Urutan start:** port di-resolve dulu (panel tanpa `SERVER_PORT` => berhenti),
+lalu `express` di-import (belum terinstal => berhenti), lalu menunggu
+`global.statusConnected[config.phone_number_bot] === true` + 5 detik. Kalau bot
+belum online setelah 3 menit (mis. menunggu pairing), dashboard tetap jalan agar
+config bisa diperbaiki. Port dicek bebas sebelum `listen`, dan error `listen`
+juga ditangkap. `express@^5.1.0` dicek/diinstal saat start lewat
+`checkAndInstallModules`, tapi dalam try/catch TERPISAH dari daftar module
+utama: kegagalan di daftar utama membuat `index.js` memanggil `process.exit(1)`,
+sedangkan gagal install express cukup melewati dashboard.
+
+**Port:** di panel hanya `SERVER_PORT` (allocation) yang bisa diakses dari luar,
+bind `0.0.0.0`. Di luar panel: `DASHBOARD_PORT` env > `config.dashboard.port` >
+3000, bind `127.0.0.1` (override `DASHBOARD_HOST`).
+
+**Keamanan:** password dari `DASHBOARD_PASSWORD`; kosong => dibuat acak dan
+disimpan bersama secret HMAC di `database/dashboard.json` (gitignore). Tag hash
+password ikut di token, jadi ganti password membatalkan sesi lama. Request non-GET
+wajib header `X-Dashboard: 1` + cookie `SameSite=Strict` (anti CSRF). Header CSP,
+`X-Frame-Options: DENY`. Semua path file dibatasi ke folder proyek.
+
+**Database:** memakai koneksi `getDb()` yang sama dengan bot. Baris diidentifikasi
+lewat `rowid` (semua tabel adalah rowid table), jadi PK gabungan (`totalchat`)
+tetap bisa diedit. Nilai form dikonversi per tipe kolom; teks `NULL` => null.
+Data yang di-cache bot di memori (mis. owner di `lib/users.js`) baru berubah
+setelah restart.
+
+**Simpan file:** `.js/.mjs/.cjs` dicek `node --check` pada salinan di tmpdir OS
+(bukan di folder proyek, supaya tidak terbaca pemantau plugin); file editor bisa
+"simpan paksa", config.js tidak. Salinan sebelum ditimpa/dihapus disimpan di
+`database/_dashboard_backup/` (30 terbaru, maks 5MB/file).
+
+Diuji (tanpa koneksi WA, status dipalsukan): login/401/403, CRUD tabel + validasi
+angka, SQL console, traversal `../` & path absolut ditolak, upload/409/biner,
+rename, download, hapus root ditolak, config sintaks rusak ditolak, panel tanpa
+port & port terpakai => dashboard tidak jalan, proses tetap hidup.
+
+### 19b. UI baru, form config, ganti password
+
+**UI:** ditulis ulang, tetap tanpa framework/build step. Tema gelap neon, font
+Orbitron (judul) + Rajdhani (isi) dari Google Fonts (CSP menambah
+`fonts.googleapis.com` & `fonts.gstatic.com`; tanpa internet jatuh ke font
+sistem). Sidebar kiri dibuka dengan hamburger: di desktop menyempit jadi ikon
+(disimpan di localStorage), di layar < 1024px jadi drawer + backdrop. Profil di
+kanan atas (nama = `config.owner_name`) dengan menu Ganti Password & Keluar.
+Ikon SVG inline. Polling dashboard 10 detik, berhenti saat tab tersembunyi.
+
+**Form config** ([dashboard/lib/configForm.js](dashboard/lib/configForm.js)):
+`SCHEMA` berisi kategori & field; tiap field menunjuk `const NAMA` atau properti
+`prop:` di objek `config`. Baca: literal dicari lalu dievaluasi di
+`vm.runInNewContext` kosong (timeout 50ms); nilai bukan literal (mis.
+`global.version`) tidak dimasukkan skema. Tulis: hanya span literal yang diganti,
+komentar & isi lain utuh, lalu lewat `writeConfigFile` (`node --check`, cek
+`export default`, backup). Server hanya menerima key yang ada di `SCHEMA` dan
+memvalidasi per tipe (`phone`, `pairing` = 8 karakter `[1-9A-HJ-NP-TV-Z]`,
+`number`+`min`, `select`, `list`, `map`, `secret`). Field yang tidak ada di
+config.js lama tampil nonaktif. Editor mentah config dihapus dari halaman Config
+(masih bisa lewat File Manager).
+
+**Ganti password** (`POST /api/password`): wajib password lama, minimal 6
+karakter. Ditulis ke `DASHBOARD_PASSWORD` di config.js; config lama tanpa
+konstanta itu memakai `database/dashboard.json`. Berlaku langsung: tag password
+di token berubah sehingga sesi lain logout, sesi aktif diberi cookie baru.
+
+**Endpoint baru:** `GET /api/system/profile`; `GET /api/system/status` kini
+berisi `stats` (users, premium, groups, sewa, jumlah plugin, cache 60 detik) dan
+CPU/load. `GET/PUT /api/system/config` kini berbasis form (`{ values }`).
+
+Diuji: validasi form (pairing salah, key tak dikenal, tanpa perubahan),
+config ditulis dengan komentar utuh & bisa di-import ulang, password lama/pendek
+ditolak, sesi lain logout setelah ganti password. Screenshot UI di 1440px & 390px
+dengan API tiruan: tidak ada scroll horizontal.
+
+**Kompatibel config.js lama** (tanpa bagian `dashboard`): `config.dashboard`
+undefined => dashboard aktif, port dari `SERVER_PORT`, password otomatis di
+`database/dashboard.json`. Ganti password ditulis ke `dashboard.json` dengan
+`passwordChanged: true`, supaya setelah restart tidak lagi dianggap password
+otomatis. Field `DASHBOARD` & `DASHBOARD_PORT` tampil nonaktif di form. Deteksi
+panel kini juga menerima `SERVER_PORT` saja (egg turunan tanpa `P_SERVER_*`).
+Diuji dengan `git show HEAD:config.js` + env panel tiruan: aktif di
+`SERVER_PORT`, simpan form OK, ganti password bertahan setelah restart.
+
+### 19c. Login, Custom, Strings, editor file
+
+**Login:** `GET /api/info` (publik) memberi versi untuk judul "RESBOT MD ·
+v5.4.2". Batas login jadi jendela geser: 3 password salah per IP dalam 60 detik
+=> 429 `{ retryAfter }` (detik sampai kegagalan tertua keluar dari jendela). UI
+mengunci tombol + hitung mundur; tombol dikunci selama request (anti double klik).
+
+**Custom** ([dashboard/routes/custom.js](dashboard/routes/custom.js)):
+`database/assets/allmenu.jpg` dan `database/audio/{pagi,siang,sore,petang,malam,sahur}.opus`.
+Upload berupa body mentah; tipe dicek dari magic bytes. Gambar non-JPEG =>
+JPEG lewat `sharp` (sudah ada di node_modules). Audio non-Ogg-Opus => Opus mono
+48kHz 64k lewat ffmpeg dari `@ffmpeg-installer/ffmpeg` (dipakai juga oleh
+sticker). `?target=all` menulis ke keenam slot. File lama di-backup. Tidak perlu
+restart: `plugins/menu.js` & `lib/scheduled.js` membaca file tiap kali dipakai.
+
+**Strings** ([dashboard/lib/stringsForm.js](dashboard/lib/stringsForm.js)):
+kategori & field dibaca dari objek `const mess` (vm sandbox), jadi pesan baru
+otomatis muncul. Simpan mengganti literal `kategori.key` di dalam blok
+kategorinya saja; komentar utuh; lewat `writeModuleFile` (`node --check`,
+backup). Perlu restart (strings.js di-import sekali).
+
+**File:** ikon & label warna per ekstensi, `GET /api/files/raw` untuk pratinjau
+gambar/audio/video. Sengaja dibatasi ke tipe media (bukan HTML/SVG), karena file
+yang tampil inline di origin dashboard bisa menjalankan script dengan cookie
+login. Editor: textarea transparan di atas `<pre>` ber-highlight (tokenizer
+regex, isi di-escape) + nomor baris; file > 300KB tanpa highlight. Simpan
+sukses menutup modal.
+
+**Database mobile:** `.db-layout` column memakai `align-items: flex-start`, jadi
+kartu selebar tabel. Di mobile diganti `stretch` sehingga tabel scroll di dalam
+kartunya sendiri.
+
+**Bug bot: `lib/scheduled.js` sahur** membaca `sahur.m4a` yang tidak pernah ada
+(bawaan `sahur.opus`), jadi audio sahur selalu gagal. Sekarang pakai
+`sahur.opus` dengan cadangan `sahur.m4a`.
+
+Diuji: 3 password salah => 429 retryAfter 60, login lagi setelah 61 detik;
+strings dengan newline & kutip bisa di-import ulang; PNG => JPEG valid; MP3 =>
+Ogg Opus; `target=all` menulis 6 file; `/files/raw` menolak `.js`. Screenshot
+login, Custom, Strings, File, editor (desktop & 390px), dan Database 390px
+dengan API tiruan. Semua file asli dipulihkan setelah pengujian.
+
+---
+
+## 20. Startup: console lebih ringan & plugin dimuat saat sesi terhubung
+
+**`⚠️ Gagal hapus: logs`** — `clearDirectory('./tmp')` memanggil `unlink` pada
+semua entri, termasuk folder `tmp/logs` milik winston ([lib/logger.js](lib/logger.js)),
+sehingga selalu gagal. Sekarang `readdir({ withFileTypes: true })` dan folder
+dilewati; file yang terkunci (Windows) dilewati diam-diam, `ENOENT` diabaikan.
+
+**Lazy load handler & plugin** — dulu `initHandlers()` dan `reloadPlugins()`
+jalan saat [autoresbot.js](autoresbot.js) di-import (startup), sebelum ada sesi.
+Saat menunggu pairing/QR atau sesi logout, 338 plugin tetap di-import padahal
+`messages.upsert` tidak mungkin terpicu tanpa sesi `open`.
+
+- `ensureReady()` (memoized, sekali per proses) memuat keduanya.
+- Dipicu di event `connection === 'open'` ([lib/connection.js](lib/connection.js)),
+  sesi utama maupun jadibot, tanpa di-await.
+- `processMessage` tetap `await ensureReady()` sebagai pengaman, jadi pesan
+  awal tidak lolos dari handler antilink/ban/sewa.
+- Hot reload (development) hanya reload bila plugin sudah pernah dimuat.
+- Log `Load All Handler/Plugins done` diganti satu baris
+  `[✔] Handler & plugin dimuat (N plugin)`.
+
+Tidak ada side effect top-level (timer/cron) di `handle/` maupun `plugins/`,
+jadi menunda import aman. Diuji: import `autoresbot.js` tidak memuat apa pun,
+`ensureReady()` dua kali hanya memuat sekali; `clearDirectory` menghapus file,
+menyisakan `logs/`, tanpa warning, dan diam pada folder yang tidak ada.
+
+---
+
+## 21. `.hd` / `.tourl`: respons API ditampilkan saat gagal
+
+Server upload (`autoresbot.com/tmp-files/upload`) dan API remini membalas
+`{ status: false, message, error_code }` + HTTP 4xx, tapi plugin hanya
+membalas pesan umum sehingga penyebabnya tidak terlihat.
+
+- [lib/uploader.js](lib/uploader.js): `formatApiResponse(res)` → `HTTP 400 -
+  <message> (<error_code>)`; body HTML (nginx/Cloudflare) dibersihkan & dipotong
+  200 karakter. `formatNetworkError(err, target)` untuk timeout/DNS/reset.
+  `uploadImageFile` kini membungkus error jaringan dan menyertakan
+  `err.status` + `err.responseData`; `logShort` menyimpan body mentah
+  (maks 2000 karakter) ke `logs/api.log`.
+- [plugins/TOOLS/hd.js](plugins/TOOLS/hd.js): setiap titik gagal (upload,
+  buat job, polling, unduh hasil, catch umum) membalas dengan `*Respon API:*`.
+  Saran `.apikey` hanya bila 401/403 atau `error_code`/pesan menyebut key.
+  Polling 4xx langsung berhenti (dulu diulang 10×7 detik sampai timeout).
+- [plugins/TOOLS/to url.js](plugins/TOOLS/to url.js): balasan gagal memuat
+  `*Respon server:*` (atau `*Detail:*` untuk error lokal).
+
+Format `serverMessage` berubah (ada prefix `HTTP xxx -`); pemakai lain hanya
+menulisnya ke log, jadi tidak terpengaruh.
+
+---
+
+## 22. Titik hitam kecil pada stiker `.bratdeluxe` dkk
+
+Regresi dari bagian 10. `bersihkanSisaFrameWebp()` (pembersih sisa frame
+terakhir) menyimpan hasil lewat `node-webpmux` `img.save()`, yang menulis ulang
+`VP8X` webp animasi tanpa bit alpha:
+
+```
+VP8X API        : 0b00010010  (ALPHA + ANIM)
+VP8X hasil bot  : 0b00001010  (EXIF + ANIM)  <- alpha hilang
+```
+
+Frame 2..n dari API berupa kotak kecil ber-`ALPH` dengan blend alpha. Data
+warna (VP8) di bawah piksel ber-alpha 0 berisi nilai gelap (±140 ribu piksel
+di tes "resbot tes hitam"). Pemutar yang percaya flag VP8X menggambar kotak itu
+tanpa transparansi, sehingga muncul titik/garis hitam di sekitar huruf.
+
+Perbaikan di [lib/exif.js](lib/exif.js):
+- `gantiFrameTerakhir()`: frame terakhir diganti di level chunk RIFF (header
+  ANMF 16 byte + chunk `VP8L`/`VP8 `/`ALPH` dari hasil sharp, flag `0x02` =
+  tanpa blend). VP8X, ANIM, dan frame lain disalin apa adanya.
+- `pulihkanFlagAlpha()`: bila jalur chunk gagal dan terpaksa lewat
+  node-webpmux, bit alpha dari berkas asli dipasang kembali.
+- `stikerCadangan()` di `sendImageAsSticker` (jalur gambar): bila
+  `writeExifImg`/`imageToWebp` melempar error, stiker tetap dikirim. Untuk webp:
+  apa adanya + EXIF; untuk format lain: sharp → webp 512 (tanpa ffmpeg) + EXIF;
+  bila EXIF gagal: tanpa EXIF. Error hanya diteruskan bila sharp juga gagal.
+
+Diuji dengan hasil API asli: flag hasil `00011010`, 46 frame, frame 0–44
+byte-identik dengan API, frame terakhir hanya berbeda di sisa titik yang
+memang dibersihkan, EXIF ada. Fallback diuji dengan ffmpeg dipaksa gagal
+(exit code 1): PNG tetap terkirim 512x512 + EXIF; JPEG rusak tetap error.
+
+---
+
+## 23. `.qc2` pindah ke API autoresbot
+
+`bot.lyo.su/quote/generate` (dipakai lewat [lib/scrape/quote.js](lib/scrape/quote.js))
+membalas HTTP 502 untuk semua request, termasuk halaman utamanya, sehingga `.qc2`
+selalu gagal. [plugins/MAKER/qc2.js](plugins/MAKER/qc2.js) kini memakai struktur
+yang sama dengan [qc.js](plugins/MAKER/qc.js) dengan endpoint `/api/maker/qc2`,
+tanpa `limitDeduction`. Validasi teks ikut `qc.js` (`content.trim()`), sehingga
+`.qc2` kosong yang membalas pesan memakai teks pesan tersebut.
+
+`.qcstick` masih memanggil `bot.lyo.su` langsung dan ikut gagal selama server
+itu mati.
+
+---
+
+## 24. `.update`: retry download (HTTP 504 dari GitHub)
+
+`serverUrl` adalah archive GitHub yang dialihkan (302) ke
+`codeload.github.com`. Codeload membuat zip saat diminta (tanpa
+`Content-Length`), dan gateway-nya sesekali membalas 504. Error itu tidak
+berasal dari API autoresbot.
+
+[plugins/OWNER/update.js](plugins/OWNER/update.js):
+- `unduhUpdate()`: maksimal 3 percobaan, jeda 5 lalu 10 detik. Retry untuk
+  5xx, 429, dan error jaringan; 4xx lain (mis. 404) langsung gagal. Owner diberi
+  tahu lewat chat di tiap retry.
+- `unduhSekali()`: `timeout` 60 detik untuk respons pertama + watchdog
+  `AbortController` yang membatalkan bila stream tidak mengirim data 60 detik.
+  Error pada stream respons kini ditangani (dulu hanya error `WriteStream`,
+  sehingga koneksi putus di tengah membuat promise menggantung).
+- Validasi tanda tangan zip (`PK`) sebelum extract.
+- `jelaskanError()`: 504/502/503/429/404/DNS dijelaskan dalam bahasa owner.
+- Saat gagal, `update.zip` dan `update_temp/` dihapus. `update.lock` dibuat
+  paling akhir, jadi kegagalan tidak memicu apply setengah jadi saat restart.
+
+Diuji dengan server HTTP lokal tiruan (tanpa menjalankan `.update`): 504 dua
+kali lalu zip → sukses di request ke-3; 504 terus → gagal setelah 3 request;
+404 → gagal setelah 1 request; respons HTML → ditolak sebagai zip tidak valid.
+Tidak ada file sisa di semua skenario. Watchdog "macet 60 detik" belum diuji.

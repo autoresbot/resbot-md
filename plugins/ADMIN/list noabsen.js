@@ -1,22 +1,30 @@
-import { findAbsen } from "../../lib/absen.js";
+import { findAbsen, pesertaSudahAbsen } from "../../lib/absen.js";
 import { sendMessageWithMention } from "../../lib/utils.js";
 import mess from "../../strings.js";
-import { getGroupMetadata } from "../../lib/cache.js";
+import { getGroupMetadata, pesertaAdalahAdmin } from "../../lib/cache.js";
+import { isOwner } from "../../lib/users.js";
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, isGroup, message, sender, senderType } = messageInfo;
-  if (!isGroup) return; // Hanya bisa digunakan di grup
+  const { remoteJid, isGroup, message, sender, senderLid, senderType } = messageInfo;
+  if (!isGroup) return; // Only Grub
 
   try {
-    // Ambil metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata?.participants || [];
+    if (!groupMetadata?.participants) {
+      await sock.sendMessage(
+        remoteJid,
+        { text: "⚠️ _Gagal mengambil data grup, coba lagi beberapa saat._" },
+        { quoted: message }
+      );
+      return;
+    }
 
-    const totalMembers = participants.length;
+    const participants = groupMetadata.participants;
 
-    const isAdmin = participants.some(
-      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin
-    );
+    // Lihat catatan di list absen.js: pola lama (p.id === sender) menolak
+    // admin asli di grup ber-alamat LID.
+    const isAdmin = pesertaAdalahAdmin(participants, sender, senderLid) || isOwner(senderLid);
+
     if (!isAdmin) {
       await sock.sendMessage(
         remoteJid,
@@ -28,28 +36,20 @@ async function handle(sock, messageInfo) {
 
     // Ambil data absen
     const data = await findAbsen(remoteJid);
-    const absenMembers = data?.member || [];
+    const members = data?.member || [];
 
-    // Dapatkan daftar yang belum absen
+    // Dicocokkan lewat nomor: absen lama tersimpan sebagai nomor HP sedangkan
+    // peserta grup dikenali lewat LID — dibandingkan mentah, orang yang sudah
+    // absen tetap ikut terdaftar di sini.
+    const belumAbsen = participants.filter((p) => !pesertaSudahAbsen(members, p));
 
+    const noAbsenMembers = belumAbsen.map(
+      (p, index) => `${index + 1}. @${(p.id || p.phoneNumber).split("@")[0]}`
+    );
 
-// Ambil peserta yang belum absen
-const filteredMembers = participants
-  .map((p) => {
-    const jid = p.phoneNumber || p.id;
-    return { jid };
-  })
-  .filter((p) => p.jid && !absenMembers.includes(p.jid));
-
-// Format text
-const noAbsenMembers = filteredMembers.map(
-  (p, index) => `${index + 1}. @${p.jid.split("@")[0]}`
-);
-
-// Mention list
-const mentionList = filteredMembers
-  .map((p) => p.jid)
-  .filter((jid) => typeof jid === "string");
+    const mentionList = belumAbsen
+      .map((p) => p.id || p.phoneNumber)
+      .filter((jid) => typeof jid === "string");
 
     let textNotif;
     if (noAbsenMembers.length > 0) {
@@ -60,17 +60,9 @@ const mentionList = filteredMembers
       textNotif = "✅ Semua anggota sudah absen hari ini.";
     }
 
-
-await sendMessageWithMention(
-  sock,
-  remoteJid,
-  textNotif,
-  message,
-  senderType,
-  {
-    mentions: mentionList,
-  }
-);
+    await sendMessageWithMention(sock, remoteJid, textNotif, message, senderType, {
+      mentions: mentionList,
+    });
   } catch (error) {
     console.error("Error handling listnoabsen:", error);
     await sock.sendMessage(

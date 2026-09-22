@@ -1,6 +1,7 @@
 import { addSewa, findSewa } from "../../lib/sewa.js";
 import config from "../../config.js";
 import { selisihHari, hariini } from "../../lib/utils.js";
+import { gabungGrupViaLink, pastikanAnggota } from "../../lib/gabungGrup.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, prefix, command } = messageInfo;
@@ -104,10 +105,24 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    await sock
-      .groupAcceptInvite(result_sewa)
-      .then((res) => console.log(""))
-      .catch((err) => console.log(""));
+    // Bot bisa saja sudah keluar/dikeluarkan dari grup ini. Dulu kegagalan
+    // bergabung ditelan, jadi perpanjangan tetap tercatat walau botnya tidak
+    // ada di grup. Sekarang dipastikan dulu.
+    const hasilGabung = await gabungGrupViaLink(sock, result_sewa);
+    const cek = await pastikanAnggota(sock, res_linkgc);
+
+    if (!cek.ok) {
+      return await sock.sendMessage(
+        remoteJid,
+        {
+          text:
+            `⚠️ _Gagal memperpanjang sewa._\n\n` +
+            `${hasilGabung.ok ? cek.alasan : hasilGabung.alasan}\n\n` +
+            `_Perpanjangan TIDAK dicatat._`,
+        },
+        { quoted: message },
+      );
+    }
 
     const totalSewa =
       cekSewa.expired + totalHari * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000;

@@ -108,16 +108,45 @@ async function loadMenu() {
   return menu;
 }
 
+/**
+ * Sidik jari folder plugins: nama file + waktu ubah + ukuran. Cukup `stat`
+ * (tanpa membaca/meng-import file), jadi murah dijalankan tiap 30 detik.
+ */
+async function pluginsSignature() {
+  const parts = [];
+  const dirents = await fs.readdir(pluginsDir, { withFileTypes: true });
+  for (const dirent of dirents) {
+    if (!dirent.isDirectory()) continue;
+    const categoryPath = path.join(pluginsDir, dirent.name);
+    for (const file of await fs.readdir(categoryPath)) {
+      if (!file.endsWith(".js")) continue;
+      const stat = await fs.stat(path.join(categoryPath, file));
+      parts.push(`${dirent.name}/${file}:${stat.mtimeMs}:${stat.size}`);
+    }
+  }
+  return parts.sort().join("|");
+}
+
+let lastSignature = "";
+
 // Pastikan menu sudah di-load, dipanggil sebelum akses
+//
+// Dulu SETIAP 30 detik (saat ada yang memanggil .menu) seluruh ±344 plugin
+// di-import ulang dengan ?cacheBust. Tiap import ulang memakan ratusan ms CPU
+// dan menambah memori yang tidak pernah dilepas (modul ESM tidak bisa
+// dibuang dari cache). Sekarang plugin hanya di-import ulang kalau ada file
+// plugin yang benar-benar berubah/bertambah/terhapus.
 export async function loadMenuOnce() {
   const now = Date.now();
-  if (
-    now - lastUpdate > CACHE_INTERVAL ||
-    Object.keys(cachedMenu).length === 0
-  ) {
+  const empty = Object.keys(cachedMenu).length === 0;
+  if (!empty && now - lastUpdate <= CACHE_INTERVAL) return cachedMenu;
+
+  const signature = await pluginsSignature().catch(() => "");
+  if (empty || !signature || signature !== lastSignature) {
     cachedMenu = await loadMenu();
-    lastUpdate = now;
+    lastSignature = signature;
   }
+  lastUpdate = now;
   return cachedMenu;
 }
 

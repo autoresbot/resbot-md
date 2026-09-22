@@ -27,6 +27,7 @@ import { sendImageAsSticker } from '../../lib/exif.js';
 import { logHandlerError } from '../../lib/errorLogger.js'; // FIX: error logger global
 import { createBoundedMap, createBoundedSet } from '../../lib/boundedStore.js';
 import { isDestinationAllowed } from '../../lib/destination.js';
+import { isAccGroup } from '../../lib/accGroups.js';
 
 // Semua penanda di bawah ini memakai penyimpanan berbatas (TTL + jumlah maks).
 // Versi lama memakai Set/object biasa yang tidak pernah dibersihkan, sehingga
@@ -96,6 +97,13 @@ async function process(sock, messageInfo) {
   // di autoresbot.js karena remoteJid-nya 'status@broadcast' (bukan grup), lalu
   // dialihkan ke grup di atas — jadi filternya diulang di sini.
   if (!isDestinationAllowed(true)) {
+    return true;
+  }
+
+  // Sama seperti di atas: jalur tag status lolos dari cek .acc di
+  // autoresbot.js (remoteJid-nya 'status@broadcast'), jadi grup tujuannya
+  // dicek ulang di sini. Grup yang belum di-.acc tidak boleh kena tindakan.
+  if (!isAccGroup(remoteJid)) {
     return true;
   }
 

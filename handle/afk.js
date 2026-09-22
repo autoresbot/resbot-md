@@ -1,4 +1,4 @@
-import { findUser, updateUser } from '../lib/users.js';
+import { resolveUser, claimAfkReturn } from '../lib/users.js';
 import { formatDuration, logTracking, sendMessageWithMention, convertToJid } from '../lib/utils.js'; // Fungsi untuk menghitung durasi waktu
 import { logCustom } from '../lib/logger.js';
 import mess from '../strings.js';
@@ -24,7 +24,10 @@ async function process(sock, messageInfo) {
     // Cek jika ada user lain yang di-tag dan sedang AFK (hanya di grup)
     if (isGroup && Array.isArray(mentionedJid) && mentionedJid.length > 0) {
       for (const jid of mentionedJid) {
-        const mentionedUser = findUser(jid, 'Debug 3');
+        // resolveUser (bukan findUser): findUser MENDAFTARKAN user yang belum
+        // ada. Karena blok ini jalan untuk setiap orang yang di-tag, sekali
+        // .hidetag di grup besar bisa membuat ratusan data user baru.
+        const mentionedUser = resolveUser(jid);
         if (!Array.isArray(mentionedUser)) continue; // skip jika tidak ditemukan atau bukan array
 
         const [, userData] = mentionedUser;
@@ -44,19 +47,17 @@ async function process(sock, messageInfo) {
 
     // Cek status AFK pengguna yang sedang mengirim pesan (kembali dari AFK)
 
-    const dataUsers = findUser(senderLid, 'Debug 4');
-    if (!Array.isArray(dataUsers)) return true;
-    const [, userAfk] = dataUsers;
+    // Status AFK diklaim & dimatikan DULU, baru pesannya dikirim. Kalau
+    // dikirim lebih dulu, pesan kedua yang masuk beruntun (atau kiriman ulang
+    // dari server) ikut lolos dan bot membalas dua kali.
+    const dataAfk = claimAfkReturn(senderLid);
 
-    if (userAfk?.status === 'afk' && userAfk.afk) {
+    if (dataAfk) {
       if (mess.handler?.afk_message) {
         const afkMessage = mess.handler.afk_message
           .replace('@sender', pushName)
-          .replace('@durasi', formatDuration(userAfk.afk.lastChat || userAfk.afk.lastchat || 0))
-          .replace(
-            '@alasan',
-            userAfk.afk.alasan ? `\n\n📌 ${userAfk.afk.alasan}` : '\n\n📌 Tanpa Alasan',
-          );
+          .replace('@durasi', formatDuration(dataAfk.lastChat || dataAfk.lastchat || 0))
+          .replace('@alasan', dataAfk.alasan ? `\n\n📌 ${dataAfk.alasan}` : '\n\n📌 Tanpa Alasan');
 
         if (afkMessage) {
           logTracking(`Afk Handler (kembali) - ${sender}`);
@@ -64,7 +65,6 @@ async function process(sock, messageInfo) {
         }
       }
 
-      await updateUser(senderLid, { status: 'aktif', afk: null });
       return false;
     }
   } catch (error) {

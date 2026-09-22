@@ -4,7 +4,12 @@ import path from 'path';
 import mess from '../../strings.js';
 import axios from 'axios';
 import config from '../../config.js';
-import { uploadImageFile, logShort } from '../../lib/uploader.js';
+import {
+  uploadImageFile,
+  logShort,
+  formatApiResponse,
+  formatNetworkError,
+} from '../../lib/uploader.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -16,6 +21,18 @@ const http = axios.create({
 });
 
 const logHd = (shortMessage, detail) => logShort('HD', shortMessage, detail);
+
+// Respons API ikut ditampilkan ke pengguna supaya penyebab gagalnya jelas
+// (apikey habis/salah, format ditolak, server sibuk, dll) — dulu yang tampil
+// hanya pesan umum "Silakan coba lagi" untuk semua jenis kegagalan.
+const withDetail = (text, detail) => (detail ? `${text}\n\n*Respon API:* ${detail}` : text);
+
+// Error 401/403 atau kode error berisi "KEY" hampir pasti soal apikey.
+const isApikeyProblem = (res) =>
+  res?.status === 401 ||
+  res?.status === 403 ||
+  /key/i.test(String(res?.data?.error_code || '')) ||
+  /apikey/i.test(String(res?.data?.message || ''));
 
 async function handle(sock, messageInfo) {
   const { m, remoteJid, message, prefix, command, type, isQuoted } = messageInfo;
@@ -67,23 +84,33 @@ async function handle(sock, messageInfo) {
     try {
       imageUrl = await uploadImageFile(mediaPath, { convert: true, label: 'HD' });
     } catch (err) {
-      logHd(`Upload gagal: ${err.serverMessage || err.message}`, err);
-      return await reply(m, '❌ Gagal mengupload gambar.\nSilakan coba beberapa saat lagi.');
+      const detail = err.serverMessage || err.message;
+      logHd(`Upload gagal: ${detail}`, err);
+      return await reply(m, withDetail('❌ Gagal mengupload gambar.', detail));
     }
 
     // ===============================
     // CREATE JOB
     // ===============================
-    const createRes = await http.get(REMINI_URL, {
-      params: { url: imageUrl },
-      headers: {
-        Authorization: `Bearer ${config.APIKEY}`,
-      },
-    });
+    let createRes;
+    try {
+      createRes = await http.get(REMINI_URL, {
+        params: { url: imageUrl },
+        headers: {
+          Authorization: `Bearer ${config.APIKEY}`,
+        },
+      });
+    } catch (err) {
+      const detail = formatNetworkError(err, 'API HD');
+      logHd(`Job gagal dibuat: ${detail}`, err);
+      return await reply(m, withDetail('❌ Gagal memproses gambar.', detail));
+    }
 
     if (!createRes.data?.job_id) {
-      logHd(`Job gagal dibuat: ${createRes.data?.message || `HTTP ${createRes.status}`}`);
-      return await reply(m, '❌ Gagal memproses gambar.\nPastikan Apikey Tersedia, ketik .apikey');
+      const detail = formatApiResponse(createRes);
+      logHd(`Job gagal dibuat: ${detail}`);
+      const hint = isApikeyProblem(createRes) ? '\n\nCek apikey kamu, ketik *.apikey*' : '';
+      return await reply(m, withDetail('❌ Gagal memproses gambar.', detail) + hint);
     }
 
     const jobId = createRes.data.job_id;
@@ -107,7 +134,17 @@ async function handle(sock, messageInfo) {
           },
         });
 
-        const data = pollRes.data;
+        const data = pollRes.data || {};
+
+        // Error 4xx saat polling (job tidak ditemukan, apikey ditolak, dll)
+        // tidak akan berubah dengan menunggu — dulu tetap diulang sampai
+        // timeout ~70 detik lalu hanya tampil "Waktu proses terlalu lama".
+        // 5xx dianggap gangguan sementara dan tetap dicoba lagi.
+        if (pollRes.status >= 400 && pollRes.status < 500) {
+          const detail = formatApiResponse(pollRes);
+          logHd(`Polling gagal: ${detail}`);
+          return await reply(m, withDetail('❌ Proses HD gagal.', detail));
+        }
 
         if (data.status === 'done') {
           finalImageUrl = data.result;
@@ -115,8 +152,9 @@ async function handle(sock, messageInfo) {
         }
 
         if (data.status === 'failed') {
-          logHd('Proses HD dilaporkan gagal oleh server');
-          return await reply(m, '❌ Proses HD gagal.\nSilakan coba lagi.');
+          const detail = formatApiResponse(pollRes);
+          logHd(`Proses HD dilaporkan gagal oleh server: ${detail}`);
+          return await reply(m, withDetail('❌ Proses HD gagal.\nSilakan coba lagi.', detail));
         }
       } catch (pollError) {
         if (pollError.code !== 'ECONNRESET') {
@@ -129,7 +167,13 @@ async function handle(sock, messageInfo) {
 
     if (!finalImageUrl) {
       logHd(`Timeout setelah ${maxRetry} kali pengecekan`);
-      return await reply(m, '❌ Waktu proses terlalu lama.\nSilakan coba lagi nanti.');
+      return await reply(
+        m,
+        withDetail(
+          '❌ Waktu proses terlalu lama.\nSilakan coba lagi nanti.',
+          `Gambar belum selesai diproses setelah ${(maxRetry * delayMs) / 1000} detik`,
+        ),
+      );
     }
 
     // ===============================
@@ -140,8 +184,9 @@ async function handle(sock, messageInfo) {
     });
 
     if (imageRes.status !== 200) {
-      logHd(`Gagal mengambil hasil: HTTP ${imageRes.status}`);
-      return await reply(m, '❌ Gagal mengambil hasil gambar.\nSilakan coba lagi.');
+      const detail = formatApiResponse(imageRes);
+      logHd(`Gagal mengambil hasil: ${detail}`);
+      return await reply(m, withDetail('❌ Gagal mengambil hasil gambar.', detail));
     }
 
     const MediaBuffer = Buffer.from(imageRes.data);
@@ -156,8 +201,14 @@ async function handle(sock, messageInfo) {
     );
   } catch (error) {
     // Hanya satu baris ringkas di console; stack lengkap masuk logs/api.log.
-    logHd(`Error: ${error?.message || error}`, error);
-    await reply(m, '❌ Terjadi kesalahan saat memproses gambar.\nSilakan coba lagi nanti.');
+    const detail =
+      error?.serverMessage ||
+      (error?.isAxiosError ? formatNetworkError(error, 'API HD') : error?.message || String(error));
+    logHd(`Error: ${detail}`, error);
+    await reply(
+      m,
+      `❌ Terjadi kesalahan saat memproses gambar.\nSilakan coba lagi nanti.\n\n*Detail:* ${detail}`,
+    );
   }
 }
 

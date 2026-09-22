@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0e17" />
+    <title>Resbot Control Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- ═══ Login ═══ -->
+    <section id="login-view" class="login hidden">
+      <form id="login-form" class="login-card">
+        <div class="brand brand-lg">
+          <span class="logo">R</span>
+          <span class="brand-text">RESBOT MD<small id="login-version">CONTROL PANEL</small></span>
+        </div>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input id="login-password" type="password" autocomplete="current-password" required />
+        </label>
+        <button id="login-btn" type="submit" class="btn primary block">
+          <span class="spinner hidden"></span><span class="btn-text">Masuk</span>
+        </button>
+        <p id="login-error" class="error"></p>
+        <p class="muted small">
+          Password ada di config (DASHBOARD_PASSWORD) atau, jika kosong, ditampilkan di console
+          saat bot start.
+        </p>
+      </form>
+    </section>
+
+    <!-- ═══ Aplikasi ═══ -->
+    <div id="app-view" class="shell hidden">
+      <aside id="sidebar" class="sidebar">
+        <div class="brand">
+          <span class="logo">R</span>
+          <span class="brand-text">RESBOT MD<small>CONTROL PANEL</small></span>
+        </div>
+        <nav id="nav" class="nav">
+          <a href="#dashboard" data-page="dashboard"><i data-icon="dashboard"></i><span>Dashboard</span></a>
+          <a href="#config" data-page="config"><i data-icon="sliders"></i><span>Config</span></a>
+          <a href="#custom" data-page="custom"><i data-icon="image"></i><span>Custom</span></a>
+          <a href="#strings" data-page="strings"><i data-icon="chat"></i><span>Strings</span></a>
+          <a href="#files" data-page="files"><i data-icon="folder"></i><span>File</span></a>
+          <a href="#database" data-page="database"><i data-icon="database"></i><span>Database</span></a>
+          <a href="#logs" data-page="logs"><i data-icon="terminal"></i><span>Log</span></a>
+          <a href="#password" data-page="password"><i data-icon="key"></i><span>Ganti Password</span></a>
+        </nav>
+        <div id="sidebar-version" class="sidebar-foot"></div>
+      </aside>
+      <div id="backdrop" class="backdrop"></div>
+
+      <div class="main">
+        <header class="topbar">
+          <button id="menu-btn" class="icon-btn" aria-label="Menu"><i data-icon="menu"></i></button>
+          <h1 id="page-title" class="page-title">Dashboard</h1>
+          <div class="profile">
+            <button id="profile-btn" class="profile-btn" aria-haspopup="true">
+              <span id="profile-avatar" class="avatar">A</span>
+              <span class="profile-meta">
+                <b id="profile-name">Admin</b>
+                <small>Administrator</small>
+              </span>
+              <i data-icon="chevron"></i>
+            </button>
+            <div id="profile-menu" class="dropdown hidden">
+              <div class="dropdown-head">
+                <b id="profile-name-2">Admin</b>
+                <small class="muted">Administrator</small>
+              </div>
+              <a href="#password" data-page="password"><i data-icon="key"></i>Ganti Password</a>
+              <button id="logout-btn" class="danger-text"><i data-icon="logout"></i>Keluar</button>
+            </div>
+          </div>
+        </header>
+
+        <main class="content">
+          <!-- Dashboard -->
+          <section id="page-dashboard" class="page">
+            <div id="pw-warning" class="alert hidden">
+              <i data-icon="alert"></i>
+              <span>Dashboard masih memakai password otomatis. Sebaiknya ganti password.</span>
+              <a href="#password" class="btn small">Ganti</a>
+            </div>
+            <div id="dash-hero" class="hero card"></div>
+            <div id="dash-stats" class="stats"></div>
+            <div class="grid-2">
+              <div class="card">
+                <h3 class="card-title">Resource</h3>
+                <div id="dash-resource"></div>
+              </div>
+              <div class="card">
+                <h3 class="card-title">Sesi WhatsApp</h3>
+                <div id="dash-sessions"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Config -->
+          <section id="page-config" class="page hidden">
+            <div id="config-cats" class="chips"></div>
+            <div class="card">
+              <div class="card-head">
+                <h3 id="config-cat-title" class="card-title"></h3>
+              </div>
+              <div id="config-form" class="form-grid"></div>
+            </div>
+            <div id="config-savebar" class="savebar hidden">
+              <span id="config-dirty"></span>
+              <button id="config-reset" class="btn small ghost">Batal</button>
+              <button id="config-save" class="btn small primary">Simpan</button>
+            </div>
+          </section>
+
+          <!-- Custom -->
+          <section id="page-custom" class="page hidden">
+            <div class="card">
+              <div class="card-head wrap">
+                <h3 class="card-title">Gambar Menu</h3>
+                <label id="img-upload-btn" class="btn small primary">
+                  <span class="spinner hidden"></span><i data-icon="upload"></i><span class="btn-text">Ganti Gambar</span>
+                  <input id="img-upload" type="file" accept="image/*" hidden />
+                </label>
+              </div>
+              <div class="media-row">
+                <div class="img-frame"><img id="img-preview" alt="Gambar menu" /></div>
+                <div class="media-info">
+                  <p>Gambar yang tampil saat user membuka <b>.menu</b> / <b>.allmenu</b>.</p>
+                  <p class="muted small">File: database/assets/allmenu.jpg. PNG, WebP, dan GIF otomatis diubah ke JPG. Berlaku langsung tanpa restart.</p>
+                  <p id="img-meta" class="muted small"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head wrap">
+                <h3 class="card-title">Audio Sapaan</h3>
+              </div>
+              <div class="upload-panel">
+                <label class="btn small">
+                  <i data-icon="music"></i><span id="audio-file-name">Pilih file audio</span>
+                  <input id="audio-file" type="file" accept="audio/*,.opus" hidden />
+                </label>
+                <select id="audio-target">
+                  <option value="all">Terapkan ke semua audio</option>
+                </select>
+                <button id="audio-upload" class="btn small primary" disabled>
+                  <span class="spinner hidden"></span><i data-icon="upload"></i><span class="btn-text">Upload</span>
+                </button>
+              </div>
+              <p class="muted small">MP3, M4A, WAV, dan OGG otomatis diubah ke format voice note (.opus). Berlaku langsung tanpa restart.</p>
+              <div id="audio-list" class="audio-grid"></div>
+            </div>
+          </section>
+
+          <!-- Strings -->
+          <section id="page-strings" class="page hidden">
+            <div id="strings-cats" class="chips"></div>
+            <div class="card">
+              <div class="card-head wrap">
+                <h3 id="strings-cat-title" class="card-title"></h3>
+                <span class="muted small">Teks yang dikirim bot. Kata berawalan @ adalah variabel yang diisi otomatis. *tebal* _miring_ ~coret~</span>
+              </div>
+              <div id="strings-form" class="form-grid"></div>
+            </div>
+            <div id="strings-savebar" class="savebar hidden">
+              <span id="strings-dirty"></span>
+              <button id="strings-reset" class="btn small ghost">Batal</button>
+              <button id="strings-save" class="btn small primary">Simpan</button>
+            </div>
+          </section>
+
+          <!-- File -->
+          <section id="page-files" class="page hidden">
+            <div class="card">
+              <div class="card-head wrap">
+                <div id="files-crumbs" class="crumbs"></div>
+                <div class="actions">
+                  <button id="files-newfile" class="btn small"><i data-icon="filePlus"></i><span>File</span></button>
+                  <button id="files-newdir" class="btn small"><i data-icon="folderPlus"></i><span>Folder</span></button>
+                  <label class="btn small primary">
+                    <i data-icon="upload"></i><span>Upload</span>
+                    <input id="files-upload" type="file" multiple hidden />
+                  </label>
+                </div>
+              </div>
+              <div class="table-wrap"><table id="files-table" class="data files"></table></div>
+            </div>
+          </section>
+
+          <!-- Database -->
+          <section id="page-database" class="page hidden">
+            <div class="db-layout">
+              <div class="card db-tables">
+                <h3 class="card-title">Tabel</h3>
+                <ul id="db-tables" class="table-list"></ul>
+                <button id="db-sql-open" class="btn small ghost block"><i data-icon="terminal"></i><span>Konsol SQL</span></button>
+              </div>
+              <div class="card grow">
+                <div id="db-empty" class="empty"><i data-icon="database"></i><p>Pilih tabel untuk mulai.</p></div>
+                <div id="db-view" class="hidden">
+                  <div class="card-head wrap">
+                    <h3 id="db-title" class="card-title"></h3>
+                    <div class="actions">
+                      <div class="search"><i data-icon="search"></i><input id="db-search" type="search" placeholder="Cari..." /></div>
+                      <button id="db-add" class="btn small primary"><i data-icon="plus"></i><span>Tambah</span></button>
+                    </div>
+                  </div>
+                  <div class="table-wrap"><table id="db-table" class="data"></table></div>
+                  <div class="pager">
+                    <button id="db-prev" class="icon-btn small" aria-label="Sebelumnya"><i data-icon="left"></i></button>
+                    <span id="db-pageinfo" class="muted"></span>
+                    <button id="db-next" class="icon-btn small" aria-label="Berikutnya"><i data-icon="right"></i></button>
+                  </div>
+                </div>
+                <div id="db-sql" class="hidden">
+                  <div class="card-head"><h3 class="card-title">Konsol SQL</h3></div>
+                  <textarea id="db-sql-input" class="code" rows="5" placeholder="SELECT * FROM users LIMIT 10"></textarea>
+                  <div class="card-head end">
+                    <span class="muted small">Ctrl+Enter untuk menjalankan</span>
+                    <button id="db-sql-run" class="btn small primary"><i data-icon="play"></i><span>Jalankan</span></button>
+                  </div>
+                  <div id="db-sql-result"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Log -->
+          <section id="page-logs" class="page hidden">
+            <div class="card">
+              <div class="card-head wrap">
+                <select id="logs-select"></select>
+                <button id="logs-refresh" class="btn small"><i data-icon="refresh"></i><span>Muat ulang</span></button>
+              </div>
+              <pre id="logs-content" class="code logs"></pre>
+            </div>
+          </section>
+
+          <!-- Ganti Password -->
+          <section id="page-password" class="page hidden">
+            <form id="password-form" class="card narrow">
+              <h3 class="card-title">Ganti Password Dashboard</h3>
+              <p class="muted small">Password langsung berlaku tanpa restart. Perangkat lain yang sedang login akan otomatis keluar.</p>
+              <label class="field">
+                <span class="field-label">Password Lama</span>
+                <input id="pw-old" type="password" autocomplete="current-password" required />
+              </label>
+              <label class="field">
+                <span class="field-label">Password Baru</span>
+                <input id="pw-new" type="password" autocomplete="new-password" minlength="6" required />
+                <span class="field-help">Minimal 6 karakter.</span>
+              </label>
+              <label class="field">
+                <span class="field-label">Ulangi Password Baru</span>
+                <input id="pw-confirm" type="password" autocomplete="new-password" required />
+              </label>
+              <p id="pw-error" class="error"></p>
+              <button type="submit" class="btn primary">Simpan Password</button>
+            </form>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Modal umum -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-box">
+        <div class="modal-head">
+          <h3 id="modal-title"></h3>
+          <button id="modal-close" class="icon-btn small" aria-label="Tutup"><i data-icon="x"></i></button>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
+        <div id="modal-actions" class="modal-actions"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

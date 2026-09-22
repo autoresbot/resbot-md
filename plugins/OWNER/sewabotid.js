@@ -2,6 +2,7 @@ import { addSewa, findSewa } from "../../lib/sewa.js";
 import config from "../../config.js";
 import { selisihHari, hariini } from "../../lib/utils.js";
 import { deleteCache } from "../../lib/globalCache.js";
+import { pastikanAnggota } from "../../lib/gabungGrup.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, sender, prefix, command } = messageInfo;
@@ -69,6 +70,21 @@ async function handle(sock, messageInfo) {
   const timestampExpiration = expirationDate.getTime();
 
   try {
+    // Dicek dulu: dulu sewa dicatat untuk ID grup APA PUN, lalu bot menjawab
+    // "Bot Sudah Bergabung" padahal belum tentu ada di grup itu.
+    const cek = await pastikanAnggota(sock, linkGrub);
+    if (!cek.ok) {
+      return await sock.sendMessage(
+        remoteJid,
+        {
+          text:
+            `⚠️ _Gagal membuat sewa._\n\n${cek.alasan}\n\n` +
+            `_Sewa TIDAK dicatat. Masukkan bot ke grup itu dulu, atau pakai *${prefix}sewabot <link grup> ${totalHari}*._`,
+        },
+        { quoted: message },
+      );
+    }
+
     // Proses penambahan sewa ke database
     await addSewa(linkGrub, {
       linkGrub: linkGrub,
@@ -84,6 +100,7 @@ async function handle(sock, messageInfo) {
       {
         text:
           `_*Bot Sudah Bergabung*_` +
+          `\nName Grub : *${cek.subject || "-"}*` +
           `\nNomor Bot : ${config.phone_number_bot}` +
           `\nExpired : *${selisihHari(timestampExpiration)}*` +
           `\n\n_Untuk Mengecek status sewa ketik *.ceksewa* pada grub tersebut_`,

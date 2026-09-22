@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.1
+║ 📦 Version   : 5.4.2
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -40,7 +40,7 @@ const VERSION = global.version; // don't edit
 const EMAIL = 'autoresbot@gmail.com';
 const REGION = 'Indonesia';
 const WEBSITE = 'autoresbot.com';
-const DATA_OWNER = ['69243815079978@lid','231911473578043']; // cara ambil owner https://youtu.be/qrRXPCSFvRo?si=KOWdFhrScHN7Ugd4
+const DATA_OWNER = []; // cara ambil owner https://youtu.be/qrRXPCSFvRo?si=KOWdFhrScHN7Ugd4
 
 // Nama yang ditampilkan di command .owner.
 // Key  : nomor/LID owner (boleh ditulis polos, dengan @lid, atau @s.whatsapp.net)
@@ -54,8 +54,19 @@ const OWNER_NAMES = {
 
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
-const AUTO_READ = true; // jika true (setiap chat akan di baca/centang 2 biru)
+const AUTO_READ = false; // jika true (setiap chat akan di baca/centang 2 biru)
 const AUTO_BACKUP = false; // jika true (setiap restart server, data backup di kirimkan ke wa owner);
+
+// Konfiqurasi Backup Telegram (dipakai .backuptele & AUTO_BACKUP)
+// Token   : dari @BotFather -> /newbot -> salin token (format 123456789:AAE-xxxx)
+// Chat ID : kirim pesan ke botmu, lalu buka
+//           https://api.telegram.org/bot<TOKEN>/getUpdates dan cari "chat":{"id":...}
+//           (id grup diawali tanda minus). Alternatif: chat ke @userinfobot
+// Biarkan kosong jika tidak dipakai.
+const TELEGRAM_BOT_TOKEN = '';
+const TELEGRAM_CHAT_ID = '';
+// jika true, hasil AUTO_BACKUP juga dikirim ke Telegram (butuh 2 isian di atas)
+const AUTO_BACKUP_TELEGRAM = false;
 const MIDNIGHT_RESTART = false; // Restart setiap jam 12 malam
 const PRESENCE_UPDATE = ''; // unavailable, available, composing, recording, paused
 const ALWAYS_ONLINE = true; // jika true (bot selalu tampil "aktif" di Perangkat Tertaut)
@@ -85,6 +96,13 @@ const SPAM_ACTION = 'both'; // tindakan setelah warning terpenuhi (kick, block, 
 // More
 const STATUS_SCHEDULED = true;
 
+// Dashboard web (kelola database, config.js, dan file lewat browser)
+// Di panel pterodactyl otomatis memakai port server (allocation). Jika server
+// tidak punya port, dashboard tidak dijalankan & bot tetap jalan normal.
+const DASHBOARD = false; // false = matikan dashboard
+const DASHBOARD_PASSWORD = ''; // kosong = dibuat otomatis (lihat console / database/dashboard.json)
+const DASHBOARD_PORT = 3000; // hanya dipakai saat dijalankan di PC (bukan panel)
+
 const config = {
   APIKEY,
   phone_number_bot: NOMOR_BOT,
@@ -110,6 +128,11 @@ const config = {
   anticall: ANTI_CALL,
   autoread: AUTO_READ,
   autobackup: AUTO_BACKUP,
+  autobackup_telegram: AUTO_BACKUP_TELEGRAM,
+  TELEGRAM: {
+    token: TELEGRAM_BOT_TOKEN,
+    chat_id: TELEGRAM_CHAT_ID,
+  },
   PresenceUpdate: PRESENCE_UPDATE,
   always_online: ALWAYS_ONLINE,
   typewelcome: TYPE_WELCOME,
@@ -134,6 +157,11 @@ const config = {
   BADWORD: {
     warning: BADWORD_WARNING,
     action: BADWORD_ACTION,
+  },
+  dashboard: {
+    enabled: DASHBOARD,
+    password: DASHBOARD_PASSWORD,
+    port: DASHBOARD_PORT,
   },
 };
 
