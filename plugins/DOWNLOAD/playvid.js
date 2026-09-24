@@ -5,6 +5,7 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 import config from '../../config.js';
 import { logCustom } from '../../lib/logger.js';
 import { downloadToBuffer } from '../../lib/utils.js';
+import { ambilMediaDenganRetry, pesanGagal } from '../../lib/ytdownloader.js';
 
 // Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
@@ -25,70 +26,12 @@ async function sendReaction(sock, message, reaction) {
 async function searchYouTube(query) {
   const searchResults = await yts(query);
 
-  return (
-    searchResults.all.find((item) => item.type === 'video') ||
-    searchResults.all[0]
-  );
-}
-
-// Fungsi delay
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Fungsi memanggil API dengan retry
-async function fetchWithRetry(
-  api,
-  endpoint,
-  params,
-  maxRetries = 6,
-  delayMs = 7000,
-) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await api.get(endpoint, params);
-
-      const mediaUrl =
-        response?.data?.url ||
-        response?.data?.result?.url ||
-        response?.data?.data?.url;
-
-      if (response?.status && mediaUrl) {
-        return {
-          ...response,
-          data: {
-            ...response.data,
-            url: mediaUrl,
-          },
-        };
-      }
-
-      throw new Error(
-        `Response API tidak valid pada percobaan ke-${attempt}`,
-      );
-    } catch (error) {
-      lastError = error;
-
-      if (attempt < maxRetries) {
-        await delay(delayMs);
-      }
-    }
-  }
-
-  throw lastError;
+  return searchResults.all.find((item) => item.type === 'video') || searchResults.all[0];
 }
 
 // Fungsi utama
 async function handle(sock, messageInfo) {
-  const {
-    remoteJid,
-    message,
-    content,
-    prefix,
-    command,
-  } = messageInfo;
+  const { remoteJid, message, content, prefix, command } = messageInfo;
 
   try {
     const query = content?.trim();
@@ -135,9 +78,7 @@ async function handle(sock, messageInfo) {
     // =========================
     // CAPTION
     // =========================
-    const description = video.description
-      ? video.description.slice(0, 1000)
-      : '-';
+    const description = video.description ? video.description.slice(0, 1000) : '-';
 
     const caption = `*YOUTUBE DOWNLOADER*
 
@@ -152,23 +93,16 @@ ${description}`;
     // =========================
     // REQUEST API DOWNLOADER
     // =========================
+    // Retry & pembacaan link ditangani helper bersama (lib/ytdownloader.js),
+    // jadi keempat plugin downloader berperilaku sama.
     const api = new ApiAutoresbot(config.APIKEY);
 
-    const response = await fetchWithRetry(
+    const { url: urlMedia } = await ambilMediaDenganRetry(
       api,
       '/api/downloader/ytmp4',
-      {
-        url: video.url,
-      },
-      14,
-      9000,
+      { url: video.url },
+      { label: `playvid "${query}"` },
     );
-
-    const urlMedia = response?.data?.url;
-
-    if (!urlMedia) {
-      throw new Error('URL video dari API tidak ditemukan.');
-    }
 
     // =========================
     // DOWNLOAD VIDEO KE BUFFER
@@ -176,7 +110,7 @@ ${description}`;
     const videoBuffer = await downloadToBuffer(urlMedia, 'mp4');
 
     if (!videoBuffer || videoBuffer.length === 0) {
-      throw new Error('Gagal mendownload file video.');
+      throw new Error('File video gagal diunduh dari server downloader.');
     }
 
     // =========================
@@ -198,23 +132,15 @@ ${description}`;
   } catch (error) {
     console.error('Error while handling command:', error);
 
-    logCustom(
-      'info',
-      content,
-      `ERROR-COMMAND-${command}.txt`,
-    );
+    logCustom('info', `${content} :: ${error?.message || error}`, `ERROR-COMMAND-${command}.txt`);
 
-    const errorMessage = `⚠️ Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.
-
-💡 Detail: ${error.message || error}`;
-
-    await sendReaction(sock, message, '❗');
+    await sendReaction(sock, message, '❗').catch(() => {});
 
     await sendMessageWithQuote(
       sock,
       remoteJid,
       message,
-      errorMessage,
+      pesanGagal('video', error, `${prefix}${command} ${(content || '').trim()}`),
     );
   }
 }
@@ -226,4 +152,3 @@ export default {
   OnlyOwner: false,
   limitDeduction: 1,
 };
-

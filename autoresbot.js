@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.2
+║ 📦 Version   : 5.4.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -46,6 +46,8 @@ import { logCustom } from './lib/logger.js';
 import { createBoundedMap } from './lib/boundedStore.js';
 import { isDestinationAllowed } from './lib/destination.js';
 import { isAccGroup } from './lib/accGroups.js';
+import { chatBerhenti, chatSelesai, chatTahap, chatError, jejakAktif } from './lib/trace.js';
+import { pecahRantai, jalankanRantai } from './lib/rantaiCommand.js';
 
 // Variabel global
 // Rate limiter memakai penyimpanan berbatas (TTL + jumlah maksimum). Versi lama
@@ -163,6 +165,11 @@ async function processMessage(sock, messageInfo) {
         destinationNoticeAt.set(remoteJid, Date.now());
         logWithTime('SYSTEM', `Destination handle only - ${config.bot_destination} chat`);
       }
+      chatBerhenti(
+        'Setelan DESTINATION',
+        `bot hanya melayani chat '${config.bot_destination}' (config.js)`,
+        messageInfo,
+      );
       return;
     }
 
@@ -171,6 +178,9 @@ async function processMessage(sock, messageInfo) {
     // handler (antilink, list, game, autoai, dll) maupun plugin yang jalan.
     // Owner tetap dilayani supaya bisa mengetik .acc di grup tersebut.
     if (isGroup && !isOwnerUsers && !isAccGroup(remoteJid) && !modeSetup) {
+      // Alasannya dicatat lewat jejak chat (hanya muncul di mode development,
+      // supaya console mode production tetap rapi).
+      chatBerhenti('Sistem .acc', 'grup ini belum diaktifkan owner (ketik .acc di grup)', messageInfo);
       return;
     }
 
@@ -185,14 +195,24 @@ async function processMessage(sock, messageInfo) {
         sessionNoticeAt.set(remoteJid, Date.now());
         logWithTime('SYSTEM', 'Sesi belum siap kirim pesan - pesan masuk dilewati');
       }
+      chatBerhenti('Sesi WhatsApp', 'sesi sedang putus/reconnect, bot belum bisa mengirim', messageInfo);
       return;
     }
 
     // Pastikan handler & plugin selesai dimuat sebelum pesan diproses.
     await ensureReady();
 
+    // Nama handler yang menghentikan dicatat di lib/handler.js lalu dibaca di
+    // sini, supaya baris [CHAT BERHENTI] menyebut fitur yang tepat.
     const shouldContinue = await handler.preProcess(sock, messageInfo);
-    if (!shouldContinue) return; // Jika handler.js memutuskan untuk berhenti
+    if (!shouldContinue) {
+      chatBerhenti(
+        `Handler: ${messageInfo.dihentikanOleh || 'tidak diketahui'}`,
+        'fitur ini sengaja menghentikan pemrosesan pesan',
+        messageInfo,
+      );
+      return; // Jika handler.js memutuskan untuk berhenti
+    }
 
     // Rate limiter
     let truncatedContent = fullText.length > 10 ? fullText.slice(0, 10) + '...' : fullText;
@@ -200,7 +220,20 @@ async function processMessage(sock, messageInfo) {
     const currentTime = Date.now();
     const lastTime = lastMessageTime.get(remoteJid);
     if (lastTime && currentTime - lastTime < config.rate_limit && prefix && !isOwnerUsers) {
-      danger(pushName, `Rate limit : ${truncatedContent}`);
+      // Di production tetap sependek versi lama. Rinciannya (jendela rate limit
+      // ini dipakai BERSAMA satu grup) hanya ditambahkan di mode development,
+      // karena di sanalah log dipakai untuk melacak "kenapa bot tidak respon".
+      danger(
+        pushName,
+        jejakAktif()
+          ? `Rate limit : ${truncatedContent} - chat ${remoteJid} baru dipakai ${currentTime - lastTime}ms lalu (batas ${config.rate_limit}ms)`
+          : `Rate limit : ${truncatedContent}`,
+      );
+      chatBerhenti(
+        'Rate limit',
+        `chat ini baru dipakai ${currentTime - lastTime}ms lalu, batas ${config.rate_limit}ms (jendela dipakai BERSAMA satu grup)`,
+        messageInfo,
+      );
       return;
     }
     if (prefix) {
@@ -222,35 +255,33 @@ async function processMessage(sock, messageInfo) {
       //console.log(inspect(messageInfo, { depth: 2, colors: false, compact: false }));
     }
 
-    let commandFound = false;
-
-    // Iterasi melalui semua plugin untuk menemukan perintah yang sesuai
-    for (const plugin of plugins) {
-      // Plugin yang cacat (tanpa Commands / bukan array) sebelumnya membuat
-      // `plugin.Commands.includes` melempar TypeError. Karena loop ini berada
-      // di dalam satu try/catch besar, SATU plugin rusak akan menghentikan
-      // pemrosesan SEMUA pesan — bukan hanya command miliknya sendiri.
-      if (!Array.isArray(plugin?.Commands) || !plugin.Commands.includes(command)) continue;
-
-      if (typeof plugin.handle !== 'function') {
-        danger('Plugin', `Plugin untuk command "${command}" tidak punya fungsi handle`);
-        continue;
-      }
-
-      commandFound = true;
+    /**
+     * Pengecekan izin & limit untuk SATU plugin.
+     *
+     * Dulu blok ini tertanam di dalam loop plugin di bawah. Dipisah supaya
+     * rantai command (`.removebg + sticker`) bisa memanggilnya ULANG untuk
+     * setiap langkah - kalau tidak, merantai dua fitur berbayar cuma memotong
+     * satu limit.
+     *
+     * @returns {Promise<boolean>} false = pesan penolakan sudah dikirim
+     */
+    async function cekIzin(plugin, infoPlugin) {
+      const cmd = infoPlugin.command;
 
       // Cek apakah perintah ini hanya untuk pengguna premium
       if (plugin.OnlyPremium && !isPremiumUsers && !isOwnerUsers) {
-        logTracking(`Handler - Bukan premium (${command})`);
+        logTracking(`Handler - Bukan premium (${cmd})`);
+        chatBerhenti(`Plugin ${cmd}`, 'khusus user premium', infoPlugin);
         await sock.sendMessage(remoteJid, { text: mess.general.isPremium }, { quoted: message });
-        return;
+        return false;
       }
 
       // Cek apakah perintah ini hanya untuk owner
       if (plugin.OnlyOwner && !isOwnerUsers) {
-        logTracking(`Handler - Bukan Owner (${command})`);
+        logTracking(`Handler - Bukan Owner (${cmd})`);
+        chatBerhenti(`Plugin ${cmd}`, 'khusus owner', infoPlugin);
         await sock.sendMessage(remoteJid, { text: mess.general.isOwner }, { quoted: message });
-        return;
+        return false;
       }
 
       //  fitur baru disini
@@ -269,15 +300,19 @@ async function processMessage(sock, messageInfo) {
       if (!isPremiumUsers && !isOwnerUsers && plugin.limitDeduction && !isGrubPremium) {
         try {
           const dataUsers = await findUser(senderLid, 'Debug 1');
-          if (!dataUsers) return;
+          if (!dataUsers) {
+            chatBerhenti(`Plugin ${cmd}`, `data user ${senderLid} tidak ditemukan`, infoPlugin);
+            return false;
+          }
 
           const [docId, userData] = dataUsers;
 
           const isLimitExceeded = userData.limit < plugin.limitDeduction || userData.limit < 1;
           if (isLimitExceeded) {
             logTracking('Handler - Limit habis ');
+            chatBerhenti(`Plugin ${cmd}`, 'limit user habis', infoPlugin);
             await sock.sendMessage(remoteJid, { text: mess.general.limit }, { quoted: message });
-            return;
+            return false;
           }
 
           // Kurangi limit pengguna jika masih cukup
@@ -289,7 +324,51 @@ async function processMessage(sock, messageInfo) {
         }
       }
 
+      return true;
+    }
+
+    // ─── Rantai command ──────────────────────────────────────────────────
+    // `.removebg + sticker` = jalankan beberapa command berurutan, hasil
+    // langkah sebelumnya jadi media masukan langkah berikutnya. Dicek SEBELUM
+    // pencarian plugin biasa, karena `command` di sini masih 'removebg' dan
+    // akan salah jalan kalau diproses sebagai command tunggal.
+    const rantai = pecahRantai(messageInfo, plugins);
+
+    if (rantai?.galat) {
+      chatBerhenti('Rantai command', 'susunan rantai tidak valid', messageInfo);
+      return await sock.sendMessage(remoteJid, { text: rantai.galat }, { quoted: message });
+    }
+
+    if (rantai?.langkah) {
+      const urutan = rantai.langkah.map((l) => l.command).join(' -> ');
+      chatTahap(`Rantai command dijalankan (${urutan})`, messageInfo);
+      await jalankanRantai(sock, messageInfo, rantai.langkah, { plugins, cekIzin });
+      chatSelesai(`Rantai command selesai (${urutan})`, messageInfo);
+      return;
+    }
+
+    let commandFound = false;
+
+    // Iterasi melalui semua plugin untuk menemukan perintah yang sesuai
+    for (const plugin of plugins) {
+      // Plugin yang cacat (tanpa Commands / bukan array) sebelumnya membuat
+      // `plugin.Commands.includes` melempar TypeError. Karena loop ini berada
+      // di dalam satu try/catch besar, SATU plugin rusak akan menghentikan
+      // pemrosesan SEMUA pesan — bukan hanya command miliknya sendiri.
+      if (!Array.isArray(plugin?.Commands) || !plugin.Commands.includes(command)) continue;
+
+      if (typeof plugin.handle !== 'function') {
+        danger('Plugin', `Plugin untuk command "${command}" tidak punya fungsi handle`);
+        continue;
+      }
+
+      commandFound = true;
+
+      if (!(await cekIzin(plugin, messageInfo))) return;
+
+      chatTahap(`Plugin ${command} dijalankan`, messageInfo);
       const pluginResult = await plugin.handle(sock, messageInfo);
+      chatSelesai(`Plugin ${command} selesai`, messageInfo);
 
       logTracking(`Plugins - ${command} dijalankan oleh ${senderLid}`);
 
@@ -300,6 +379,13 @@ async function processMessage(sock, messageInfo) {
     }
 
     // sampai sini command tidak di temukan
+    if (!commandFound && prefix && command) {
+      chatBerhenti('Pencarian command', `command '${prefix}${command}' tidak ada di folder plugins`, messageInfo);
+    } else if (!commandFound) {
+      // Pesan biasa (bukan command). Sudah lewat semua handler tanpa dihentikan.
+      chatSelesai('Pesan biasa - tidak ada command untuk dijalankan', messageInfo);
+    }
+
     if (config.commandSimilarity && !commandFound) {
       const closestCommand = findClosestCommand(command, plugins);
       if (closestCommand && command != '' && fullText.length < 20 && prefix) {
@@ -320,6 +406,7 @@ async function processMessage(sock, messageInfo) {
     }
   } catch (error) {
     logCustom('error', error, `ERROR-processMessage.txt`);
+    chatError('processMessage', error, messageInfo);
     danger(command, `Kesalahan di processMessage: ${error}`);
   }
 }

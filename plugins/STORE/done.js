@@ -5,7 +5,7 @@ import {
   reply,
   getSenderType,
 } from '../../lib/utils.js';
-import { getGroupMetadata } from '../../lib/cache.js';
+import { getGroupMetadata, pesertaAdalahAdmin, jidPesertaGrup } from '../../lib/cache.js';
 import { sendImageAsSticker } from '../../lib/exif.js';
 import { checkMessage } from '../../lib/participants.js';
 import mess from '../../strings.js';
@@ -13,15 +13,16 @@ import config from '../../config.js';
 import fs from 'fs';
 
 async function handle(sock, messageInfo) {
-  const { m, remoteJid, sender, message, isQuoted } = messageInfo;
+  const { m, remoteJid, sender, senderLid, message, isQuoted } = messageInfo;
 
   try {
     // Mendapatkan metadata grup
     const groupMetadata = await getGroupMetadata(sock, remoteJid);
     const participants = groupMetadata.participants;
-    const isAdmin = participants.some(
-      (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
-    );
+    // Dicocokkan lewat semua bentuk identitas: di grup ber-alamat LID, `id`
+    // peserta berupa @lid sedangkan pengirim dikenali lewat nomor telepon
+    // (atau sebaliknya), dan `phoneNumber` tidak selalu dikirim WhatsApp.
+    const isAdmin = pesertaAdalahAdmin(participants, sender, senderLid);
     if (!isAdmin) {
       await sock.sendMessage(remoteJid, { text: mess.general.isAdmin }, { quoted: message });
       return;
@@ -44,8 +45,14 @@ async function handle(sock, messageInfo) {
     // Menyiapkan catatan dari pesan yang dikutip
     const note = isQuoted.content?.caption ? isQuoted.content.caption : isQuoted.text;
 
-    const quotedSender = `@${isQuoted.sender.split('@')[0]}`;
-    const statusJid = getSenderType(isQuoted.sender);
+    // Bentuk JID pengirim pesan yang di-quote disamakan dengan yang dipakai
+    // grup. `contextInfo.participant` bisa berupa LID atau nomor telepon
+    // tergantung versi WhatsApp pengirimnya, sementara tag hanya tampil kalau
+    // teks `@nomor` dan JID yang di-mention memakai bentuk yang SAMA — itulah
+    // sebabnya tag sering muncul sebagai nomor asing, bukan nama.
+    const quotedJid = jidPesertaGrup(participants, isQuoted.sender) || isQuoted.sender;
+    const quotedSender = `@${quotedJid.split('@')[0]}`;
+    const statusJid = getSenderType(quotedJid);
 
     if (first_checksetdone) {
       // Jika ada setingan set done
@@ -70,7 +77,12 @@ async function handle(sock, messageInfo) {
             .replace(/@catatan/g, note)
             .replace(/@sender/g, quotedSender);
 
-          await sendMessageWithMention(sock, remoteJid, messageSetdone, message, statusJid);
+          // Mention dioper eksplisit: kalau ditebak dari teks, `@nomor` yang
+          // kebetulan ada di dalam catatan pesanan ikut jadi mention palsu dan
+          // domainnya ditebak dari tipe pengirim.
+          await sendMessageWithMention(sock, remoteJid, messageSetdone, message, statusJid, [
+            quotedJid,
+          ]);
           return;
         }
       } catch (error) {
@@ -89,7 +101,7 @@ async function handle(sock, messageInfo) {
 ${quotedSender} _Terima kasih sudah order!_`;
 
     // Mengirim pesan dengan mention
-    await sendMessageWithMention(sock, remoteJid, templateMessage, message, statusJid);
+    await sendMessageWithMention(sock, remoteJid, templateMessage, message, statusJid, [quotedJid]);
   } catch (error) {
     console.error('Terjadi kesalahan:', error);
   }

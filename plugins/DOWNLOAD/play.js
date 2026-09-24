@@ -5,6 +5,7 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 import config from '../../config.js';
 import { logCustom } from '../../lib/logger.js';
 import { downloadToBuffer } from '../../lib/utils.js';
+import { ambilMediaDenganRetry, pesanGagal } from '../../lib/ytdownloader.js';
 
 // Fungsi kirim pesan dengan quote
 async function sendMessageWithQuote(sock, remoteJid, message, text) {
@@ -22,34 +23,6 @@ async function sendReaction(sock, message, reaction) {
 async function searchYouTube(query) {
   const searchResults = await yts(query);
   return searchResults.all.find((item) => item.type === 'video') || searchResults.all[0];
-}
-
-// Fungsi delay (jeda)
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Fungsi untuk memanggil API dengan retry (maksimal 3x, jeda 5 detik)
-async function fetchWithRetry(api, endpoint, params, maxRetries = 6, delayMs = 7000) {
-  let lastError;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await api.get(endpoint, params);
-      if (response && response.status && response.data.url) {
-        //console.log(`✅ API berhasil pada percobaan ke-${attempt}`);
-        return response;
-      }
-      throw new Error(`Response tidak valid (percobaan ${attempt})`);
-    } catch (err) {
-      lastError = err;
-      //console.warn(`❌ Percobaan ke-${attempt} gagal: ${err.message}`);
-      if (attempt < maxRetries) {
-        // console.log(`⏳ Menunggu ${delayMs / 1000} detik sebelum mencoba lagi...`);
-        await delay(delayMs);
-      }
-    }
-  }
-  throw lastError;
 }
 
 // Fungsi utama
@@ -73,6 +46,7 @@ async function handle(sock, messageInfo) {
     const video = await searchYouTube(query);
 
     if (!video || !video.url) {
+      await sendReaction(sock, message, '❗');
       return sendMessageWithQuote(
         sock,
         remoteJid,
@@ -82,6 +56,7 @@ async function handle(sock, messageInfo) {
     }
 
     if (video.seconds > 3600) {
+      await sendReaction(sock, message, '❗');
       return sendMessageWithQuote(
         sock,
         remoteJid,
@@ -92,49 +67,53 @@ async function handle(sock, messageInfo) {
 
     const caption = `*YOUTUBE DOWNLOADER*\n\n◧ Title: ${video.title}\n◧ Duration: ${video.timestamp}\n◧ Uploaded: ${video.ago}\n◧ Views: ${video.views}\n◧ Description: ${video.description}`;
 
-    // Inisialisasi API dan gunakan fetchWithRetry
+    // Link media dicari lewat helper bersama: link diambil dari bentuk response
+    // apa pun, kegagalan yang percuma diulang langsung dihentikan, sisanya
+    // diulang dengan jeda bertingkat. Lihat lib/ytdownloader.js.
     const api = new ApiAutoresbot(config.APIKEY);
-    const response = await fetchWithRetry(
+    const { url: url_media } = await ambilMediaDenganRetry(
       api,
       '/api/downloader/ytplay',
       { url: video.url, format: 'm4a' },
-      14,
-      9000,
+      { label: `play "${query}"` },
     );
 
-    if (response && response.status) {
-      const url_media = response.data.url;
+    // Kirim image dengan caption
+    await sock.sendMessage(
+      remoteJid,
+      { image: { url: video.thumbnail }, caption },
+      { quoted: message },
+    );
 
-      // Kirim image dengan caption
-      await sock.sendMessage(
-        remoteJid,
-        { image: { url: video.thumbnail }, caption },
-        { quoted: message },
-      );
+    // Download file audio ke buffer
+    const audioBuffer = await downloadToBuffer(url_media, 'mp3');
 
-      // Download file audio ke buffer
-      const audioBuffer = await downloadToBuffer(url_media, 'mp3');
-
-      await sock.sendMessage(
-        remoteJid,
-        {
-          audio: audioBuffer,
-          fileName: `yt.mp3`,
-          mimetype: 'audio/mp4',
-        },
-        { quoted: message },
-      );
-    } else {
-      await sendReaction(sock, message, '❗');
+    if (!audioBuffer || audioBuffer.length === 0) {
+      throw new Error('File audio gagal diunduh dari server downloader.');
     }
+
+    await sock.sendMessage(
+      remoteJid,
+      {
+        audio: audioBuffer,
+        fileName: `yt.mp3`,
+        mimetype: 'audio/mp4',
+      },
+      { quoted: message },
+    );
+
+    await sendReaction(sock, message, '✅');
   } catch (error) {
     console.error('Error while handling command:', error);
-    logCustom('info', content, `ERROR-COMMAND-${command}.txt`);
+    logCustom('info', `${content} :: ${error?.message || error}`, `ERROR-COMMAND-${command}.txt`);
 
-    const errorMessage = `⚠️ Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\n💡 Detail: ${
-      error.message || error
-    }`;
-    await sendMessageWithQuote(sock, remoteJid, message, errorMessage);
+    await sendReaction(sock, message, '❗').catch(() => {});
+    await sendMessageWithQuote(
+      sock,
+      remoteJid,
+      message,
+      pesanGagal('audio', error, `${prefix}${command} ${content.trim()}`),
+    );
   }
 }
 

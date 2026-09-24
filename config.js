@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.2
+║ 📦 Version   : 5.4.3
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -34,6 +34,12 @@ const DESTINATION = 'group'; // group , private, both
 const APIKEY = ''; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
 const SIMILARITY = true; // Pencarian kemiripan command (true, false)
+// Jejak chat di console: tiap pesan dicetak MASUK -> LANJUT -> SELESAI/BERHENTI,
+// supaya ketahuan pesannya benar-benar sampai atau berhenti di fitur mana.
+//   null  = ikut MODE di bawah (nyala di development, MATI di production)
+//   true  = dipaksa nyala, termasuk di production (untuk melacak masalah)
+//   false = dipaksa mati
+const TRACE_CHAT = null;
 const MODE = 'production'; // [production, development] (jangan di ubah kecuali anda developer)
 const VERSION = global.version; // don't edit
 
@@ -65,6 +71,7 @@ const AUTO_BACKUP = false; // jika true (setiap restart server, data backup di k
 // Biarkan kosong jika tidak dipakai.
 const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_CHAT_ID = '';
+
 // jika true, hasil AUTO_BACKUP juga dikirim ke Telegram (butuh 2 isian di atas)
 const AUTO_BACKUP_TELEGRAM = false;
 const MIDNIGHT_RESTART = false; // Restart setiap jam 12 malam
@@ -125,6 +132,7 @@ const config = {
     .format('DD/MM/YY')}\nYouTube: Azhari Creative\nOwner: 0852-4615-4386`,
   mode: MODE,
   commandSimilarity: SIMILARITY,
+  trace_chat: TRACE_CHAT,
   anticall: ANTI_CALL,
   autoread: AUTO_READ,
   autobackup: AUTO_BACKUP,
