@@ -9,6 +9,10 @@ Baru: rantai command (.removebg + sticker)
   .hd + removebg + sticker
 - pemisahnya WAJIB spasi-plus-spasi, jadi .kalkulator 1+1 dan .kalkulator 1 + 1
   tetap aman tidak ikut terpecah
+- rantai hanya aktif kalau command PERTAMA ada di daftar rantai dan setiap
+  bagian sesudah " + " diawali nama command. Jadi teks biasa yang memuat
+  " + " tetap diproses normal, mis. .brat azhari imut + cantik,
+  .ai berapa 1 + 1, .smeme halo + dunia
 - kalau susunannya tidak cocok, langsung ditolak di awal dengan penjelasan
   (mis. ".sticker menghasilkan stiker, tapi .removebg butuh gambar"), bukan
   dibiarkan gagal setelah user menunggu
