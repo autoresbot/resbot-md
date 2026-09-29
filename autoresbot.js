@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.3
+║ 📦 Version   : 5.4.4
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -29,6 +29,7 @@ import { updateParticipant } from './lib/cache.js';
 
 import path from 'path';
 import { handleActiveFeatures } from './lib/participant_update.js';
+import { tanganiErrorDisk } from './lib/diskGuard.js';
 
 import {
   logWithTime,
@@ -406,6 +407,7 @@ async function processMessage(sock, messageInfo) {
     }
   } catch (error) {
     logCustom('error', error, `ERROR-processMessage.txt`);
+    tanganiErrorDisk(error);
     chatError('processMessage', error, messageInfo);
     danger(command, `Kesalahan di processMessage: ${error}`);
   }

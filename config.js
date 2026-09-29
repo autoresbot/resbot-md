@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.3
+║ 📦 Version   : 5.4.4
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -16,6 +16,7 @@ Script **Autoresbot** resmi menjadi **Open Source** dan dapat digunakan secara g
 🔗 https://autoresbot.com
 */
 
+import fs from 'fs';
 import moment from 'moment-timezone';
 
 const CONNECTION = 'pairing'; // qr atau pairing
@@ -29,7 +30,7 @@ const CONNECTION = 'pairing'; // qr atau pairing
 // Contoh DITOLAK: 'RESBOTMD' (ada O), 'AZHARI12' (ada I), 'RESB0TMD' (ada 0)
 const PAIRING_CODE = '';
 const OWNER_NAME = 'Autoresbot';
-const NOMOR_BOT = '628xx'; // 628xx nomor wa - 6285124002201, 6282254050481
+const NOMOR_BOT = ''; // 628xx nomor wa
 const DESTINATION = 'group'; // group , private, both
 const APIKEY = ''; // apikey dari autoresbot.com (paket apikey)
 const RATE_LIMIT = 3000; // 3 detik/chat
@@ -71,7 +72,6 @@ const AUTO_BACKUP = false; // jika true (setiap restart server, data backup di k
 // Biarkan kosong jika tidak dipakai.
 const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_CHAT_ID = '';
-
 // jika true, hasil AUTO_BACKUP juga dikirim ke Telegram (butuh 2 isian di atas)
 const AUTO_BACKUP_TELEGRAM = false;
 const MIDNIGHT_RESTART = false; // Restart setiap jam 12 malam
@@ -172,5 +172,32 @@ const config = {
     port: DASHBOARD_PORT,
   },
 };
+
+// Override lokal (opsional): local.config.js tidak ikut ke git, dipakai untuk
+// pengaturan di komputer sendiri tanpa mengubah file ini. Isinya object dengan
+// key yang sama seperti `config` di atas; hanya key yang ditulis yang diganti.
+// Contoh: lihat local.config.example.js
+const LOCAL_CONFIG = new URL('./local.config.js', import.meta.url);
+if (fs.existsSync(LOCAL_CONFIG)) {
+  try {
+    const local = (await import(LOCAL_CONFIG.href)).default;
+    mergeConfig(config, local);
+    console.log('[CONFIG] local.config.js dipakai');
+  } catch (err) {
+    console.warn(`[CONFIG] local.config.js gagal dimuat, memakai config.js saja: ${err.message}`);
+  }
+}
+
+function mergeConfig(target, source) {
+  if (!isPlainObject(source)) return;
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(target[key])) mergeConfig(target[key], value);
+    else target[key] = value;
+  }
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === '[object Object]';
+}
 
 export default config;

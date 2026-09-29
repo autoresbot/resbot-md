@@ -1,113 +1,68 @@
-Update Resbot MD 5.4.3
+Update Resbot MD 5.4.4
 
-Baru: rantai command (.removebg + sticker)
-- beberapa command bisa dijalankan sekaligus dalam satu pesan. Hasil command
-  pertama otomatis jadi bahan command berikutnya, dan hanya hasil AKHIR yang
-  dikirim ke chat
-- contoh: kirim gambar dengan caption .removebg + sticker -> background
-  dihapus lalu langsung jadi stiker. Bisa sampai 3 command:
-  .hd + removebg + sticker
-- pemisahnya WAJIB spasi-plus-spasi, jadi .kalkulator 1+1 dan .kalkulator 1 + 1
-  tetap aman tidak ikut terpecah
-- rantai hanya aktif kalau command PERTAMA ada di daftar rantai dan setiap
-  bagian sesudah " + " diawali nama command. Jadi teks biasa yang memuat
-  " + " tetap diproses normal, mis. .brat azhari imut + cantik,
-  .ai berapa 1 + 1, .smeme halo + dunia
-- kalau susunannya tidak cocok, langsung ditolak di awal dengan penjelasan
-  (mis. ".sticker menghasilkan stiker, tapi .removebg butuh gambar"), bukan
-  dibiarkan gagal setelah user menunggu
-- kalau satu langkah gagal, rantai berhenti dan user diberi tahu gagal di
-  langkah mana berikut alasan aslinya dari plugin
-- limit dipotong untuk SETIAP command dalam rantai, jadi tidak bisa dipakai
-  untuk mengakali potongan limit
-- ketik .rantai untuk melihat daftar command yang bisa dirantai
-- command yang didukung: removebg/rmbg/nobg, hd/remini, toimg, blur, duotone,
-  flipx, flipy, grayscale, resize, rotate, sepia, tajam, wanted, wasted,
-  sticker/stiker/s, stickercircle/scircle, smeme, tovid/togif
+Baru: config lokal (local.config.js)
+- pengaturan khusus komputer sendiri bisa ditulis di local.config.js tanpa
+  mengubah config.js. File ini tidak ikut ter-upload ke git
+- config.js tetap jadi pengaturan utama; local.config.js hanya mengganti
+  bagian yang ditulis di dalamnya
+- jika local.config.js tidak ada, bot jalan seperti biasa. Jika isinya
+  salah, muncul peringatan [CONFIG] dan bot tetap memakai config.js
+- contoh isinya ada di local.config.example.js
 
-Perbaikan .done dan .proses (tag tidak muncul)
-- tag pemesan sekarang benar-benar muncul sebagai nama, bukan nomor asing atau
-  teks biasa. Penyebabnya: identitas pengirim pesan yang dibalas dipakai apa
-  adanya, padahal WhatsApp mengirimnya kadang sebagai LID kadang sebagai nomor
-  telepon, tergantung versi WhatsApp si pemesan. Kalau bentuknya beda dengan
-  yang dipakai grup, tag gagal tampil. Sekarang identitasnya diseragamkan dulu
-  dengan data peserta grup
-- mention diisi langsung dari pemesan, tidak lagi ditebak dari tulisan. Dulu
-  setiap @angka yang kebetulan ada di dalam catatan pesanan ikut jadi tag
-  palsu
-- .done dan .proses tidak lagi menolak admin di grup tertentu dengan alasan
-  "khusus admin". Pengecekan admin sekarang memakai semua bentuk identitas
-  (nomor telepon + LID), sama seperti .del
-- catatan: kalau .setdone/.setproses diatur memakai STIKER, stiker memang
-  tidak bisa membawa tag. Pakai template teks dengan @sender kalau mau
-  pemesan ter-tag
+Perbaikan Welcome / Left (media GIF)
+- sebelumnya welcome dengan media GIF kadang gagal terkirim. Sekarang GIF
+  pendek (di bawah 1 detik) tetap bisa dikirim dengan preview
+- jika foto/video/GIF welcome gagal dikirim, bot tetap menyapa anggota baru
+  dengan teks, tidak diam lagi
 
-Perbaikan .play, .playvid, .ytmp3, .ytmp4
-- error "Detail Error: Cannot read properties of undefined (reading 'url')"
-  tidak muncul lagi. Penyebabnya: kode mengecek response.data.url padahal API
-  kadang menjawab tanpa field data (mis. { status: false, message: ... }),
-  jadi yang sampai ke user malah error teknis dan alasan asli dari API hilang
-- link unduhan sekarang dicari di semua bentuk response (data.url,
-  data.result.url, data.data.url, data.download.url, result.url, dst)
-- kalau API menolak, alasannya ditampilkan apa adanya dalam bahasa manusia,
-  mis. "Penyebab: Video tidak tersedia" atau "APIKEY tidak valid,
-  kedaluwarsa, atau kuotanya habis"
-- percobaan ulang lebih pintar: kegagalan yang percuma diulang (APIKEY salah,
-  link ditolak, endpoint tidak ada) langsung berhenti di percobaan pertama,
-  tidak lagi membuat user menunggu 1-2 menit untuk hasil yang sudah pasti
-  gagal. Kegagalan server sibuk tetap diulang dengan jeda bertingkat
-- link YouTube yang tidak valid di .ytmp3/.ytmp4 langsung ditolak di awal,
-  dulu tetap dikirim ke API sebagai null lalu gagal belasan kali
-- file hasil unduhan yang kosong sekarang terdeteksi, tidak lagi dikirim
-  sebagai media rusak
-- reaksi ✅ saat berhasil dan ❗ saat gagal kini seragam di keempat command
-- logika retry keempat command disatukan di lib/ytdownloader.js, tidak lagi
-  empat salinan dengan perilaku berbeda-beda
+Perbaikan .setwelcome / .setleft pakai stiker gerak
+- stiker gerak (GIF) tidak lagi gagal dengan pesan "Gagal memproses stiker:
+  Bad Request". Penyebabnya konversi selalu lewat API; kalau apikey kosong
+  atau API sedang bermasalah, penyimpanan gagal total
+- sekarang konversi stiker gerak jadi video dikerjakan langsung di server,
+  jadi tidak butuh apikey dan tidak terpengaruh gangguan API
+- API hanya dipakai sebagai cadangan bila konversi di server tidak tersedia
 
-Perbaikan: chat pertama di grup sering tidak dibalas
-- WhatsApp kadang mengirim satu pesan DUA KALI dengan ID sama. Salinan
-  pertama kosong (pembagian kunci grup, paling sering saat seseorang baru
-  pertama kali chat di grup), salinan kedua barulah berisi teksnya.
-  Saringan pesan kembar dulu cuma melihat ID, jadi yang diproses salinan
-  KOSONG dan salinan aslinya dibuang - command seperti .claim tidak pernah
-  jalan. Sekarang saringan ikut melihat ISI, jadi salinan yang berisi selalu
-  menang. Pesan kembar sungguhan tetap dibuang, balasan dobel tidak muncul
-- batas umur pesan dilonggarkan dari 60 detik jadi 10 menit, dan hanya
-  berlaku untuk pesan lama. Pesan yang terlihat "dari masa depan" karena jam
-  server meleset tidak dibuang lagi, cukup diberi peringatan [JAM SERVER]
-- waktu pesan bentuk Long/BigInt/teks/Date kini ikut terbaca. Sebelumnya
-  bentuk Long dibaca sebagai NaN dan pesannya langsung dibuang
+Perbaikan .brat dan stiker lainnya (disk penuh / ENOSPC)
+- file sementara tidak lagi ditaruh di /tmp panel yang sempit, sekarang di
+  folder tmp/sistem milik bot, dan otomatis dibersihkan tiap 15 menit
+- jika muncul "no space left on device", bot langsung membersihkan file
+  sementara. Jika masih penuh, bot restart sendiri (maksimal 1x per jam,
+  tidak akan restart berulang-ulang)
+- restart otomatis butuh fitur crash detection di panel (bawaan: aktif)
 
-Baru: jejak chat di console (hanya mode development)
-- console mode production tetap rapi seperti biasa. Jejak lengkap di bawah
-  ini cuma muncul kalau MODE = development di config.js
-- tiap pesan dicetak jejaknya, jadi ketahuan pesannya benar-benar sampai
-  atau berhenti di fitur mana:
-    [CHAT MASUK]    pesan sampai ke bot. Kalau baris ini tidak muncul,
-                    pesannya memang tidak pernah sampai (koneksi/dekripsi
-                    WhatsApp), bukan masalah kode bot
-    [CHAT LANJUT]   plugin mulai dijalankan
-    [CHAT SELESAI]  selesai diproses dengan normal
-    [CHAT BERHENTI] dihentikan, lengkap dengan nama tahap dan alasannya
-    [CHAT ERROR]    sampai tapi gagal di tengah jalan
-- tahap yang bisa menghentikan: Baca pesan, Batch pesan, Pesan kunci grup,
-  Saringan pesan kembar, Setelan DESTINATION, Sistem .acc, Sesi WhatsApp,
-  Handler (Mute, Silent, Mode On, Sewa, game, dll), Rate limit, Pencarian
-  command, dan Plugin (khusus owner/premium, limit habis)
-- semua jejak disimpan juga di logs/jejak-chat.log
-- error tetap ditampilkan di mode apa pun ([CHAT ERROR])
-- TRACE_CHAT di config.js: null = ikut MODE (bawaan), true = dipaksa nyala
-  termasuk di production untuk melacak masalah, false = dipaksa mati
+Perbaikan .upsw (buat story)
+- sebelumnya gagal dengan error "direct fanout missing signal sessions".
+  Sekarang story teks/foto/video terkirim ke semua pengguna bot
+- jika gagal, pesan error ditampilkan lebih jelas
 
-Log tambahan
-- pesan yang sengaja dilewati selalu dicatat ke logs/pesan-dilewati.log
-  beserta alasannya. Di console barisnya hanya muncul di mode development,
-  kecuali peringatan [JAM SERVER] yang tetap tampil karena harus segera
-  ditangani
-- ada peringatan kalau satu event membawa beberapa pesan sekaligus, karena
-  bot baru memproses pesan pertama
-- di mode development, pesan rate limit menyebut bahwa jendelanya dipakai
-  bersama satu grup berikut selisih waktunya. Di production tetap sependek
-  versi lama. Error pemrosesan kini menyebut command dan chat-nya
-- handler yang tidak mengisi nama otomatis memakai nama filenya, supaya log
-  "dihentikan handler X" selalu bisa dilacak
+Perbaikan antitagsw
+- tag status sekarang dideteksi langsung dari pesan di grup, sehingga
+  hapus pesan & peringatan jalan di grup yang benar
+- anggota yang hanya membuat story biasa tidak lagi ikut kena peringatan
+  atau kick
+
+Autoread untuk story
+- jika autoread: true di config, story/status kontak juga otomatis dibaca
+
+.list - menu Pilih List
+- setelah daftar list terkirim, bot mengirim tombol "Pilih List". Anggota
+  cukup ketuk nama list untuk melihat isinya tanpa perlu mengetik
+- isi menu diurutkan abjad mengikuti daftar teks di atasnya
+- jika list lebih dari 10, menu otomatis dibagi per 10 baris (maksimal 100
+  list; selebihnya tetap bisa dibuka dengan mengetik .list <nomor>)
+- jika WhatsApp tidak menampilkan menunya, daftar teks tetap terkirim
+  seperti biasa
+
+Perbaikan .list - isi yang terbuka salah
+- list yang namanya terkandung di nama list lain tidak lagi membuka isi yang
+  keliru. Contoh: dengan list "bot" dan "robot", memilih "bot" dulu
+  menampilkan isi "robot"
+- nomor pada .list <nomor> sekarang mengikuti urutan yang tampil di layar
+  (urut abjad). Sebelumnya nomor memakai urutan penyimpanan, padahal daftar
+  yang tampil sudah diurutkan, jadi nomor di layar bisa membuka list lain
+
+.status lebih lengkap
+- sekarang menampilkan: mode bot (public/self), APIKEY terisi atau kosong,
+  grup ini sudah di-acc atau belum, jumlah grup di-acc, autoread, anti call,
+  auto backup, selalu online, uptime, dan pemakaian RAM

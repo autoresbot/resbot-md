@@ -6,7 +6,7 @@ Bot WhatsApp berbasis plugin yang ringan dan mudah dikembangkan.
 ╔═════════════════════════════════╗
 ║ 🛠️ Informasi Script
 ╠═════════════════════════════════╣
-║ 📦 Version    : 5.4.3
+║ 📦 Version    : 5.4.4
 ║ 👨‍💻 Developer  : Azhari Creative
 ║ 🌐 Website    : autoresbot.com
 ║ 💻 GitHub     : github.com/autoresbot/resbot-md

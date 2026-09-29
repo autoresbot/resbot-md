@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.3
+║ 📦 Version   : 5.4.4
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -74,11 +74,16 @@ if (major < 20) {
     console.log('Stack:', err?.stack);
     console.log('=========================================');
     logError(err, { plugin: 'process', command: 'unhandledRejection' });
+    import('./lib/diskGuard.js').then(({ tanganiErrorDisk }) => tanganiErrorDisk(err)).catch(() => {});
   });
 
   // ─── Start App ───────────────────────────────────
   try {
     clearDirectory('./tmp');
+
+    // Folder sementara dialihkan dari /tmp panel yang sempit (lihat lib/diskGuard.js)
+    const { mulaiPenjagaDisk } = await import('./lib/diskGuard.js');
+    mulaiPenjagaDisk();
 
     // Jalankan setiap 3 jam (3 jam = 10800000 ms)
     setInterval(

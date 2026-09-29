@@ -69,10 +69,12 @@ async function process(sock, messageInfo) {
 
   let { remoteJid } = messageInfo;
 
-  const result = findParticipantLatest(senderLid);
-  if (result && isTagSw) {
-    remoteJid = result.groupId;
-    // await sock.sendMessage(result.groupId, { text : 'TES' }, { quoted: message });
+  // Hanya pesan dari status@broadcast yang perlu dialihkan ke grup terakhir
+  // pengirimnya. Tag status yang datang di grup sudah punya remoteJid yang
+  // benar — dulu ikut dialihkan sehingga peringatan/hapus bisa nyasar ke grup lain.
+  if (isTagSw && remoteJid === 'status@broadcast') {
+    const result = findParticipantLatest(senderLid);
+    if (result) remoteJid = result.groupId;
   }
 
   // FIX: remoteJid undefined protection

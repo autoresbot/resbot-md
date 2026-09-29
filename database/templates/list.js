@@ -193,7 +193,11 @@ _Ketik *teks* di atas_`,
   let list = data.list; // [ 'jokowi', 'prabowo', 'anjong', 'zebra' ]
 
   if (selectedTemplate.sortList) {
-    list = list.sort(); // Mengurutkan list jika diinginkan
+    // Disalin dulu: `.sort()` mengurutkan array ASLINYA. Dulu tanpa salinan
+    // ini `data.list` milik pemanggil ikut berubah urutannya, sehingga nomor
+    // list yang dipakai setelah template dibuat tidak lagi cocok dengan
+    // urutan penyimpanan aslinya.
+    list = [...list].sort();
   }
 
   if (selectedTemplate.isUppercase) {

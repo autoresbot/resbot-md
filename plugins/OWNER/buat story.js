@@ -9,10 +9,19 @@ async function handle(sock, messageInfo) {
     // Membaca data pengguna
     const pengguna = await readUsers();
 
-    // Ambil semua ID pengguna (jid)
-    const statusJidList = Object.keys(pengguna);
-
-    const nomorTanpaBroadcast = statusJidList.filter((jid) => jid !== 'status@broadcast');
+    // Penerima status = JID tiap pengguna. Kunci tabel users berupa ID acak,
+    // JID aslinya ada di `aliases` — satu JID per orang supaya tidak dobel.
+    const nomorTanpaBroadcast = [
+      ...new Set(
+        Object.values(pengguna)
+          .map((user) =>
+            (user?.aliases ?? []).find(
+              (jid) => typeof jid === 'string' && /@(s\.whatsapp\.net|lid)$/.test(jid),
+            ),
+          )
+          .filter(Boolean),
+      ),
+    ];
 
     // Unduh media dan tentukan tipe media
     const media = isQuoted ? await downloadQuotedMedia(message) : await downloadMedia(message);
@@ -58,7 +67,9 @@ async function handle(sock, messageInfo) {
   } catch (error) {
     console.error('Error processing message:', error);
     await sock.sendMessage(remoteJid, {
-      text: 'Terjadi kesalahan saat memproses pesan.',
+      text: `❌ Gagal mengirim status
+
+${error.message}`,
     });
   }
 }
