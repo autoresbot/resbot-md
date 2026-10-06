@@ -1,14 +1,25 @@
 import { removeUser, getUser, isUserPlaying } from '../../database/temporary_db/cak lontong.js';
 import { addUser, updateUser, deleteUser, findUser } from '../../lib/users.js';
 
+/** Samakan bentuk jawaban: huruf kecil, tanpa spasi berlebih. */
+function rapikanJawaban(teks) {
+  return String(teks || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function process(sock, messageInfo) {
   const { remoteJid, content, fullText, message, sender, senderLid } = messageInfo;
 
   if (isUserPlaying(remoteJid)) {
     const data = getUser(remoteJid);
+    if (!data) return true;
+
+    const jawabanPemain = rapikanJawaban(fullText);
 
     // Ketika menyerah
-    if (fullText.toLowerCase().includes('nyerah')) {
+    if (jawabanPemain.includes('nyerah')) {
       if (data && data.timer) {
         clearTimeout(data.timer);
       }
@@ -22,7 +33,7 @@ async function process(sock, messageInfo) {
       );
     }
 
-    if (fullText.toLowerCase() === data.answer) {
+    if (jawabanPemain === rapikanJawaban(data.answer)) {
       if (data && data.timer) {
         clearTimeout(data.timer);
       }

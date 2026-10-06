@@ -119,8 +119,16 @@ import { uploadImageFile, logShort } from '../../lib/uploader.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const API_BASE_URL = 'https://api.autoresbot.com';
+// Endpoint ai-image TIDAK mengenal parameter job_id. Status job diambil
+// dengan memanggil ulang endpoint yang sama memakai url + prompt yang
+// persis sama, karena job_id-nya memang dibentuk dari url + prompt itu.
+const CREATE_ENDPOINT = `${API_BASE_URL}/api/ai-image`;
+const POLLING_ENDPOINT = CREATE_ENDPOINT;
+
+// Proses generate gambar bisa sampai 3 menit, jadi timeout dibuat panjang.
 const http = axios.create({
-  timeout: 30000,
+  timeout: 240000,
   validateStatus: () => true,
 });
 
@@ -185,7 +193,7 @@ async function handle(sock, messageInfo) {
     // CREATE JOB
     // ===============================
 
-    const createRes = await http.get('https://api.autoresbot.com/api/ai-image', {
+    const createRes = await http.get(CREATE_ENDPOINT, {
       params: { url: imageUrl, prompt: prompt },
       headers: {
         Authorization: `Bearer ${config.APIKEY}`,
@@ -196,44 +204,50 @@ async function handle(sock, messageInfo) {
       return await reply(m, '❌ Gagal memproses gambar.\nSilakan coba lagi.');
     }
 
-    const jobId = createRes.data.job_id;
+    // Sesekali hasilnya sudah jadi di panggilan pertama.
+    let finalImageUrl = createRes.data.status === 'done' ? createRes.data.result : null;
 
     // ===============================
     // POLLING
     // ===============================
-    const maxRetry = 10;
-    const delayMs = 7000;
+    // 48 x 5s = 240 detik (4 menit) toleransi proses.
+    const maxRetry = 48;
+    const delayMs = 5000;
     let attempt = 0;
-    let finalImageUrl = null;
 
-    while (attempt < maxRetry) {
+    while (!finalImageUrl && attempt < maxRetry) {
       attempt++;
 
+      await delay(delayMs);
+
       try {
-        const pollRes = await http.get('https://api.autoresbot.com/api/tools/remini', {
-          params: { job_id: jobId },
+        const pollRes = await http.get(POLLING_ENDPOINT, {
+          params: { url: imageUrl, prompt: prompt },
           headers: {
             Authorization: `Bearer ${config.APIKEY}`,
           },
         });
 
-        const data = pollRes.data;
+        const data = pollRes.data || {};
 
         if (data.status === 'done') {
           finalImageUrl = data.result;
           break;
         }
 
-        if (data.status === 'failed') {
-          return await reply(m, '❌ Proses HD gagal.\nSilakan coba lagi.');
+        if (data.status === 'failed' || data.status === 'expired') {
+          return await reply(m, '❌ Proses gambar gagal.\nSilakan coba lagi.');
+        }
+
+        if (data.status === 'error') {
+          logShort('AI-IMAGE', `Polling ditolak: ${data.error || JSON.stringify(data)}`);
+          return await reply(m, '❌ Gagal memproses gambar.\nSilakan coba lagi.');
         }
       } catch (pollError) {
-        if (pollError.code !== 'ECONNRESET') {
+        if (pollError.code !== 'ECONNRESET' && pollError.code !== 'ETIMEDOUT') {
           throw pollError;
         }
       }
-
-      await delay(delayMs);
     }
 
     if (!finalImageUrl) {
@@ -245,6 +259,7 @@ async function handle(sock, messageInfo) {
     // ===============================
     const imageRes = await http.get(finalImageUrl, {
       responseType: 'arraybuffer',
+      timeout: 120000,
     });
 
     if (imageRes.status !== 200) {

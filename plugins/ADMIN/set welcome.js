@@ -44,6 +44,31 @@ function pesanBantuan(prefix, command) {
   );
 }
 
+/**
+ * Buang kata kunci di depan (mis. "text", atau "template 1") lalu kembalikan
+ * sisa teksnya APA ADANYA.
+ *
+ * Dulu dipakai `sisa.join(' ')` dari hasil split spasi, jadi baris baru yang
+ * diketik admin ikut berubah jadi spasi dan sapaannya tampil menempel satu
+ * baris. Di sini yang dipotong hanya kata kuncinya, bukan isi pesannya.
+ */
+function hapusKataDepan(teks, jumlah = 1) {
+  let sisa = teks;
+  for (let i = 0; i < jumlah; i += 1) {
+    sisa = sisa.replace(/^\s*\S+/, '');
+  }
+  return sisa.trim();
+}
+
+/**
+ * Italic WhatsApp (_..._) tidak tembus lebih dari satu baris, jadi teks
+ * multi-baris ditampilkan polos di bawah labelnya supaya tetap terbaca rapi.
+ */
+function barisTeks(teks) {
+  if (!teks) return '│ Teks : _(belum diatur)_';
+  return teks.includes('\n') ? `│ Teks :\n${teks}` : `│ Teks : _${teks}_`;
+}
+
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, content, sender, senderLid, command, prefix, isQuoted } =
     messageInfo;
@@ -96,7 +121,7 @@ async function handle(sock, messageInfo) {
         text:
           `✅ _Welcome berhasil diatur._\n\n` +
           `│ Tampilan : *${keterangan}*\n` +
-          `│ Teks : ${teksAkhir ? `_${teksAkhir}_` : '_(belum diatur)_'}\n\n` +
+          `${barisTeks(teksAkhir)}\n\n` +
           `_Pastikan fitur sudah aktif dengan mengetik *${prefix}on welcome*_\n` +
           `_Coba tampilannya: *${prefix}teswelcome*_`,
       },
@@ -133,7 +158,8 @@ async function handle(sock, messageInfo) {
     if (fileLama) deleteMedia(fileLama); // hemat penyimpanan panel
 
     // Kata "foto"/"video" (kalau tetap diketik) bukan bagian dari teks welcome.
-    const teksBaru = (mode === 'foto' || mode === 'video' ? sisa.join(' ') : isi).trim();
+    const teksBaru =
+      mode === 'foto' || mode === 'video' ? hapusKataDepan(isi) : isi.trim();
     await balas(labelMedia(tersimpan), teksBaru);
     return;
   }
@@ -171,7 +197,7 @@ async function handle(sock, messageInfo) {
 
   if (mode === 'text') {
     await setTemplateWelcome(remoteJid, 'text');
-    await balas('Hanya teks', sisa.join(' ').trim());
+    await balas('Hanya teks', hapusKataDepan(isi));
     return;
   }
 
@@ -182,7 +208,7 @@ async function handle(sock, messageInfo) {
   // hanya butuh foto profil & nama.
   if (!pilihan || !/^(\d+|random)$/.test(pilihan)) {
     await setTemplateWelcome(remoteJid, 'default');
-    await balas('Gambar welcome', sisa.join(' ').trim());
+    await balas('Gambar welcome', hapusKataDepan(isi));
     return;
   }
 
@@ -203,7 +229,7 @@ async function handle(sock, messageInfo) {
   await setTemplateWelcome(remoteJid, pilihan);
   await balas(
     pilihan === 'random' ? 'Template acak' : `Template ${pilihan}`,
-    sisa.slice(1).join(' ').trim(),
+    hapusKataDepan(isi, 2),
   );
 }
 

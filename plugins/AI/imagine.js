@@ -10,8 +10,9 @@ const API_BASE_URL = 'https://api.autoresbot.com';
 const CREATE_ENDPOINT = `${API_BASE_URL}/api/ai-image-create`;
 const POLLING_ENDPOINT = `${API_BASE_URL}/api/ai-image-create`;
 
+// Proses generate gambar bisa sampai 3 menit, jadi timeout dibuat panjang.
 const http = axios.create({
-  timeout: 120000,
+  timeout: 240000,
   validateStatus: () => true,
 });
 
@@ -92,8 +93,9 @@ _${prefix + command} wanita Indonesia sedang berada di pantai saat matahari terb
     // Jika endpoint menggunakan sistem job/polling.
     else if (createData?.job_id) {
       const jobId = createData.job_id;
-      const maxRetry = 10;
-      const delayMs = 7000;
+      // 48 x 5s = 240 detik (4 menit) toleransi proses.
+      const maxRetry = 48;
+      const delayMs = 5000;
 
       let attempt = 0;
 
@@ -167,6 +169,7 @@ _${prefix + command} wanita Indonesia sedang berada di pantai saat matahari terb
     // ===============================
     const imageRes = await http.get(finalImageUrl, {
       responseType: 'arraybuffer',
+      timeout: 120000,
     });
 
     if (imageRes.status < 200 || imageRes.status >= 300) {

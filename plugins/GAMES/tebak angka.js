@@ -13,7 +13,7 @@ async function handle(sock, messageInfo) {
 
   let level_tebakangka = "";
 
-  if (!fullText.includes("angka")) {
+  if (!String(fullText || '').toLowerCase().includes('angka')) {
     return true; // Skip plugin ini
   }
 
@@ -51,35 +51,51 @@ async function handle(sock, messageInfo) {
     );
   }
 
-  // Buat timer baru untuk user
-  const timer = setTimeout(async () => {
-    if (!isUserPlaying(remoteJid)) return;
-
-    removeUser(remoteJid); // Hapus user dari database jika waktu habis
-
-    if (mess.game_handler.waktu_habis) {
-      const messageWarning = mess.game_handler.waktu_habis.replace(
-        "@answer",
-        angkaAcak
-      );
-      await sock.sendMessage(
-        remoteJid,
-        { text: messageWarning },
-        { quoted: message }
-      );
-    }
-  }, WAKTU_GAMES * 1000);
-
-  // Tambahkan pengguna ke database
-  addUser(remoteJid, {
+  // Data permainan disimpan DULU, timernya menyusul. Dengan urutan ini tidak
+  // pernah ada timer yang berjalan tanpa data permainannya.
+  const dataGame = {
     angkaAcak,
     level: level_tebakangka,
     angkaEnd: akhir_angkaAcak,
     attempts: 6, // jumlah percobaan
     hadiah: 10, // jumlah money jika menang
     command: fullText,
-    timer: timer,
-  });
+    timer: null,
+  };
+
+  addUser(remoteJid, dataGame);
+
+  const timer = setTimeout(async () => {
+    if (!isUserPlaying(remoteJid)) return;
+
+    removeUser(remoteJid); // Hapus user dari database jika waktu habis
+
+    try {
+      if (mess.game_handler.waktu_habis) {
+        const messageWarning = mess.game_handler.waktu_habis.replace(
+          "@answer",
+          angkaAcak
+        );
+        await sock.sendMessage(
+          remoteJid,
+          { text: messageWarning },
+          { quoted: message }
+        );
+      }
+    } catch (error) {
+      // Tanpa penangkap ini kegagalan kirim (mis. sesi sedang reconnect)
+      // hilang diam-diam: permainannya sudah dihapus tapi pemain tidak
+      // pernah diberi tahu jawabannya.
+      logWithTime('Tebak Angka', `Gagal kirim pesan waktu habis: ${error?.message || error}`);
+    }
+  }, WAKTU_GAMES * 1000);
+
+  // Permainannya bisa saja sudah selesai sebelum baris ini.
+  if (isUserPlaying(remoteJid)) {
+    dataGame.timer = timer;
+  } else {
+    clearTimeout(timer);
+  }
 
   // Kirim pesan awal
   await sock.sendMessage(

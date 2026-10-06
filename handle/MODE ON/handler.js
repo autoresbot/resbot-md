@@ -16,7 +16,6 @@ import {
   logWithTime,
   isUrlInText,
   isUrlInTextSelainWa,
-  toText,
   sendMessageWithMention,
   sendMessageWithMentionNotQuoted,
   logTracking,
@@ -41,6 +40,9 @@ const notifiedBirthdayUsers = createBoundedSet({ max: 5000, ttl: 24 * 60 * 60 * 
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Ambang panjang TEKS (bukan objek pesan) yang dianggap virtex. */
+const BATAS_VIRTEX = 10000;
+
 const botNumber = config.phone_number_bot; // misalnya '1234'
 
 async function process(sock, messageInfo) {
@@ -56,6 +58,7 @@ async function process(sock, messageInfo) {
     prefix,
     command,
     fullText,
+    rawText,
     type,
     isQuoted,
     isTagSw,
@@ -87,7 +90,6 @@ async function process(sock, messageInfo) {
     return true;
   }
 
-  const messagesDefault = toText(message);
   if (isTagSw || isGroup) {
     // lanjut
   } else {
@@ -692,11 +694,18 @@ async function process(sock, messageInfo) {
     }
 
     // Deteksi anti-virtex (membatasi teks panjang)
+    //
+    // Yang diukur HARUS teks yang benar-benar dikirim anggota. Dulu dipakai
+    // panjang `toText(message)` alias JSON seluruh objek pesan — di dalamnya
+    // ikut terhitung thumbnail base64, kunci media, dan ISI PESAN YANG DIBALAS.
+    // Akibatnya membalas pesan panjang (mis. hasil .menu), mengirim stiker,
+    // atau meneruskan pesan bergambar bisa tembus 10.000 karakter padahal yang
+    // diketik cuma "iya" — anggota yang tidak kirim virtex ikut kena.
     if (!isAdmin && fitur?.antivirtex === true) {
-      const isTextMessage = type !== 'video' && type !== 'image';
-      const isTextTooLong = messagesDefault.length > 10000;
+      const teksPesan = typeof rawText === 'string' ? rawText : String(fullText || '');
+      const isTextTooLong = teksPesan.length > BATAS_VIRTEX;
 
-      if (isTextMessage && isTextTooLong) {
+      if (isTextTooLong) {
         if (mess.handler.antivirtex) {
           let warningMessage = mess.handler.antivirtex.replace(
             '@sender',

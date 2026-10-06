@@ -36,10 +36,18 @@ const sendMessage = async (sock, remoteJid, content, options = {}) => {
  * @param {Object} sock - Instance koneksi.
  * @param {Object} messageInfo - Informasi pesan.
  */
+/** Samakan bentuk jawaban: huruf kecil, tanpa spasi berlebih. */
+function rapikanJawaban(teks) {
+  return String(teks || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const handle = async (sock, messageInfo) => {
   const { remoteJid, message, fullText } = messageInfo;
 
-  if (!fullText.includes("lontong")) {
+  if (!String(fullText || '').toLowerCase().includes('lontong')) {
     return true;
   }
 
@@ -58,10 +66,36 @@ const handle = async (sock, messageInfo) => {
     const response = await api.get("/api/game/caklontong");
     const { soal, jawaban, deskripsi } = response.data;
 
-    // Timer 60 detik untuk menjawab
+    // Soal yang tidak lengkap dulu tetap diteruskan sampai meledak saat
+    // jawabannya diolah, dan isi error mentahnya ikut terkirim ke grup.
+    if (!rapikanJawaban(jawaban)) {
+      logWithTime('Caklontong', `Soal tidak lengkap dari server: ${JSON.stringify(response?.data)}`);
+      return await sendMessage(
+        sock,
+        remoteJid,
+        { text: '⚠️ _Soal sedang tidak tersedia. Coba lagi sebentar lagi._' },
+        { quoted: message }
+      );
+    }
+
+    // Data permainan disimpan DULU, timernya menyusul. Dengan urutan ini
+    // tidak pernah ada timer yang berjalan tanpa data permainannya.
+    const dataGame = {
+      answer: rapikanJawaban(jawaban),
+      hadiah: 10, // Jumlah hadiah jika menang
+      deskripsi,
+      command: fullText,
+      timer: null,
+    };
+
+    addUser(remoteJid, dataGame);
+
     const timer = setTimeout(async () => {
-      if (isUserPlaying(remoteJid)) {
-        removeUser(remoteJid);
+      if (!isUserPlaying(remoteJid)) return;
+
+      removeUser(remoteJid);
+
+      try {
         await sendMessage(
           sock,
           remoteJid,
@@ -70,17 +104,20 @@ const handle = async (sock, messageInfo) => {
           },
           { quoted: message }
         );
+      } catch (error) {
+        // Tanpa penangkap ini kegagalan kirim (mis. sesi sedang reconnect)
+        // hilang diam-diam: permainannya sudah dihapus tapi pemain tidak
+        // pernah diberi tahu jawabannya.
+        logWithTime('Caklontong', `Gagal kirim pesan waktu habis: ${error?.message || error}`);
       }
     }, WAKTU_GAMES * 1000);
 
-    // Tambahkan pengguna ke database
-    addUser(remoteJid, {
-      answer: jawaban.toLowerCase(),
-      hadiah: 10, // Jumlah hadiah jika menang
-      deskripsi,
-      command: fullText,
-      timer: timer,
-    });
+    // Permainannya bisa saja sudah selesai sebelum baris ini.
+    if (isUserPlaying(remoteJid)) {
+      dataGame.timer = timer;
+    } else {
+      clearTimeout(timer);
+    }
 
     // Kirim pertanyaan ke pengguna
     await sendMessage(
@@ -92,13 +129,14 @@ const handle = async (sock, messageInfo) => {
 
     logWithTime("Caklontong", `Jawaban : ${jawaban}`);
   } catch (error) {
-    const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\n${
-      error || "Kesalahan tidak diketahui"
-    }`;
+    // Jangan tinggalkan permainan setengah jadi di memori.
+    removeUser(remoteJid);
+    logWithTime('Caklontong', `Gagal memulai permainan: ${error?.message || error}`);
+
     await sendMessage(
       sock,
       remoteJid,
-      { text: errorMessage },
+      { text: '⚠️ _Gagal memuat soal. Coba lagi sebentar lagi._' },
       { quoted: message }
     );
   }

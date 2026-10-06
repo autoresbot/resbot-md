@@ -1,68 +1,133 @@
-Update Resbot MD 5.4.4
+Update Resbot MD 5.4.5
 
-Baru: config lokal (local.config.js)
-- pengaturan khusus komputer sendiri bisa ditulis di local.config.js tanpa
-  mengubah config.js. File ini tidak ikut ter-upload ke git
-- config.js tetap jadi pengaturan utama; local.config.js hanya mengganti
-  bagian yang ditulis di dalamnya
-- jika local.config.js tidak ada, bot jalan seperti biasa. Jika isinya
-  salah, muncul peringatan [CONFIG] dan bot tetap memakai config.js
-- contoh isinya ada di local.config.example.js
 
-Perbaikan Welcome / Left (media GIF)
-- sebelumnya welcome dengan media GIF kadang gagal terkirim. Sekarang GIF
-  pendek (di bawah 1 detik) tetap bisa dikirim dengan preview
-- jika foto/video/GIF welcome gagal dikirim, bot tetap menyapa anggota baru
-  dengan teks, tidak diam lagi
+RINGKASAN
+=========
+- Game tebak sekarang membalas jawaban yang benar dan mengumumkan jawaban
+  saat waktu habis. Berlaku di semua game tebak
+- Antilink kembali menghapus link, dan tidak lagi salah menangkap titik
+  biasa dalam kalimat seperti "oke.Sip"
+- Antivirtex tidak lagi menuduh anggota yang cuma membalas pesan panjang
+- Teks welcome & left bisa ditulis beberapa baris tanpa berubah jadi
+  satu baris
+- Command gambar AI (.aiimg, .imagine, dan semua command ubah gambar)
+  sudah mengeluarkan gambar lagi, dengan waktu tunggu sampai 4 menit
+- Grup yang semua commandnya gagal pulih sendiri tanpa scan ulang
+- Migrasi sesi dari Baileys tidak lagi kehilangan sebagian kunci
 
-Perbaikan .setwelcome / .setleft pakai stiker gerak
-- stiker gerak (GIF) tidak lagi gagal dengan pesan "Gagal memproses stiker:
-  Bad Request". Penyebabnya konversi selalu lewat API; kalau apikey kosong
-  atau API sedang bermasalah, penyimpanan gagal total
-- sekarang konversi stiker gerak jadi video dikerjakan langsung di server,
-  jadi tidak butuh apikey dan tidak terpengaruh gangguan API
-- API hanya dipakai sebagai cadangan bila konversi di server tidak tersedia
 
-Perbaikan .brat dan stiker lainnya (disk penuh / ENOSPC)
-- file sementara tidak lagi ditaruh di /tmp panel yang sempit, sekarang di
-  folder tmp/sistem milik bot, dan otomatis dibersihkan tiap 15 menit
-- jika muncul "no space left on device", bot langsung membersihkan file
-  sementara. Jika masih penuh, bot restart sendiri (maksimal 1x per jam,
-  tidak akan restart berulang-ulang)
-- restart otomatis butuh fitur crash detection di panel (bawaan: aktif)
+DETAIL
+======
 
-Perbaikan .upsw (buat story)
-- sebelumnya gagal dengan error "direct fanout missing signal sessions".
-  Sekarang story teks/foto/video terkirim ke semua pengguna bot
-- jika gagal, pesan error ditampilkan lebih jelas
+[BUG] Game tebak: jawaban benar diam, waktu habis tidak diumumkan
+File   : plugins/GAMES/* dan handle/GAMES/* (semua game tebak)
+Gejala : muncul tulisan error saat memulai, jawaban benar tidak dibalas,
+         dan saat waktu habis bot tidak memberi tahu jawabannya
+Sebab  : beberapa titik rawan yang semuanya berakhir diam.
+         1. Di grup ber-"pesan sementara" teks pesan terbaca kosong, jadi
+            soal tidak pernah cocok dengan jawaban pemain (penyebab ini
+            dibahas di bagian antilink)
+         2. Saat waktu habis, datanya dihapus DULU baru pesannya dikirim,
+            dan pengirimannya tidak punya penangkap error. Kalau sesi bot
+            sedang reconnect, pengiriman gagal tanpa jejak: permainannya
+            sudah hilang tapi pemain tidak pernah diberi jawabannya
+         3. Soal yang datang tidak lengkap tetap diteruskan sampai error,
+            dan isi error mentahnya ikut dikirim ke grup
+         4. Kata kunci dicek persis huruf besar-kecilnya, jadi ".Tebak Kata"
+            lewat begitu saja tanpa pesan apa pun
+Solusi : data permainan disimpan dulu baru timernya dipasang, pengiriman
+         saat waktu habis diberi penangkap error dan dicatat di log, soal
+         yang tidak lengkap ditolak dengan pesan yang wajar (bukan tulisan
+         error), kata kunci tidak lagi peka huruf besar-kecil, dan jawaban
+         pemain dibandingkan setelah dirapikan (huruf kecil, spasi berlebih
+         diabaikan) sehingga jawaban dua kata tetap cocok
+Catatan: perbaikan yang sama sudah diterapkan ke semua game lain yang
+         berpola sama: tebak kalimat, lirik, bendera, gambar, hewan, lagu,
+         angka, bom, pemain bola, dan cak lontong. Khusus tebak lagu, ada
+         console.log yang membocorkan jawaban ke console - sudah dihapus
 
-Perbaikan antitagsw
-- tag status sekarang dideteksi langsung dari pesan di grup, sehingga
-  hapus pesan & peringatan jalan di grup yang benar
-- anggota yang hanya membuat story biasa tidak lagi ikut kena peringatan
-  atau kick
+[BUG] Antilink tidak jalan & antivirtex salah tuduh
+File   : lib/serializeMessage.js, lib/utils.js, handle/MODE ON/handler.js
+Gejala : antilink diam saja walau sudah .on, sementara antivirtex menuduh
+         anggota yang tidak mengirim virtex
+Sebab  : ada dua masalah terpisah.
+         1. Grup yang menyalakan "pesan sementara" membungkus SETIAP pesan,
+            dan bot tidak membukanya. Akibatnya teks pesan terbaca kosong
+            dan jenis pesannya jadi tidak dikenali - antilink, badword,
+            antihidetag, dan autoai ikut diam di grup seperti itu
+         2. Antivirtex mengukur panjang SELURUH objek pesan dalam bentuk
+            JSON, bukan panjang teksnya. Di dalamnya ikut terhitung
+            thumbnail gambar dan isi pesan yang dibalas, jadi sekadar
+            membalas pesan panjang (mis. hasil .menu) sudah tembus 10.000
+            karakter padahal yang diketik cuma "makasih"
+Solusi : pembungkus pesan (pesan sementara / sekali lihat) kini dibuka dulu
+         sebelum teks dan jenis pesan dibaca. Antivirtex sekarang mengukur
+         panjang teks aslinya saja
+Catatan: pola pendeteksi link juga diperketat. Sebelumnya titik biasa di
+         tengah kalimat ikut dianggap link ("oke.Sip", "Hallo.Apa kabar",
+         "kirim foto.jpg"), yang baru ketahuan merepotkan begitu antilink
+         hidup lagi. Sekarang hanya akhiran domain yang wajar yang dihitung,
+         dan alamat email tidak lagi dianggap link
 
-Autoread untuk story
-- jika autoread: true di config, story/status kontak juga otomatis dibaca
 
-.list - menu Pilih List
-- setelah daftar list terkirim, bot mengirim tombol "Pilih List". Anggota
-  cukup ketuk nama list untuk melihat isinya tanpa perlu mengetik
-- isi menu diurutkan abjad mengikuti daftar teks di atasnya
-- jika list lebih dari 10, menu otomatis dibagi per 10 baris (maksimal 100
-  list; selebihnya tetap bisa dibuka dengan mengetik .list <nomor>)
-- jika WhatsApp tidak menampilkan menunya, daftar teks tetap terkirim
-  seperti biasa
+[BUG] Teks welcome & left tidak mendukung baris baru
+File   : plugins/ADMIN/set welcome.js, plugins/ADMIN/set left.js
+Gejala : teks sapaan yang diketik beberapa baris tampil menempel jadi satu
+         baris saat ada anggota masuk atau keluar
+Sebab  : saat memisahkan kata kunci di depan (text / template / foto), isi
+         pesannya ikut dipecah per spasi lalu disambung lagi pakai spasi,
+         jadi semua baris baru berubah jadi spasi. Ini hanya terjadi kalau
+         kata kuncinya diketik - tanpa kata kunci baris barunya aman
+Solusi : yang dipotong sekarang hanya kata kuncinya, sisa teks dibiarkan
+         apa adanya. Teks beberapa baris di balasan konfirmasi juga tidak
+         lagi dibungkus garis miring (_..._), karena format miring WhatsApp
+         memang putus kalau isinya lebih dari satu baris
 
-Perbaikan .list - isi yang terbuka salah
-- list yang namanya terkandung di nama list lain tidak lagi membuka isi yang
-  keliru. Contoh: dengan list "bot" dan "robot", memilih "bot" dulu
-  menampilkan isi "robot"
-- nomor pada .list <nomor> sekarang mengikuti urutan yang tampil di layar
-  (urut abjad). Sebelumnya nomor memakai urutan penyimpanan, padahal daftar
-  yang tampil sudah diurutkan, jadi nomor di layar bisa membuka list lain
 
-.status lebih lengkap
-- sekarang menampilkan: mode bot (public/self), APIKEY terisi atau kosong,
-  grup ini sudah di-acc atau belum, jumlah grup di-acc, autoread, anti call,
-  auto backup, selalu online, uptime, dan pemakaian RAM
+[BUG] Command gambar AI tidak pernah menghasilkan gambar
+File   : plugins/AI/aiimg.js, plugins/AI/imagine.js,
+         plugins/AI/ai image generator.js
+Command: .aiimg, .imagine, dan semua command ubah gambar (.toanime,
+         .tohijab, .tomirror, .tofigure, dst)
+Gejala : gambar tidak pernah keluar, berakhir dengan pesan waktu proses
+         terlalu lama
+Sebab  : cara cek status job salah. Endpoint ai-image tidak mengenal
+         parameter job_id, dan job yang dibuat di situ juga tidak bisa
+         dicek lewat endpoint remini seperti di kode lama. Ditambah batas
+         tunggu terlalu pendek - proses bisa sampai 3 menit, sedangkan bot
+         hanya menunggu 70 detik dan koneksi .aiimg putus di detik ke-30
+Solusi : status job dicek dengan memanggil ulang endpoint yang sama
+         memakai url dan prompt yang persis sama, karena job_id-nya memang
+         dibentuk dari url + prompt itu. Batas tunggu dinaikkan jadi 4
+         menit (cek tiap 5 detik, maksimal 48 kali), timeout koneksi 240
+         detik, dan tarik file gambar hasil diberi 120 detik sendiri.
+         Status "expired" dan "error" langsung dihentikan, tidak diulang
+         sia-sia sampai 4 menit
+Catatan: .imagine memakai endpoint ai-image-create yang memang mengenal
+         job_id, jadi cara ceknya tidak diubah - hanya batas tunggunya
+
+
+[BUG] Bot diam di grup tertentu - "invalid wire type 6 at offset 14"
+File   : lib/zapo/repair.js (baru), lib/zapo/socket.js, lib/connection.js
+Gejala : di grup tertentu SEMUA command gagal (.id, .menu, .ping, apa pun),
+         grup lain normal. Di log muncul error protobuf seperti
+         "invalid wire type 6 at offset 14"
+Sebab  : bukan plugin-nya. Kunci enkripsi grup / sesi Signal di file sesi
+         (zapo.sqlite) ada yang rusak. Baris itu dibaca sebelum pesan
+         dienkripsi, dan tidak pernah dibuang sendiri, jadi grupnya rusak
+         permanen - direstart pun tetap gagal
+Solusi : saat kirim gagal karena baris rusak, baris itu dibuang lalu kirim
+         diulang sekali. Kunci barunya dibuat otomatis, grup langsung normal
+         tanpa scan ulang atau hapus sesi. Yang dibuang HANYA baris yang
+         memang rusak - sesi dan grup lain tidak tersentuh, dan setiap
+         pembuangan dicatat di log dengan awalan [STORE RUSAK]
+
+
+[BUG] Sebagian kunci hilang setelah pindah dari sesi Baileys
+File   : lib/zapo/migrate.js
+Gejala : hasil migrasi sesi lama tidak utuh - sebagian kunci dianggap hilang
+         padahal ada di folder sesi
+Sebab  : nama file Baileys dibalik dengan mengganti SEMUA tanda minus jadi
+         titik dua, padahal minus juga muncul alami di dalam ID. Yang kena:
+         grup lama (ID-nya mengandung minus) dan kunci app-state-sync
+Solusi : hanya "--" yang dibalik jadi "::", sesuai cara Baileys menyimpan

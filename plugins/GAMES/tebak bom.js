@@ -11,7 +11,7 @@ async function handle(sock, messageInfo) {
   const { remoteJid, message, content, fullText } = messageInfo;
 
   // Periksa apakah pesan mengandung kata "bom"
-  if (!fullText.includes("bom")) return true;
+  if (!String(fullText || '').toLowerCase().includes('bom')) return true;
 
   // Periksa apakah pengguna sedang bermain
   if (isUserPlaying(remoteJid)) {

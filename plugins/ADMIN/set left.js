@@ -40,6 +40,31 @@ function pesanBantuan(prefix, command) {
   );
 }
 
+/**
+ * Buang kata kunci di depan (mis. "text", atau "template 1") lalu kembalikan
+ * sisa teksnya APA ADANYA.
+ *
+ * Dulu dipakai `sisa.join(' ')` dari hasil split spasi, jadi baris baru yang
+ * diketik admin ikut berubah jadi spasi dan sapaannya tampil menempel satu
+ * baris. Di sini yang dipotong hanya kata kuncinya, bukan isi pesannya.
+ */
+function hapusKataDepan(teks, jumlah = 1) {
+  let sisa = teks;
+  for (let i = 0; i < jumlah; i += 1) {
+    sisa = sisa.replace(/^\s*\S+/, '');
+  }
+  return sisa.trim();
+}
+
+/**
+ * Italic WhatsApp (_..._) tidak tembus lebih dari satu baris, jadi teks
+ * multi-baris ditampilkan polos di bawah labelnya supaya tetap terbaca rapi.
+ */
+function barisTeks(teks) {
+  if (!teks) return '│ Teks : _(belum diatur)_';
+  return teks.includes('\n') ? `│ Teks :\n${teks}` : `│ Teks : _${teks}_`;
+}
+
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, content, sender, senderLid, command, prefix, isQuoted } =
     messageInfo;
@@ -92,7 +117,7 @@ async function handle(sock, messageInfo) {
         text:
           `✅ _Pesan perpisahan berhasil diatur._\n\n` +
           `│ Tampilan : *${keterangan}*\n` +
-          `│ Teks : ${teksAkhir ? `_${teksAkhir}_` : '_(belum diatur)_'}\n\n` +
+          `${barisTeks(teksAkhir)}\n\n` +
           `_Pastikan fitur sudah aktif dengan mengetik *${prefix}on left*_\n` +
           `_Coba tampilannya: *${prefix}tesleft*_`,
       },
@@ -120,7 +145,8 @@ async function handle(sock, messageInfo) {
     const fileLama = await setLeftMedia(remoteJid, tersimpan.tipe, tersimpan.file, tersimpan.gif);
     if (fileLama) deleteMedia(fileLama); // hemat penyimpanan panel
 
-    const teksBaru = (mode === 'foto' || mode === 'video' ? sisa.join(' ') : isi).trim();
+    const teksBaru =
+      mode === 'foto' || mode === 'video' ? hapusKataDepan(isi) : isi.trim();
     await balas(labelMedia(tersimpan), teksBaru);
     return;
   }
@@ -157,13 +183,13 @@ async function handle(sock, messageInfo) {
 
   if (mode === 'text') {
     await setTemplateLeft(remoteJid, 'text');
-    await balas('Hanya teks', sisa.join(' ').trim());
+    await balas('Hanya teks', hapusKataDepan(isi));
     return;
   }
 
   // template -> gambar goodbye dari API
   await setTemplateLeft(remoteJid, 'default');
-  await balas('Gambar goodbye', sisa.join(' ').trim());
+  await balas('Gambar goodbye', hapusKataDepan(isi));
 }
 
 export default {

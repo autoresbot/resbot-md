@@ -15,54 +15,100 @@ import {
   isUserPlaying,
 } from "../../database/temporary_db/tebak kata.js";
 
+/** Samakan bentuk jawaban: huruf kecil, tanpa spasi berlebih. */
+function rapikanJawaban(teks) {
+  return String(teks || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function handle(sock, messageInfo) {
   const { remoteJid, message, fullText } = messageInfo;
 
-  if (!fullText.includes("kata")) {
+  // Dibandingkan dalam huruf kecil: dulu ".Tebak Kata" tidak cocok dengan
+  // "kata" sehingga perintahnya lewat begitu saja TANPA pesan apa pun.
+  if (!String(fullText || "").toLowerCase().includes("kata")) {
     return true;
+  }
+
+  // Dicek SEBELUM memanggil API. Dulu urutannya terbalik, jadi setiap kali
+  // ada yang mengetik ulang saat permainan berjalan, satu permintaan ke
+  // server tetap terpakai percuma.
+  if (isUserPlaying(remoteJid)) {
+    return await sock.sendMessage(
+      remoteJid,
+      { text: mess.game.isPlaying },
+      { quoted: message }
+    );
   }
 
   try {
     const response = await api.get(`/api/game/tebakkata`);
 
-    const soal = response.data.soal;
-    const jawaban = response.data.jawaban;
+    const soal = response?.data?.soal;
+    const jawaban =
+      typeof response?.data?.jawaban === "string"
+        ? response.data.jawaban.trim()
+        : "";
 
-    // Ketika sedang bermain
-    if (isUserPlaying(remoteJid)) {
+    // Soal yang tidak lengkap dulu tetap diteruskan sampai meledak di
+    // `jawaban.toLowerCase()`, dan pemain hanya melihat tulisan error.
+    if (!soal || !jawaban) {
+      logWithTime(
+        "Tebak kata",
+        `Soal tidak lengkap dari server: ${JSON.stringify(response?.data)}`
+      );
       return await sock.sendMessage(
         remoteJid,
-        { text: mess.game.isPlaying },
+        { text: "⚠️ _Soal sedang tidak tersedia. Coba lagi sebentar lagi._" },
         { quoted: message }
       );
     }
 
-    // Buat timer baru untuk user
+    // Datanya disimpan DULU, timernya menyusul. Dengan urutan ini tidak
+    // pernah ada timer yang berjalan tanpa data permainannya.
+    addUser(remoteJid, {
+      answer: rapikanJawaban(jawaban),
+      hadiah: 10, // jumlah money jika menang
+      command: fullText,
+      timer: null,
+    });
+
     const timer = setTimeout(async () => {
       if (!isUserPlaying(remoteJid)) return;
 
       removeUser(remoteJid); // Hapus user dari database jika waktu habis
 
-      if (mess.game_handler.waktu_habis) {
-        const messageWarning = mess.game_handler.waktu_habis.replace(
-          "@answer",
-          jawaban
-        );
-        await sock.sendMessage(
-          remoteJid,
-          { text: messageWarning },
-          { quoted: message }
+      try {
+        if (mess.game_handler.waktu_habis) {
+          const messageWarning = mess.game_handler.waktu_habis.replace(
+            "@answer",
+            jawaban
+          );
+          await sock.sendMessage(
+            remoteJid,
+            { text: messageWarning },
+            { quoted: message }
+          );
+        }
+      } catch (error) {
+        // Tanpa penangkap ini kegagalan kirim (mis. sesi sedang reconnect)
+        // hilang diam-diam: permainannya sudah dihapus tapi pemain tidak
+        // pernah diberi tahu jawabannya.
+        logWithTime(
+          "Tebak kata",
+          `Gagal kirim pesan waktu habis: ${error?.message || error}`
         );
       }
     }, WAKTU_GAMES * 1000);
 
-    // Tambahkan pengguna ke database
-    addUser(remoteJid, {
-      answer: jawaban.toLowerCase(),
-      hadiah: 10, // jumlah money jika menang
-      command: fullText,
-      timer: timer,
-    });
+    const data = getUser(remoteJid);
+    if (data) {
+      data.timer = timer;
+    } else {
+      clearTimeout(timer); // permainannya sudah berakhir duluan
+    }
 
     logWithTime("Tebak kata", `Jawaban : ${jawaban}`);
 
@@ -74,12 +120,16 @@ async function handle(sock, messageInfo) {
       { quoted: message }
     );
   } catch (error) {
-    const errorMessage = `Maaf, terjadi kesalahan saat memproses permintaan Anda. Mohon coba lagi nanti.\n\n${
-      error || "Kesalahan tidak diketahui"
-    }`;
+    // Jangan tinggalkan permainan setengah jadi di memori.
+    removeUser(remoteJid);
+    logWithTime(
+      "Tebak kata",
+      `Gagal memulai permainan: ${error?.message || error}`
+    );
+
     await sock.sendMessage(
       remoteJid,
-      { text: errorMessage },
+      { text: "⚠️ _Gagal memuat soal. Coba lagi sebentar lagi._" },
       { quoted: message }
     );
   }
