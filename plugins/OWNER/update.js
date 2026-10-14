@@ -8,6 +8,8 @@ const serverUrl = 'https://github.com/autoresbot/resbot-md/archive/refs/heads/ma
 
 const WHITELIST = new Set([
   'config.js',
+  'local.config.js', // override lokal milik user, tidak ada di GitHub
+  '.env',
   'strings.js',
   'update.js',
   'database',

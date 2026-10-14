@@ -14,6 +14,16 @@ RINGKASAN
   sudah mengeluarkan gambar lagi, dengan waktu tunggu sampai 4 menit
 - Grup yang semua commandnya gagal pulih sendiri tanpa scan ulang
 - Migrasi sesi dari Baileys tidak lagi kehilangan sebagian kunci
+- Fitur baru .jj di menu maker: ubah gambar jadi video JJ TikTok
+- Fitur baru .listgiveaway: admin bisa melihat siapa saja peserta giveaway
+- Fitur baru .lokasi di menu tools: cari kota / nama tempat, dapat detail
+  dan link Google Maps. Gratis, tanpa API key
+- Notifikasi waktu sholat tidak lagi terkirim dua kali, dan pesan nyasar
+  "Waktu tes telah tiba" tiap malam sudah hilang
+- Backup sekarang aman dibuat saat bot hidup - database di dalam zip tidak
+  lagi berisiko rusak
+- Pesan sewa habis menampilkan nomor HP owner yang bisa diklik, bukan LID
+- .update tidak lagi menghapus local.config.js dan .env
 
 
 DETAIL
@@ -131,3 +141,185 @@ Sebab  : nama file Baileys dibalik dengan mengganti SEMUA tanda minus jadi
          titik dua, padahal minus juga muncul alami di dalam ID. Yang kena:
          grup lama (ID-nya mengandung minus) dan kunci app-state-sync
 Solusi : hanya "--" yang dibalik jadi "::", sesuai cara Baileys menyimpan
+
+
+[BARU] .jj - ubah gambar jadi video JJ TikTok
+File   : plugins/MAKER/jj.js (baru), lib/rantaiCommand.js
+Gejala : belum ada fitur untuk membuat video JJ dari sebuah gambar
+Sebab  : -
+Solusi : kirim/balas gambar dengan caption .jj (atau .jjtiktok). Gambar
+         diupload dulu, lalu dikirim ke /api/maker/jj-tiktok, dan video
+         hasilnya dibalas ke chat. Alurnya sama seperti .hd, termasuk
+         pesan gagal yang menampilkan respon API. Otomatis muncul di menu
+         maker, memotong 1 limit, dan bisa dirantai (mis. .hd + .jj)
+
+
+[BARU] .listgiveaway - lihat daftar peserta giveaway
+File   : plugins/ADMIN/giveaway.js
+Gejala : setelah .giveaway dimulai, tidak ada cara melihat siapa saja
+         yang sudah ikut sebelum pemenang diacak
+Sebab  : -
+Solusi : admin mengetik .listgiveaway, bot menampilkan daftar bernomor
+         semua peserta beserta totalnya. Kalau giveaway belum dimulai atau
+         belum ada peserta, bot memberi tahu. Otomatis muncul di menu admin
+Catatan: khusus admin, sama seperti .giveaway dan .mulaigiveaway. Data
+         peserta masih disimpan di memori seperti sebelumnya, jadi hilang
+         kalau bot restart di tengah giveaway
+
+
+[BARU] .lokasi - cari lokasi dan link Google Maps
+File   : plugins/TOOLS/lokasi.js (baru)
+Command: .lokasi, .maps
+Gejala : belum ada fitur untuk mencari lokasi
+Sebab  : -
+Solusi : ketik .lokasi jakarta atau .lokasi monas jakarta. Bot membalas
+         nama tempat, alamat lengkap, kota, provinsi, negara, kode pos,
+         jenis tempat, koordinat, serta jam buka / telepon / website kalau
+         datanya ada. Di bawahnya ada dua link Google Maps (halaman tempat
+         dan titik koordinat), lalu pin lokasi yang bisa langsung dibuka.
+         Memotong 1 limit dan otomatis muncul di menu tools
+Catatan: datanya dari OpenStreetMap, bukan dari Google - gratis dan tanpa
+         API key, tapi tidak ada rating, ulasan, atau foto. API resmi
+         Google Maps berbayar dan butuh kartu kredit. Layanan gratis ini
+         membatasi 1 pencarian per detik, jadi pencarian yang berbarengan
+         diantrekan otomatis
+
+
+[BUG] Notifikasi waktu sholat muncul dua kali
+File   : lib/scheduled.js, lib/features.js
+Gejala : "Waktu ashar telah tiba di wilayah Jakarta dan sekitarnya" terkirim
+         dua kali ke grup yang sama
+Sebab  : penjadwalan disusun ulang setiap kali bot tersambung, saat admin
+         mengetik .on/.off waktusholat, dan saat jam buka/tutup grup diatur.
+         Kalau dua penyusunan ulang berjalan berbarengan (misalnya bot baru
+         tersambung lalu ada yang mengetik .on waktusholat), keduanya
+         mendaftarkan jadwal yang sama. Jadwal kembar itu tidak bisa
+         dibatalkan lagi dan terus hidup sampai bot direstart
+Solusi : penyusunan ulang sekarang antre satu per satu, jadwal dengan nama
+         yang sama selalu menggantikan yang lama, dan ada pengaman terakhir:
+         satu waktu sholat hanya boleh terkirim sekali per grup per hari
+Catatan: tiga masalah lain di bagian yang sama ikut dibereskan.
+         1. Ada jadwal uji "tes" jam 19:49 yang tertinggal, jadi tiap malam
+            grup menerima "Waktu tes telah tiba" - sudah dihapus
+         2. Jam sholat hanya diambil sekali saat bot menyala lalu dipakai
+            terus. Sekarang jadwalnya diperbarui tiap hari jam 00:05
+         3. Notifikasi makin telat 3 detik setiap hari karena jedanya tidak
+            pernah direset - sudah dihilangkan
+
+
+[BUG] Database di dalam file backup bisa rusak
+File   : lib/utils.js, lib/database.js
+Command: .backup, .backuptele, dan AUTO_BACKUP
+Gejala : file backup berhasil dibuat dan terkirim, tapi database di
+         dalamnya berisiko rusak atau kehilangan data terbaru saat dipakai
+         untuk restore
+Sebab  : file database (bot.db beserta bot.db-wal dan bot.db-shm) di-zip
+         mentah-mentah selagi bot masih menulis ke dalamnya. Ketiga file
+         itu terbaca di detik yang berbeda, jadi isinya tidak sinkron.
+         Diuji dengan database yang terus ditulisi: 6 dari 6 backup cara
+         lama rusak
+Solusi : sebelum di-zip, database disalin dulu memakai fitur backup bawaan
+         SQLite yang aman dipakai saat bot hidup, lalu salinannya diperiksa
+         keutuhannya. Yang masuk zip hanya satu file bot.db yang utuh.
+         Di pengujian yang sama: 0 dari 6 rusak
+Catatan: - Kalau .backup dan AUTO_BACKUP jalan berbarengan, keduanya dulu
+           menulis ke file zip yang sama. Sekarang yang kedua menunggu
+           hasil yang pertama
+         - Saat restore, hapus dulu bot.db-wal dan bot.db-shm lama di
+           folder database sebelum menaruh bot.db dari backup, dan lakukan
+           saat bot mati
+
+
+[BUG] Pesan sewa habis menampilkan LID, bukan nomor owner
+File   : handle/sewa.js
+Gejala : di pesan "Masa SewaBOT Telah Habis", nomor owner tampil sebagai
+         wa.me/222209327030364@lid yang tidak bisa diklik
+Sebab  : isi DATA_OWNER langsung ditempel ke link, padahal isinya LID
+Solusi : bot mencari nomor HP owner yang sebenarnya dan menampilkannya
+         sebagai wa.me/628xxx. Kalau nomornya tidak bisa dipastikan,
+         bagian itu diganti "Ketik .owner untuk melihat kontak owner"
+Catatan: nomor HP dari sebuah LID baru diketahui bot setelah owner pernah
+         terlihat (mengirim pesan ke bot atau berada di grup yang sama).
+         Sebelum itu yang tampil adalah petunjuk .owner
+
+
+[UPDATE] zapo-js diperbarui ke 1.10.0
+File   : package.json, package-lock.json
+Gejala : -
+Sebab  : zapo-js (library koneksi WhatsApp) sudah punya versi lebih baru
+Solusi : dinaikkan dari 1.9.0 ke 1.10.0
+Catatan: semua fungsi dan event zapo-js yang dipakai bot dicek masih ada
+         di versi baru. Di server/panel, jalankan npm install setelah
+         update supaya versi barunya terpasang. @zapo-js/store-sqlite
+         (penyimpan sesi) tidak diubah, tetap 1.2.0
+
+
+[BUG] .ikut tidak men-tag orangnya
+File   : plugins/GROUP/ikut.js, plugins/ADMIN/giveaway.js
+Command: .ikut, .mulaigiveaway
+Gejala : balasan .ikut ("@628xx telah bergabung dalam giveaway!") hanya
+         menampilkan angka biasa, orangnya tidak ter-tag dan tidak dapat
+         notifikasi
+Sebab  : daftar orang yang di-tag ditaruh di tempat yang salah saat pesan
+         dikirim (di bagian opsi, bukan di isi pesan), jadi diabaikan
+Solusi : daftar tag dipindah ke isi pesan. Berlaku untuk balasan berhasil
+         ikut maupun "kamu sudah bergabung"
+Catatan: tag di pengumuman pemenang dan .listgiveaway sudah benar dan ikut
+         diuji. Di pengumuman pemenang, tanda ◧ dulu hanya muncul di
+         pemenang pertama - sekarang di setiap pemenang
+
+
+[UBAH] Panduan .backuptele: Chat ID cukup lewat @Get_myidrobot
+File   : plugins/OWNER/backuptele.js, lib/telegramBackup.js, config.js
+Command: .backuptele, .backuptele id
+Gejala : untuk mengisi TELEGRAM_CHAT_ID, user harus membuka alamat
+         api.telegram.org/bot<TOKEN>/getUpdates di browser lalu mencari
+         sendiri angka chat id di antara tulisan yang rumit
+Sebab  : -
+Solusi : panduan .backuptele sekarang 3 langkah, semuanya di aplikasi
+         Telegram: buat bot di @BotFather lalu klik Start di bot itu, cari
+         @Get_myidrobot dan klik Start (ID langsung tampil di sana), lalu
+         isi token dan ID di config.js. Petunjuk di config.js dan pesan
+         error yang menyebut chat id ikut diarahkan ke @Get_myidrobot
+Catatan: - @Get_myidrobot hanya menampilkan ID akun sendiri. Untuk backup
+           ke GRUP Telegram ada perintah tambahan .backuptele id: masukkan
+           bot ke grup, ketik .backuptele id di WhatsApp, lalu dalam 45
+           detik kirim /start@namabot di grup Telegram itu. ID grupnya
+           muncul di WhatsApp
+         - Pesan biasa di grup TIDAK terbaca oleh bot Telegram (aturan
+           privasi Telegram), dan catatan "bot ditambahkan ke grup" hilang
+           setelah sekitar 24 jam. Karena itu harus perintah
+           /start@namabot, dan bot WhatsApp menunggunya sebentar
+         - Langkah "klik Start di bot sendiri" wajib, karena bot Telegram
+           tidak boleh mengirim file ke orang yang belum pernah
+           memulai chat dengannya
+         - @Get_myidrobot adalah bot milik pihak lain. Kalau suatu saat
+           tidak aktif, namanya cukup diganti di satu tempat
+           (BOT_CEK_ID di lib/telegramBackup.js)
+
+
+[UBAH] Auto backup hanya dikirim ke Telegram, tidak lagi ke WhatsApp
+File   : lib/autobackup.js, config.js, dashboard/lib/configForm.js
+Gejala : dengan AUTO_BACKUP aktif, file backup dikirim ke WhatsApp owner
+         setiap bot restart dan setiap 4 jam
+Sebab  : -
+Solusi : auto backup sekarang hanya mengirim file ke Telegram. Tidak ada
+         lagi file backup yang dikirim ke WhatsApp secara otomatis
+Catatan: - Cukup AUTO_BACKUP = true ditambah token dan chat id Telegram.
+           Pengaturan AUTO_BACKUP_TELEGRAM tidak dipakai lagi (dibiarkan
+           ada supaya config lama tidak error)
+         - Kalau AUTO_BACKUP aktif tapi Telegram belum diisi, backup
+           dilewati dan owner dikabari SEKALI lewat pesan teks WhatsApp
+         - Kalau backup ke Telegram gagal, owner tetap dikabari lewat
+           pesan teks WhatsApp (teks saja, bukan file)
+         - Backup manual ke WhatsApp tetap ada lewat .backup
+
+
+[BUG] .update menghapus local.config.js dan .env
+File   : plugins/OWNER/update.js
+Gejala : setelah .update, pengaturan di local.config.js (owner, apikey,
+         token Telegram, dll) dan isi file .env hilang
+Sebab  : saat update semua file di folder bot dihapus dulu kecuali yang
+         ada di daftar pengecualian, dan dua file ini tidak terdaftar
+Solusi : local.config.js dan .env dimasukkan ke daftar pengecualian, jadi
+         tidak dihapus dan tidak ditimpa saat update

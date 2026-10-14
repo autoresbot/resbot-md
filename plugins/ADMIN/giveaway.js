@@ -39,6 +39,46 @@ async function handle(sock, messageInfo) {
     return;
   }
 
+  // Lihat daftar peserta giveaway
+  if (command === "listgiveaway") {
+    const peserta = global.giveawayParticipants[remoteJid];
+    if (!peserta) {
+      await sock.sendMessage(
+        remoteJid,
+        {
+          text: `⚠ Give away belum dimulai. ketik *${prefix}giveaway* untuk memulai`,
+        },
+        { quoted: message }
+      );
+      return;
+    }
+
+    const daftar = Array.from(peserta);
+    if (daftar.length === 0) {
+      await sock.sendMessage(
+        remoteJid,
+        {
+          text: `📋 *PESERTA GIVEAWAY*\n\n_Belum ada peserta._\nKetik *${prefix}ikut* untuk bergabung.`,
+        },
+        { quoted: message }
+      );
+      return;
+    }
+
+    const baris = daftar
+      .map((jid, i) => `${i + 1}. @${jid.split("@")[0]}`)
+      .join("\n");
+    await sock.sendMessage(
+      remoteJid,
+      {
+        text: `📋 *PESERTA GIVEAWAY*\n\n${baris}\n\n_Total: ${daftar.length} peserta_\nGunakan *${prefix}mulaigiveaway <jumlah_pemenang>* untuk mengacak pemenang.`,
+        mentions: daftar,
+      },
+      { quoted: message }
+    );
+    return;
+  }
+
   // Mulai Pengacakan Giveaway
   if (command === "mulaigiveaway") {
     if (!global.giveawayParticipants[remoteJid]) {
@@ -101,12 +141,12 @@ async function startGiveaway(sock, remoteJid, message, jumlahPemenang) {
   const winners = shuffled.slice(0, jumlahPemenang);
 
   const winnerMentions = winners
-    .map((winner) => `@${winner.split("@")[0]}`)
+    .map((winner) => `◧ @${winner.split("@")[0]}`)
     .join("\n");
   await sock.sendMessage(
     remoteJid,
     {
-      text: `🎉 *Pemenang Giveaway:* 🎉\n\n◧ ${winnerMentions}`,
+      text: `🎉 *Pemenang Giveaway:* 🎉\n\n${winnerMentions}`,
       mentions: winners,
     },
     { quoted: message }
@@ -118,8 +158,8 @@ async function startGiveaway(sock, remoteJid, message, jumlahPemenang) {
 
 export default {
   handle,
-  Commands: ["giveaway", "mulaigiveaway"],
-  // Dua fitur berbeda, bukan alias.
+  Commands: ["giveaway", "mulaigiveaway", "listgiveaway"],
+  // Tiga fitur berbeda, bukan alias.
   MenuCommands: "all",
   OnlyPremium: false,
   OnlyOwner: false,

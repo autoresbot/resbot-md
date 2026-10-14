@@ -53,7 +53,7 @@
     "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.21.3",
     "yt-search": "^2.12.1",
-    "zapo-js": "^1.9.0"
+    "zapo-js": "^1.10.0"
   },
   "allowScripts": {
     "better-sqlite3": true,

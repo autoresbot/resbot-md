@@ -6,6 +6,7 @@ import { selisihHari, danger, logTracking } from "../lib/utils.js";
 import { logCustom } from "../lib/logger.js";
 import { getGroupMetadata } from "../lib/cache.js";
 import { createBoundedSet } from "../lib/boundedStore.js";
+import { listOwner } from "../lib/users.js";
 import mess from "../strings.js";
 
 const notificationDays = 3; // Jumlah hari sebelum notifikasi dikirim
@@ -40,6 +41,55 @@ async function leaveGroupWithRetry(sock, remoteJid, maxRetries = 3) {
       }
     }
   }
+}
+
+/**
+ * Cari NOMOR HP owner yang bisa diklik (wa.me/628xx).
+ *
+ * DATA_OWNER umumnya berisi LID, dan wa.me/<lid> tidak bisa dibuka. Nomor baru
+ * dipakai kalau memang terbukti nomor telepon:
+ *   1. LID yang sudah dikenal bot -> diterjemahkan ke nomor aslinya
+ *   2. entri bukan LID -> ditanyakan ke WhatsApp apakah nomornya terdaftar
+ * Kalau tidak ada satu pun yang pasti, hasilnya null dan pemanggil menampilkan
+ * petunjuk ".owner" sebagai gantinya.
+ *
+ * @returns {Promise<string|null>} digit nomor HP, atau null
+ */
+async function cariNomorOwner(sock) {
+  for (const entri of listOwner() || []) {
+    const digit = String(entri ?? "").replace(/[^0-9]/g, "");
+    if (!digit) continue;
+
+    try {
+      const pn = await sock?.signalRepository?.lidMapping?.getPNForLID?.(
+        `${digit}@lid`
+      );
+      if (pn) return pn.split("@")[0].split(":")[0];
+    } catch {
+      // lanjut ke pengecekan berikutnya
+    }
+
+    if (String(entri).endsWith("@lid")) continue;
+
+    try {
+      const hasil = await sock?.onWhatsApp?.(`${digit}@s.whatsapp.net`);
+      if (Array.isArray(hasil) && hasil[0]?.exists === true) return digit;
+    } catch {
+      // tidak bisa dipastikan -> jangan tampilkan nomor yang mungkin salah
+    }
+  }
+  return null;
+}
+
+/** Isi @ownernumber di teks sewa habis: nomor HP, atau petunjuk .owner. */
+async function isiNomorOwner(sock, teks) {
+  const nomor = await cariNomorOwner(sock);
+  if (nomor) return teks.replace(/@ownernumber/g, nomor);
+
+  const petunjuk = `Ketik *${config.prefix?.[0] ?? "."}owner* untuk melihat kontak owner`;
+  return teks
+    .replace(/(?:https?:\/\/)?wa\.me\/@ownernumber/gi, petunjuk)
+    .replace(/@ownernumber/g, petunjuk);
 }
 
 async function process(sock, messageInfo) {
@@ -112,10 +162,7 @@ async function process(sock, messageInfo) {
       // Jika masa berlaku sudah habis
 
       if (mess.handler.sewa_out) {
-        let warningMessage = mess.handler.sewa_out.replace(
-          "@ownernumber",
-          config.owner_number[0]
-        );
+        let warningMessage = await isiNomorOwner(sock, mess.handler.sewa_out);
         logTracking(`Sewa Handler - Send notif out sewa ke ${remoteJid}`);
         await sock.sendMessage(
           remoteJid,

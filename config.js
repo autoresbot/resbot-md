@@ -62,17 +62,16 @@ const OWNER_NAMES = {
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
 const AUTO_READ = false; // jika true (setiap chat akan di baca/centang 2 biru)
-const AUTO_BACKUP = false; // jika true (setiap restart server, data backup di kirimkan ke wa owner);
+const AUTO_BACKUP = true; // jika true (setiap restart server & tiap 4 jam, data backup dikirim ke Telegram - isi TELEGRAM di bawah);
 
 // Konfiqurasi Backup Telegram (dipakai .backuptele & AUTO_BACKUP)
 // Token   : dari @BotFather -> /newbot -> salin token (format 123456789:AAE-xxxx)
-// Chat ID : kirim pesan ke botmu, lalu buka
-//           https://api.telegram.org/bot<TOKEN>/getUpdates dan cari "chat":{"id":...}
-//           (id grup diawali tanda minus). Alternatif: chat ke @userinfobot
+// Chat ID : buka Telegram, cari @Get_myidrobot, klik Start - ID kamu tampil di sana
+//           (untuk grup: ketik .backuptele id di WhatsApp; id grup diawali tanda minus)
 // Biarkan kosong jika tidak dipakai.
 const TELEGRAM_BOT_TOKEN = '';
 const TELEGRAM_CHAT_ID = '';
-// jika true, hasil AUTO_BACKUP juga dikirim ke Telegram (butuh 2 isian di atas)
+// Tidak dipakai lagi: AUTO_BACKUP sekarang selalu (dan hanya) dikirim ke Telegram.
 const AUTO_BACKUP_TELEGRAM = false;
 const MIDNIGHT_RESTART = false; // Restart setiap jam 12 malam
 const PRESENCE_UPDATE = ''; // unavailable, available, composing, recording, paused

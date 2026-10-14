@@ -112,7 +112,7 @@ const SCHEMA = [
       { const: 'ANTI_CALL', label: 'Anti Call', type: 'boolean', help: 'Blokir yang menelepon bot di chat pribadi.' },
       { const: 'AUTO_READ', label: 'Auto Read', type: 'boolean', help: 'Setiap chat otomatis centang biru.' },
       { const: 'ALWAYS_ONLINE', label: 'Selalu Online', type: 'boolean' },
-      { const: 'AUTO_BACKUP', label: 'Auto Backup', type: 'boolean', help: 'Kirim backup data ke owner setiap restart.' },
+      { const: 'AUTO_BACKUP', label: 'Auto Backup', type: 'boolean', help: 'Kirim backup data ke Telegram setiap restart & tiap 4 jam (isi token & chat id Telegram).' },
       { const: 'MIDNIGHT_RESTART', label: 'Restart Jam 12 Malam', type: 'boolean' },
       {
         const: 'PRESENCE_UPDATE',

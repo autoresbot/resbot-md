@@ -40,8 +40,9 @@ async function joinGiveaway(sock, messageInfo) {
           text: `⚠ @${
             sender.split("@")[0]
           }, kamu sudah bergabung dalam giveaway!`,
+          mentions: [sender],
         },
-        { quoted: message, mentions: [sender] }
+        { quoted: message }
       );
       return;
     }
@@ -51,8 +52,9 @@ async function joinGiveaway(sock, messageInfo) {
       remoteJid,
       {
         text: `✅ @${sender.split("@")[0]} telah bergabung dalam giveaway!`,
+        mentions: [sender],
       },
-      { quoted: message, mentions: [sender] }
+      { quoted: message }
     );
   } catch (err) {
     console.error("Error in joinGiveaway:", err);
