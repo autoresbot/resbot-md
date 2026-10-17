@@ -42,9 +42,11 @@ async function handle(sock, messageInfo) {
 
     // convert: false — plugin ini menerima gambar MAUPUN sticker, dan sticker
     // (WebP) harus tetap dikirim apa adanya. Yang dibetulkan hanya nama file &
-    // content-type agar cocok dengan isi sebenarnya.
+    // content-type agar cocok dengan isi sebenarnya. shrink: true — gambar di
+    // atas 5 MB diperkecil dulu supaya tidak ditolak server (HTTP 413).
     const url = await uploadImageFile(mediaPath, {
       convert: false,
+      shrink: true,
       label: 'STICKERCIRCLE',
     });
 

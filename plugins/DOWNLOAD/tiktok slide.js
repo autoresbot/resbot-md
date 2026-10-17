@@ -5,8 +5,8 @@ const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
 
 import config from "../../config.js";
 
-import { extractLink } from "../../lib/utils.js";
 import { logCustom } from "../../lib/logger.js";
+import { resolveTiktokUrl } from "../../lib/scrape/tiktok.js";
 
 function isTikTokUrl(url) {
   return /tiktok\.com/i.test(url);
@@ -20,8 +20,6 @@ async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command } = messageInfo;
 
   try {
-    const validLink = extractLink(content);
-
     // Validasi input
     if (!content?.trim() || !isTikTokUrl(content)) {
       return sendMessageWithQuote(
@@ -38,6 +36,10 @@ async function handle(sock, messageInfo) {
     await sock.sendMessage(remoteJid, {
       react: { text: "⏳", key: message.key },
     });
+
+    // Link pendek (vm.tiktok.com dll) diikuti redirect-nya dulu,
+    // karena API hanya menerima link www.tiktok.com
+    const validLink = await resolveTiktokUrl(content);
 
     // Inisialisasi API dengan APIKEY dari config
     const api = new ApiAutoresbot(config.APIKEY);

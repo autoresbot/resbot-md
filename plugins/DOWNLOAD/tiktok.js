@@ -1,6 +1,7 @@
 
 import { logCustom } from "../../lib/logger.js";
-import { extractLink, downloadToBuffer } from "../../lib/utils.js";
+import { downloadToBuffer } from "../../lib/utils.js";
+import { resolveTiktokUrl } from "../../lib/scrape/tiktok.js";
 
 import ApiAutoresbotModule from 'api-autoresbot';
 const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
@@ -17,23 +18,12 @@ async function sendMessageWithQuote(sock, remoteJid, message, text) {
 }
 
 /**
- * Memvalidasi apakah URL yang diberikan adalah URL TikTok yang valid
- * @param {string} url - URL yang akan divalidasi
- * @returns {boolean} True jika valid, false jika tidak
- */
-function isTikTokUrl(url) {
-  return /tiktok\.com/i.test(url);
-}
-
-/**
  * Fungsi utama untuk menangani perintah TikTok
  * @param {object} sock - Instance koneksi WhatsApp
  * @param {object} messageInfo - Informasi pesan yang diterima
  */
 async function handle(sock, messageInfo) {
   const { remoteJid, message, content, prefix, command } = messageInfo;
-
-  const validLink = extractLink(content);
 
   try {
     // Validasi input: pastikan konten ada
@@ -48,8 +38,9 @@ async function handle(sock, messageInfo) {
       );
     }
 
-    // Validasi URL TikTok
-    if (!isTikTokUrl(validLink)) {
+    // Validasi URL TikTok (link pendek vm.tiktok.com dll diikuti
+    // redirect-nya dulu, karena API hanya menerima link www.tiktok.com)
+    if (!/tiktok\.com/i.test(content)) {
       return sendMessageWithQuote(
         sock,
         remoteJid,
@@ -62,11 +53,14 @@ async function handle(sock, messageInfo) {
     await sock.sendMessage(remoteJid, {
       react: { text: "⏰", key: message.key },
     });
+
+    const validLink = await resolveTiktokUrl(content);
+
       const api = new ApiAutoresbot(config.APIKEY);
 
     // Memanggil API untuk mendapatkan data video TikTok
      const response = await api.get('/api/downloader/tiktok', {
-        url: content,
+        url: validLink,
       });
 
       if (!response || response.code !== 200 || !response.data) {

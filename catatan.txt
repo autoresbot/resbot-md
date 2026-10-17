@@ -1,325 +1,199 @@
-Update Resbot MD 5.4.5
+Update Resbot MD 5.4.6
 
 
 RINGKASAN
 =========
-- Game tebak sekarang membalas jawaban yang benar dan mengumumkan jawaban
-  saat waktu habis. Berlaku di semua game tebak
-- Antilink kembali menghapus link, dan tidak lagi salah menangkap titik
-  biasa dalam kalimat seperti "oke.Sip"
-- Antivirtex tidak lagi menuduh anggota yang cuma membalas pesan panjang
-- Teks welcome & left bisa ditulis beberapa baris tanpa berubah jadi
-  satu baris
-- Command gambar AI (.aiimg, .imagine, dan semua command ubah gambar)
-  sudah mengeluarkan gambar lagi, dengan waktu tunggu sampai 4 menit
-- Grup yang semua commandnya gagal pulih sendiri tanpa scan ulang
-- Migrasi sesi dari Baileys tidak lagi kehilangan sebagian kunci
-- Fitur baru .jj di menu maker: ubah gambar jadi video JJ TikTok
-- Fitur baru .listgiveaway: admin bisa melihat siapa saja peserta giveaway
-- Fitur baru .lokasi di menu tools: cari kota / nama tempat, dapat detail
-  dan link Google Maps. Gratis, tanpa API key
-- Notifikasi waktu sholat tidak lagi terkirim dua kali, dan pesan nyasar
-  "Waktu tes telah tiba" tiap malam sudah hilang
-- Backup sekarang aman dibuat saat bot hidup - database di dalam zip tidak
-  lagi berisiko rusak
-- Pesan sewa habis menampilkan nomor HP owner yang bisa diklik, bukan LID
-- .update tidak lagi menghapus local.config.js dan .env
+- .jj sekarang punya 10 pilihan template (.jj 1 sampai .jj 10, atau
+  .jj1 sampai .jj10)
+- Fitur baru di menu maker: .fakeff, .fakedana, .fakebca, .fakeovo,
+  .fakegc, dan .spotifycard
+- .tiktok dan .ttslide sekarang bisa memakai link pendek vm.tiktok.com
+- .smeme tidak lagi gagal "File too large" untuk foto di atas 5 MB, dan
+  tidak lagi diam tanpa balasan
+- Fitur baru .idch di menu tools: cek ID saluran WhatsApp dari link
+  saluran, atau dengan membalas pesan terusan dari saluran
+- Nama file backup Telegram sekarang diberi nomor HP bot di ujungnya
+- Di grup "pesan sementara", command dengan cara reply (.kick, .sticker,
+  .smeme, .rvo, dll) dan balasan ke bot (autoai) kembali berfungsi
 
 
 DETAIL
 ======
 
-[BUG] Game tebak: jawaban benar diam, waktu habis tidak diumumkan
-File   : plugins/GAMES/* dan handle/GAMES/* (semua game tebak)
-Gejala : muncul tulisan error saat memulai, jawaban benar tidak dibalas,
-         dan saat waktu habis bot tidak memberi tahu jawabannya
-Sebab  : beberapa titik rawan yang semuanya berakhir diam.
-         1. Di grup ber-"pesan sementara" teks pesan terbaca kosong, jadi
-            soal tidak pernah cocok dengan jawaban pemain (penyebab ini
-            dibahas di bagian antilink)
-         2. Saat waktu habis, datanya dihapus DULU baru pesannya dikirim,
-            dan pengirimannya tidak punya penangkap error. Kalau sesi bot
-            sedang reconnect, pengiriman gagal tanpa jejak: permainannya
-            sudah hilang tapi pemain tidak pernah diberi jawabannya
-         3. Soal yang datang tidak lengkap tetap diteruskan sampai error,
-            dan isi error mentahnya ikut dikirim ke grup
-         4. Kata kunci dicek persis huruf besar-kecilnya, jadi ".Tebak Kata"
-            lewat begitu saja tanpa pesan apa pun
-Solusi : data permainan disimpan dulu baru timernya dipasang, pengiriman
-         saat waktu habis diberi penangkap error dan dicatat di log, soal
-         yang tidak lengkap ditolak dengan pesan yang wajar (bukan tulisan
-         error), kata kunci tidak lagi peka huruf besar-kecil, dan jawaban
-         pemain dibandingkan setelah dirapikan (huruf kecil, spasi berlebih
-         diabaikan) sehingga jawaban dua kata tetap cocok
-Catatan: perbaikan yang sama sudah diterapkan ke semua game lain yang
-         berpola sama: tebak kalimat, lirik, bendera, gambar, hewan, lagu,
-         angka, bom, pemain bola, dan cak lontong. Khusus tebak lagu, ada
-         console.log yang membocorkan jawaban ke console - sudah dihapus
-
-[BUG] Antilink tidak jalan & antivirtex salah tuduh
-File   : lib/serializeMessage.js, lib/utils.js, handle/MODE ON/handler.js
-Gejala : antilink diam saja walau sudah .on, sementara antivirtex menuduh
-         anggota yang tidak mengirim virtex
-Sebab  : ada dua masalah terpisah.
-         1. Grup yang menyalakan "pesan sementara" membungkus SETIAP pesan,
-            dan bot tidak membukanya. Akibatnya teks pesan terbaca kosong
-            dan jenis pesannya jadi tidak dikenali - antilink, badword,
-            antihidetag, dan autoai ikut diam di grup seperti itu
-         2. Antivirtex mengukur panjang SELURUH objek pesan dalam bentuk
-            JSON, bukan panjang teksnya. Di dalamnya ikut terhitung
-            thumbnail gambar dan isi pesan yang dibalas, jadi sekadar
-            membalas pesan panjang (mis. hasil .menu) sudah tembus 10.000
-            karakter padahal yang diketik cuma "makasih"
-Solusi : pembungkus pesan (pesan sementara / sekali lihat) kini dibuka dulu
-         sebelum teks dan jenis pesan dibaca. Antivirtex sekarang mengukur
-         panjang teks aslinya saja
-Catatan: pola pendeteksi link juga diperketat. Sebelumnya titik biasa di
-         tengah kalimat ikut dianggap link ("oke.Sip", "Hallo.Apa kabar",
-         "kirim foto.jpg"), yang baru ketahuan merepotkan begitu antilink
-         hidup lagi. Sekarang hanya akhiran domain yang wajar yang dihitung,
-         dan alamat email tidak lagi dianggap link
-
-
-[BUG] Teks welcome & left tidak mendukung baris baru
-File   : plugins/ADMIN/set welcome.js, plugins/ADMIN/set left.js
-Gejala : teks sapaan yang diketik beberapa baris tampil menempel jadi satu
-         baris saat ada anggota masuk atau keluar
-Sebab  : saat memisahkan kata kunci di depan (text / template / foto), isi
-         pesannya ikut dipecah per spasi lalu disambung lagi pakai spasi,
-         jadi semua baris baru berubah jadi spasi. Ini hanya terjadi kalau
-         kata kuncinya diketik - tanpa kata kunci baris barunya aman
-Solusi : yang dipotong sekarang hanya kata kuncinya, sisa teks dibiarkan
-         apa adanya. Teks beberapa baris di balasan konfirmasi juga tidak
-         lagi dibungkus garis miring (_..._), karena format miring WhatsApp
-         memang putus kalau isinya lebih dari satu baris
-
-
-[BUG] Command gambar AI tidak pernah menghasilkan gambar
-File   : plugins/AI/aiimg.js, plugins/AI/imagine.js,
-         plugins/AI/ai image generator.js
-Command: .aiimg, .imagine, dan semua command ubah gambar (.toanime,
-         .tohijab, .tomirror, .tofigure, dst)
-Gejala : gambar tidak pernah keluar, berakhir dengan pesan waktu proses
-         terlalu lama
-Sebab  : cara cek status job salah. Endpoint ai-image tidak mengenal
-         parameter job_id, dan job yang dibuat di situ juga tidak bisa
-         dicek lewat endpoint remini seperti di kode lama. Ditambah batas
-         tunggu terlalu pendek - proses bisa sampai 3 menit, sedangkan bot
-         hanya menunggu 70 detik dan koneksi .aiimg putus di detik ke-30
-Solusi : status job dicek dengan memanggil ulang endpoint yang sama
-         memakai url dan prompt yang persis sama, karena job_id-nya memang
-         dibentuk dari url + prompt itu. Batas tunggu dinaikkan jadi 4
-         menit (cek tiap 5 detik, maksimal 48 kali), timeout koneksi 240
-         detik, dan tarik file gambar hasil diberi 120 detik sendiri.
-         Status "expired" dan "error" langsung dihentikan, tidak diulang
-         sia-sia sampai 4 menit
-Catatan: .imagine memakai endpoint ai-image-create yang memang mengenal
-         job_id, jadi cara ceknya tidak diubah - hanya batas tunggunya
-
-
-[BUG] Bot diam di grup tertentu - "invalid wire type 6 at offset 14"
-File   : lib/zapo/repair.js (baru), lib/zapo/socket.js, lib/connection.js
-Gejala : di grup tertentu SEMUA command gagal (.id, .menu, .ping, apa pun),
-         grup lain normal. Di log muncul error protobuf seperti
-         "invalid wire type 6 at offset 14"
-Sebab  : bukan plugin-nya. Kunci enkripsi grup / sesi Signal di file sesi
-         (zapo.sqlite) ada yang rusak. Baris itu dibaca sebelum pesan
-         dienkripsi, dan tidak pernah dibuang sendiri, jadi grupnya rusak
-         permanen - direstart pun tetap gagal
-Solusi : saat kirim gagal karena baris rusak, baris itu dibuang lalu kirim
-         diulang sekali. Kunci barunya dibuat otomatis, grup langsung normal
-         tanpa scan ulang atau hapus sesi. Yang dibuang HANYA baris yang
-         memang rusak - sesi dan grup lain tidak tersentuh, dan setiap
-         pembuangan dicatat di log dengan awalan [STORE RUSAK]
-
-
-[BUG] Sebagian kunci hilang setelah pindah dari sesi Baileys
-File   : lib/zapo/migrate.js
-Gejala : hasil migrasi sesi lama tidak utuh - sebagian kunci dianggap hilang
-         padahal ada di folder sesi
-Sebab  : nama file Baileys dibalik dengan mengganti SEMUA tanda minus jadi
-         titik dua, padahal minus juga muncul alami di dalam ID. Yang kena:
-         grup lama (ID-nya mengandung minus) dan kunci app-state-sync
-Solusi : hanya "--" yang dibalik jadi "::", sesuai cara Baileys menyimpan
-
-
-[BARU] .jj - ubah gambar jadi video JJ TikTok
-File   : plugins/MAKER/jj.js (baru), lib/rantaiCommand.js
-Gejala : belum ada fitur untuk membuat video JJ dari sebuah gambar
+[UBAH] .jj - bisa pilih template video
+File   : plugins/MAKER/jj.js, lib/rantaiCommand.js
+Gejala : .jj hanya bisa membuat video dengan satu gaya
 Sebab  : -
-Solusi : kirim/balas gambar dengan caption .jj (atau .jjtiktok). Gambar
-         diupload dulu, lalu dikirim ke /api/maker/jj-tiktok, dan video
-         hasilnya dibalas ke chat. Alurnya sama seperti .hd, termasuk
-         pesan gagal yang menampilkan respon API. Otomatis muncul di menu
-         maker, memotong 1 limit, dan bisa dirantai (mis. .hd + .jj)
+Solusi : ada 10 pilihan gaya video. Tulis nomornya setelah .jj, boleh
+         pakai spasi atau tidak: .jj 3 sama dengan .jj3. Tanpa nomor
+         memakai template 1. Nomor di luar 1-10 dibalas cara pakai
+Catatan: .jj1 sampai .jj10 juga bisa dirantai seperti .jj (mis. .hd + .jj3)
 
 
-[BARU] .listgiveaway - lihat daftar peserta giveaway
-File   : plugins/ADMIN/giveaway.js
-Gejala : setelah .giveaway dimulai, tidak ada cara melihat siapa saja
-         yang sudah ikut sebelum pemenang diacak
+[BARU] Maker baru: .fakeff, .fakedana, .fakebca, .fakeovo, .fakegc,
+       .spotifycard
+File   : plugins/MAKER/fakeff.js, fakesaldo.js, fakegc.js, spotifycard.js
+         (semua baru), lib/maker.js
+Gejala : belum ada fitur untuk membuat gambar-gambar ini
 Sebab  : -
-Solusi : admin mengetik .listgiveaway, bot menampilkan daftar bernomor
-         semua peserta beserta totalnya. Kalau giveaway belum dimulai atau
-         belum ada peserta, bot memberi tahu. Otomatis muncul di menu admin
-Catatan: khusus admin, sama seperti .giveaway dan .mulaigiveaway. Data
-         peserta masih disimpan di memori seperti sebelumnya, jadi hilang
-         kalau bot restart di tengah giveaway
+Solusi : semua otomatis muncul di menu maker dan memotong 1 limit.
+         Cara pakai:
+         - .fakeff nama           -> template acak
+           .fakeff nama | 3       -> pilih template 1 sampai 8
+           Nama wajib diisi. Kalau kosong atau template di luar 1-8,
+           bot membalas format: .fakeff nama | 1-8
+         - .fakedana nama|50000   (tanpa nama = pakai nama WA)
+         - .fakebca nama|50000    (tanpa nama = pakai nama WA)
+         - .fakeovo 50000         (OVO hanya nominal, tanpa nama)
+         - .fakegc nama grup | 1024 (alias .fakegrup). Nama dan jumlah
+           member wajib diisi, kalau kosong / bukan angka bot membalas
+           format
+         - .spotifycard Judul|Artis (alias .fakespotify). Tanpa artis =
+           nama WA
+         - Foto .fakegc dan cover .spotifycard bisa diganti: kirim gambar
+           dengan caption command, atau balas (reply) gambar / stiker.
+           Tanpa gambar, .fakegc memakai foto grup (kalau di grup) atau
+           foto profil pengirim, .spotifycard memakai foto profil
+           pengirim
+Catatan: - Nominal boleh ditulis 50.000 atau Rp50,000, titik/koma/Rp
+           dibuang otomatis. Teks campuran huruf dan angka (mis. .fakedana
+           budi123) tidak dianggap nominal - bot membalas format, bukan
+           membuat gambar bernominal 123
+         - Kalau API menolak (mis. template di luar 1-8), alasannya
+           ditampilkan ke pengguna
+         - Memakai APIKEY dari config, sama seperti maker lain
 
 
-[BARU] .lokasi - cari lokasi dan link Google Maps
-File   : plugins/TOOLS/lokasi.js (baru)
-Command: .lokasi, .maps
-Gejala : belum ada fitur untuk mencari lokasi
+[BUG] .tiktok gagal dengan link vm.tiktok.com - "URL harus dari TikTok"
+File   : lib/scrape/tiktok.js, plugins/DOWNLOAD/tiktok.js,
+         plugins/DOWNLOAD/tiktok slide.js
+Command: .tiktok, .tt, .ttslide, .tiktokslide
+Gejala : link bagikan dari aplikasi TikTok (vm.tiktok.com/...) selalu
+         gagal dengan pesan "URL harus dari TikTok", padahal linknya benar
+Sebab  : API hanya menerima link www.tiktok.com dan vt.tiktok.com. Link
+         vm.tiktok.com dan m.tiktok.com ditolak, padahal keduanya hanya
+         link pendek yang diarahkan (redirect) ke www.tiktok.com/@user/
+         video/<id>. Selain itu .tiktok mengirim SELURUH isi pesan ke API,
+         bukan linknya saja, dan link tanpa https:// dianggap tidak valid
+Solusi : sebelum ke API, link TikTok diambil dari pesan lalu redirect-nya
+         diikuti sampai ke link www.tiktok.com/@user/video/<id> (atau
+         /photo/<id>). Link akhir inilah yang dikirim ke API, tanpa
+         tambahan ?_r=1&_t=... di belakangnya
+Catatan: - Diuji: vm.tiktok.com, vt.tiktok.com, www.tiktok.com/t/...,
+           m.tiktok.com/v/..., link lengkap, dan link tanpa https://
+           semuanya berhasil
+         - Kalau link pendek ternyata tidak mengarah ke video (salah ketik
+           atau videonya sudah dihapus / private), bot membalas "Link
+           TikTok tidak valid, atau videonya sudah dihapus / private"
+         - .ttmp3 tidak diubah karena sumber datanya (tikwm) sudah bisa
+           membaca link pendek sendiri
+
+
+[BUG] .smeme gagal untuk gambar besar - "HTTP 413 - File too large"
+File   : lib/uploader.js, lib/imageNormalizer.js, plugins/MAKER/smeme.js,
+         plugins/MAKER/stickercircle.js
+Command: .smeme, .stickercircle
+Gejala : "❌ Gagal membuat sticker meme. HTTP 413 - File too large. Max 5 MB
+         allowed." saat membalas foto HD atau screenshot berukuran besar
+Sebab  : gambar harus diupload dulu ke server sebelum diproses, dan server
+         upload hanya menerima file sampai 5 MB. .smeme dan .stickercircle
+         mengupload gambar apa adanya tanpa diperkecil, jadi foto di atas
+         5 MB langsung ditolak
+Solusi : sebelum upload, gambar di atas 5 MB diperkecil dulu menjadi JPEG
+         (sisi terpanjang maksimal 2048 px, turun ke 1600 / 1280 px kalau
+         masih kebesaran). Gambar di bawah 5 MB dan sticker tetap dikirim
+         apa adanya seperti sebelumnya
+Catatan: - Diuji dengan PNG 12 MB: cara lama gagal dengan HTTP 413 yang
+           sama, cara baru diperkecil jadi 2,5 MB lalu sticker meme
+           berhasil dibuat
+         - Berlaku otomatis juga untuk fitur lain yang mengonversi gambar
+           sebelum upload (.hd, .removebg, .jj, dll)
+         - .tovid, .toimg, dan .tourl tidak diubah, karena fitur itu harus
+           mengirim file asli tanpa diubah formatnya
+
+
+[BARU] .idch - cek ID saluran WhatsApp
+File   : plugins/TOOLS/idch.js (baru)
+Command: .idch, .cekidch, .idsaluran
+Gejala : belum ada cara mendapatkan ID saluran (xxxx@newsletter), padahal
+         ID ini dibutuhkan untuk fitur yang mengirim ke saluran
 Sebab  : -
-Solusi : ketik .lokasi jakarta atau .lokasi monas jakarta. Bot membalas
-         nama tempat, alamat lengkap, kota, provinsi, negara, kode pos,
-         jenis tempat, koordinat, serta jam buka / telepon / website kalau
-         datanya ada. Di bawahnya ada dua link Google Maps (halaman tempat
-         dan titik koordinat), lalu pin lokasi yang bisa langsung dibuka.
-         Memotong 1 limit dan otomatis muncul di menu tools
-Catatan: datanya dari OpenStreetMap, bukan dari Google - gratis dan tanpa
-         API key, tapi tidak ada rating, ulasan, atau foto. API resmi
-         Google Maps berbayar dan butuh kartu kredit. Layanan gratis ini
-         membatasi 1 pencarian per detik, jadi pencarian yang berbarengan
-         diantrekan otomatis
+Solusi : ada dua cara pakai:
+         - .idch https://whatsapp.com/channel/xxxx (boleh juga langsung
+           ID ...@newsletter)
+         - balas pesan yang diteruskan dari saluran dengan .idch
+         Bot membalas ID saluran, nama, jumlah pengikut, status verifikasi,
+         status saluran, tanggal dibuat, link, dan cuplikan deskripsi
+         (satu baris, maksimal sekitar 100 huruf). Memotong 1 limit dan
+         otomatis muncul di menu tools
+Catatan: - Datanya diambil langsung dari WhatsApp lewat zapo-js, tanpa API
+           key dan bot tidak perlu mengikuti salurannya
+         - Cara balas pesan terusan tetap menampilkan ID dan nama saluran
+           walaupun detail lainnya gagal diambil
+         - Link salah atau saluran yang sudah dihapus dibalas "Saluran
+           tidak ditemukan"
 
 
-[BUG] Notifikasi waktu sholat muncul dua kali
-File   : lib/scheduled.js, lib/features.js
-Gejala : "Waktu ashar telah tiba di wilayah Jakarta dan sekitarnya" terkirim
-         dua kali ke grup yang sama
-Sebab  : penjadwalan disusun ulang setiap kali bot tersambung, saat admin
-         mengetik .on/.off waktusholat, dan saat jam buka/tutup grup diatur.
-         Kalau dua penyusunan ulang berjalan berbarengan (misalnya bot baru
-         tersambung lalu ada yang mengetik .on waktusholat), keduanya
-         mendaftarkan jadwal yang sama. Jadwal kembar itu tidak bisa
-         dibatalkan lagi dan terus hidup sampai bot direstart
-Solusi : penyusunan ulang sekarang antre satu per satu, jadwal dengan nama
-         yang sama selalu menggantikan yang lama, dan ada pengaman terakhir:
-         satu waktu sholat hanya boleh terkirim sekali per grup per hari
-Catatan: tiga masalah lain di bagian yang sama ikut dibereskan.
-         1. Ada jadwal uji "tes" jam 19:49 yang tertinggal, jadi tiap malam
-            grup menerima "Waktu tes telah tiba" - sudah dihapus
-         2. Jam sholat hanya diambil sekali saat bot menyala lalu dipakai
-            terus. Sekarang jadwalnya diperbarui tiap hari jam 00:05
-         3. Notifikasi makin telat 3 detik setiap hari karena jedanya tidak
-            pernah direset - sudah dihilangkan
-
-
-[BUG] Database di dalam file backup bisa rusak
-File   : lib/utils.js, lib/database.js
-Command: .backup, .backuptele, dan AUTO_BACKUP
-Gejala : file backup berhasil dibuat dan terkirim, tapi database di
-         dalamnya berisiko rusak atau kehilangan data terbaru saat dipakai
-         untuk restore
-Sebab  : file database (bot.db beserta bot.db-wal dan bot.db-shm) di-zip
-         mentah-mentah selagi bot masih menulis ke dalamnya. Ketiga file
-         itu terbaca di detik yang berbeda, jadi isinya tidak sinkron.
-         Diuji dengan database yang terus ditulisi: 6 dari 6 backup cara
-         lama rusak
-Solusi : sebelum di-zip, database disalin dulu memakai fitur backup bawaan
-         SQLite yang aman dipakai saat bot hidup, lalu salinannya diperiksa
-         keutuhannya. Yang masuk zip hanya satu file bot.db yang utuh.
-         Di pengujian yang sama: 0 dari 6 rusak
-Catatan: - Kalau .backup dan AUTO_BACKUP jalan berbarengan, keduanya dulu
-           menulis ke file zip yang sama. Sekarang yang kedua menunggu
-           hasil yang pertama
-         - Saat restore, hapus dulu bot.db-wal dan bot.db-shm lama di
-           folder database sebelum menaruh bot.db dari backup, dan lakukan
-           saat bot mati
-
-
-[BUG] Pesan sewa habis menampilkan LID, bukan nomor owner
-File   : handle/sewa.js
-Gejala : di pesan "Masa SewaBOT Telah Habis", nomor owner tampil sebagai
-         wa.me/222209327030364@lid yang tidak bisa diklik
-Sebab  : isi DATA_OWNER langsung ditempel ke link, padahal isinya LID
-Solusi : bot mencari nomor HP owner yang sebenarnya dan menampilkannya
-         sebagai wa.me/628xxx. Kalau nomornya tidak bisa dipastikan,
-         bagian itu diganti "Ketik .owner untuk melihat kontak owner"
-Catatan: nomor HP dari sebuah LID baru diketahui bot setelah owner pernah
-         terlihat (mengirim pesan ke bot atau berada di grup yang sama).
-         Sebelum itu yang tampil adalah petunjuk .owner
-
-
-[UPDATE] zapo-js diperbarui ke 1.10.0
-File   : package.json, package-lock.json
-Gejala : -
-Sebab  : zapo-js (library koneksi WhatsApp) sudah punya versi lebih baru
-Solusi : dinaikkan dari 1.9.0 ke 1.10.0
-Catatan: semua fungsi dan event zapo-js yang dipakai bot dicek masih ada
-         di versi baru. Di server/panel, jalankan npm install setelah
-         update supaya versi barunya terpasang. @zapo-js/store-sqlite
-         (penyimpan sesi) tidak diubah, tetap 1.2.0
-
-
-[BUG] .ikut tidak men-tag orangnya
-File   : plugins/GROUP/ikut.js, plugins/ADMIN/giveaway.js
-Command: .ikut, .mulaigiveaway
-Gejala : balasan .ikut ("@628xx telah bergabung dalam giveaway!") hanya
-         menampilkan angka biasa, orangnya tidak ter-tag dan tidak dapat
-         notifikasi
-Sebab  : daftar orang yang di-tag ditaruh di tempat yang salah saat pesan
-         dikirim (di bagian opsi, bukan di isi pesan), jadi diabaikan
-Solusi : daftar tag dipindah ke isi pesan. Berlaku untuk balasan berhasil
-         ikut maupun "kamu sudah bergabung"
-Catatan: tag di pengumuman pemenang dan .listgiveaway sudah benar dan ikut
-         diuji. Di pengumuman pemenang, tanda ◧ dulu hanya muncul di
-         pemenang pertama - sekarang di setiap pemenang
-
-
-[UBAH] Panduan .backuptele: Chat ID cukup lewat @Get_myidrobot
-File   : plugins/OWNER/backuptele.js, lib/telegramBackup.js, config.js
-Command: .backuptele, .backuptele id
-Gejala : untuk mengisi TELEGRAM_CHAT_ID, user harus membuka alamat
-         api.telegram.org/bot<TOKEN>/getUpdates di browser lalu mencari
-         sendiri angka chat id di antara tulisan yang rumit
+[UBAH] Nama file backup Telegram diberi nomor HP bot
+File   : lib/telegramBackup.js
+Command: AUTO_BACKUP dan .backuptele
+Gejala : semua file backup bernama autoresbot-backup.zip, jadi kalau
+         beberapa bot mengirim backup ke chat Telegram yang sama, tidak
+         ketahuan file mana milik bot yang mana
 Sebab  : -
-Solusi : panduan .backuptele sekarang 3 langkah, semuanya di aplikasi
-         Telegram: buat bot di @BotFather lalu klik Start di bot itu, cari
-         @Get_myidrobot dan klik Start (ID langsung tampil di sana), lalu
-         isi token dan ID di config.js. Petunjuk di config.js dan pesan
-         error yang menyebut chat id ikut diarahkan ke @Get_myidrobot
-Catatan: - @Get_myidrobot hanya menampilkan ID akun sendiri. Untuk backup
-           ke GRUP Telegram ada perintah tambahan .backuptele id: masukkan
-           bot ke grup, ketik .backuptele id di WhatsApp, lalu dalam 45
-           detik kirim /start@namabot di grup Telegram itu. ID grupnya
-           muncul di WhatsApp
-         - Pesan biasa di grup TIDAK terbaca oleh bot Telegram (aturan
-           privasi Telegram), dan catatan "bot ditambahkan ke grup" hilang
-           setelah sekitar 24 jam. Karena itu harus perintah
-           /start@namabot, dan bot WhatsApp menunggunya sebentar
-         - Langkah "klik Start di bot sendiri" wajib, karena bot Telegram
-           tidak boleh mengirim file ke orang yang belum pernah
-           memulai chat dengannya
-         - @Get_myidrobot adalah bot milik pihak lain. Kalau suatu saat
-           tidak aktif, namanya cukup diganti di satu tempat
-           (BOT_CEK_ID di lib/telegramBackup.js)
+Solusi : nomor HP bot ditambahkan di ujung nama file, mis.
+         autoresbot-backup-6281234567890.zip
+Catatan: - Nomor diambil dari sesi WhatsApp yang sedang login. Kalau belum
+           terbaca, dipakai NOMOR_BOT dari config.js. Kalau dua-duanya
+           kosong, nama file tetap autoresbot-backup.zip seperti dulu
+         - Hanya nama file yang dikirim ke Telegram yang berubah. File zip
+           di folder bot dan backup manual .backup ke WhatsApp tidak diubah
 
 
-[UBAH] Auto backup hanya dikirim ke Telegram, tidak lagi ke WhatsApp
-File   : lib/autobackup.js, config.js, dashboard/lib/configForm.js
-Gejala : dengan AUTO_BACKUP aktif, file backup dikirim ke WhatsApp owner
-         setiap bot restart dan setiap 4 jam
+[BUG] .smeme diam tanpa balasan
+File   : plugins/MAKER/smeme.js
+Gejala : setelah .smeme hanya muncul reaksi ⏰, tidak ada sticker maupun
+         pesan error, padahal limit sudah terpotong
+Sebab  : hasil dari API hanya dikirim kalau formatnya WebP atau PNG.
+         Kalau API membalas JPEG / GIF, atau membalas pesan error (bukan
+         gambar), bot tidak melakukan apa-apa
+Solusi : semua format gambar sekarang diubah jadi sticker. Kalau balasan
+         API bukan gambar, bot membalas "Gagal membuat sticker meme"
+         beserta alasan dari API
+
+
+[UBAH] File .zip tidak ikut ke git
+File   : .gitignore
+Gejala : file backup (autoresbot backup.zip) di folder bot bisa ikut
+         ter-commit, padahal isinya local.config.js (apikey, token
+         Telegram) dan database
 Sebab  : -
-Solusi : auto backup sekarang hanya mengirim file ke Telegram. Tidak ada
-         lagi file backup yang dikirim ke WhatsApp secara otomatis
-Catatan: - Cukup AUTO_BACKUP = true ditambah token dan chat id Telegram.
-           Pengaturan AUTO_BACKUP_TELEGRAM tidak dipakai lagi (dibiarkan
-           ada supaya config lama tidak error)
-         - Kalau AUTO_BACKUP aktif tapi Telegram belum diisi, backup
-           dilewati dan owner dikabari SEKALI lewat pesan teks WhatsApp
-         - Kalau backup ke Telegram gagal, owner tetap dikabari lewat
-           pesan teks WhatsApp (teks saja, bukan file)
-         - Backup manual ke WhatsApp tetap ada lewat .backup
+Solusi : semua file .zip dimasukkan ke .gitignore
+Catatan: hanya berpengaruh untuk yang mengelola bot lewat git. File zip
+         yang sudah ada di folder tidak dihapus
 
 
-[BUG] .update menghapus local.config.js dan .env
-File   : plugins/OWNER/update.js
-Gejala : setelah .update, pengaturan di local.config.js (owner, apikey,
-         token Telegram, dll) dan isi file .env hilang
-Sebab  : saat update semua file di folder bot dihapus dulu kecuali yang
-         ada di daftar pengecualian, dan dua file ini tidak terdaftar
-Solusi : local.config.js dan .env dimasukkan ke daftar pengecualian, jadi
-         tidak dihapus dan tidak ditimpa saat update
+[BUG] Grup "pesan sementara": pesan yang di-reply tidak terbaca
+File   : lib/utils.js, lib/serializeMessage.js, plugins/TOOLS/idch.js
+Gejala : di grup yang menyalakan pesan sementara, semua command dengan
+         cara reply bertingkah seolah tidak ada yang di-reply:
+         - .kick / .promote / .demote / .delete / .ban tidak tahu targetnya
+         - .sticker, .smeme, .hd, .jj, .rvo, .fakegc, .spotifycard dengan
+           reply gambar dibalas "kirim/balas gambar"
+         - autoai, autosimi, autorusuh tidak menanggapi reply ke pesan bot
+         - .idch dengan reply pesan terusan saluran dibalas cara pakai
+Sebab  : grup pesan sementara membungkus setiap pesan dalam satu lapis
+         tambahan (ephemeralMessage). Perbaikan antilink di 5.4.5 sudah
+         membuka lapis ini untuk teks pesan, tapi bagian yang membaca
+         pesan yang di-reply masih membaca lapis paling luar saja
+Solusi : lapis ephemeralMessage dibuka dulu sebelum pesan yang di-reply
+         dibaca. Hanya lapis itu yang dibuka, jadi pesan di grup / chat
+         biasa diproses persis seperti sebelumnya
+Catatan: - Diuji dengan 11 jenis pesan (teks, link, reply teks, reply
+           gambar, gambar + caption, mention, sekali lihat, pesan bot,
+           terusan saluran, stiker): untuk pesan biasa hasil versi lama dan
+           baru identik, untuk pesan sementara hasilnya sekarang sama
+           dengan pesan biasa
+         - Ikut diperbaiki: antibot sekarang mengenali pesan tombol dari
+           bot lain di grup pesan sementara, dan pesan sekali lihat di
+           grup itu kembali terbaca sebagai sekali lihat

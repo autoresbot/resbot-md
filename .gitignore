@@ -20,3 +20,6 @@ database/_json_backup/
 database/dashboard.json
 database/_dashboard_backup/
 database/.restart-disk-penuh
+
+# File zip (backup berisi local.config.js & database, zip rilis, dll)
+*.zip

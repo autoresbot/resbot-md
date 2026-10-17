@@ -37,6 +37,18 @@ function detectMime(buffer) {
   return null;
 }
 
+/** Pesan untuk balasan API yang bukan gambar (mis. JSON error). */
+function alasanBukanGambar(buffer) {
+  try {
+    const data = JSON.parse(buffer.toString('utf8'));
+    const pesan = data?.message || data?.error;
+    if (pesan) return `API smeme menolak: ${pesan}`;
+  } catch {
+    // bukan JSON
+  }
+  return 'API smeme tidak mengembalikan gambar. Silakan coba lagi nanti.';
+}
+
 async function handle(sock, messageInfo) {
   const { remoteJid, message, type, isQuoted, content, prefix, command } = messageInfo;
 
@@ -83,8 +95,11 @@ async function handle(sock, messageInfo) {
     // (WebP) harus tetap dikirim apa adanya. Yang dibetulkan hanya nama file &
     // content-type agar cocok dengan isi sebenarnya; untuk sticker hasilnya
     // sama seperti sebelumnya, untuk gambar ber-isi WebP/PNG inilah perbaikannya.
+    // shrink: true — gambar di atas 5 MB (foto HD) diperkecil dulu, kalau tidak
+    // server upload menolak dengan "HTTP 413 - File too large".
     const imageUrl = await uploadImageFile(mediaPath, {
       convert: false,
+      shrink: true,
       label: 'SMEME',
     });
 
@@ -98,10 +113,17 @@ async function handle(sock, messageInfo) {
       height: 500,
     });
 
+    if (!buffer || !Buffer.isBuffer(buffer) || buffer.length === 0) {
+      throw new Error('API smeme tidak mengembalikan buffer yang valid.');
+    }
+
     const mime = detectMime(buffer);
 
-    if (!buffer || !Buffer.isBuffer(buffer)) {
-      throw new Error('API smeme tidak mengembalikan buffer yang valid.');
+    // Bukan gambar -> biasanya JSON berisi alasan gagal. Dulu kasus ini (dan
+    // gambar selain WebP/PNG) tidak dibalas sama sekali: pengguna hanya
+    // melihat ⏰ padahal limit sudah terpotong.
+    if (!mime) {
+      throw new Error(alasanBukanGambar(buffer));
     }
 
     if (mime === 'image/webp') {
@@ -113,7 +135,8 @@ async function handle(sock, messageInfo) {
         },
         { quoted: message },
       );
-    } else if (mime === 'image/png') {
+    } else {
+      // PNG / JPEG / GIF -> diubah jadi sticker
       await sendImageAsSticker(
         sock,
         remoteJid,
