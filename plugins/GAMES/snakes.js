@@ -274,13 +274,27 @@ async function handle(sock, messageInfo) {
     // Update game ke DATABASE (tidak wajib karena objek sudah referensi)
     DATABASE[remoteJid] = game;
 
-    // Ambil semua avatar pemain untuk gambar
+    // Ambil semua avatar pemain untuk gambar.
+    // Dulu foto profil diambil SATU per SATU (await di dalam loop) tiap giliran,
+    // jadi makin banyak pemain makin lama jedanya. Sekarang:
+    //  - diambil paralel (Promise.all), dan
+    //  - di-cache per permainan supaya tidak di-fetch ulang tiap lemparan.
+    if (!game.ppCache) game.ppCache = {};
+
+    const ppList = await Promise.all(
+      game.players.map(async (player) => {
+        if (game.ppCache[player]) return game.ppCache[player];
+        const pp = await getProfilePictureUrl(sock, player);
+        game.ppCache[player] = pp;
+        return pp;
+      }),
+    );
+
     const params = new URLSearchParams();
-    for (let player of game.players) {
-      const pp = await getProfilePictureUrl(sock, player);
-      params.append('pp', pp);
+    game.players.forEach((player, i) => {
+      params.append('pp', ppList[i]);
       params.append('positions', game.positions[player] || 1);
-    }
+    });
 
     const API_URL = `https://api.autoresbot.com/api/maker/ulartangga?${params.toString()}`;
 

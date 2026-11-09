@@ -5,18 +5,34 @@ async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, content, prefix, command, senderType } = messageInfo;
 
   try {
+    const { isGroup } = messageInfo;
+
     // ✅ Validasi input
     if (!content || content.trim() === '') {
-      const tex = `_⚠️ Format Penggunaan:_\n\n💬 Contoh:\n*${prefix + command}* https://chat.whatsapp.com/xxx 30`;
+      const tex =
+        `_⚠️ Format Penggunaan:_\n\n` +
+        `💬 Contoh (pakai link):\n*${prefix + command}* https://chat.whatsapp.com/xxx 30\n` +
+        `💬 Contoh (pakai id grup):\n*${prefix + command}* 1203xxxx@g.us 30\n` +
+        `💬 Atau jalankan di dalam grup:\n*${prefix + command}* 30`;
       return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
-    let [linkgrub, jumlahHariPremium] = content.split(' ');
+    const parts = content.trim().split(/\s+/);
 
-    linkgrub = linkgrub?.match(/https?:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+/i)?.[0];
+    // Input yang diterima HANYA: link undangan, id grup (@g.us), atau cukup
+    // jumlah hari bila dijalankan di dalam grup. Selain itu ditolak dengan
+    // pesan jelas supaya tidak menimbulkan error.
+    let target = parts[0];
+    let jumlahHariPremium = parts[1];
 
-    if (!linkgrub || isNaN(jumlahHariPremium)) {
-      const tex = `⚠️ _Pastikan format yang benar:_\n${prefix + command} https://chat.whatsapp.com/xxx 30`;
+    // Bentuk 1 argumen: ".addpremgrub 30" di dalam grup → target = grup ini.
+    if (parts.length === 1 && /^\d+$/.test(parts[0]) && isGroup) {
+      jumlahHariPremium = parts[0];
+      target = remoteJid;
+    }
+
+    if (!jumlahHariPremium || isNaN(jumlahHariPremium) || parseInt(jumlahHariPremium) <= 0) {
+      const tex = `⚠️ _Jumlah hari harus berupa angka (lebih dari 0)._\n${prefix + command} <link/id grup> 30`;
       return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
 
@@ -26,21 +42,27 @@ async function handle(sock, messageInfo) {
 
     jumlahHariPremium = parseInt(jumlahHariPremium);
 
-    const idFromGc = linkgrub.split('https://chat.whatsapp.com/')[1];
+    let groupId;
+    const linkMatch = target.match(/https?:\/\/chat\.whatsapp\.com\/([A-Za-z0-9]+)/i);
 
-    // Dulu node IQ mentah dikirim lalu dibaca lewat res.content[0].attrs.
-    // Bentuk node hasil decode zapo berbeda, sehingga id-nya terbaca undefined.
-    // Sekarang dipakai parser resmi zapo yang mengembalikan objek bertipe.
-    const infoGrub = await sock.groupGetInviteInfo(idFromGc);
-
-    if (!infoGrub?.jid) {
-      const tex = `⚠️ _Link grup tidak valid atau pastikan bot sudah bergabung_`;
-      await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
-      return;
+    if (linkMatch) {
+      // Via link undangan → resolve ke JID grup.
+      const infoGrub = await sock.groupGetInviteInfo(linkMatch[1]);
+      if (!infoGrub?.jid) {
+        const tex = `⚠️ _Link grup tidak valid atau pastikan bot sudah bergabung_`;
+        return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
+      }
+      groupId = infoGrub.jid;
+    } else if (/@g\.us$/i.test(target)) {
+      // Via id grup langsung.
+      groupId = target;
+    } else if (/^\d{10,}$/.test(target)) {
+      // Via angka id grup tanpa domain.
+      groupId = `${target}@g.us`;
+    } else {
+      const tex = `⚠️ _Input tidak valid. Masukkan link undangan grup atau id grup (xxxx@g.us)._`;
+      return await sock.sendMessage(remoteJid, { text: tex }, { quoted: message });
     }
-
-    // `jid` sudah lengkap dengan @g.us, tidak perlu ditambah lagi.
-    const groupId = infoGrub.jid;
 
     // ✅ Ambil data group dari database
     // Ambil data group

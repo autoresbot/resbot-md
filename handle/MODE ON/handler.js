@@ -72,6 +72,14 @@ async function process(sock, messageInfo) {
 
   let { remoteJid } = messageInfo;
 
+  // [DEBUG ANTIFORWARD] jejak alur khusus pesan terusan: kalau sebuah tahap
+  // tidak muncul di console, berarti handler berhenti sebelum tahap itu.
+  const dbgFwd = (tahap, extra = {}) => {
+    if (!isForwarded) return;
+    console.log('[ANTIFORWARD][handler]', tahap, JSON.stringify({ id, remoteJid, sender, ...extra }));
+  };
+  dbgFwd('masuk handler', { isGroup, isTagSw, command });
+
   // Hanya pesan dari status@broadcast yang perlu dialihkan ke grup terakhir
   // pengirimnya. Tag status yang datang di grup sudah punya remoteJid yang
   // benar — dulu ikut dialihkan sehingga peringatan/hapus bisa nyasar ke grup lain.
@@ -101,6 +109,7 @@ async function process(sock, messageInfo) {
   // di autoresbot.js karena remoteJid-nya 'status@broadcast' (bukan grup), lalu
   // dialihkan ke grup di atas — jadi filternya diulang di sini.
   if (!isDestinationAllowed(true)) {
+    dbgFwd('STOP: isDestinationAllowed=false');
     return true;
   }
 
@@ -108,6 +117,7 @@ async function process(sock, messageInfo) {
   // autoresbot.js (remoteJid-nya 'status@broadcast'), jadi grup tujuannya
   // dicek ulang di sini. Grup yang belum di-.acc tidak boleh kena tindakan.
   if (!isAccGroup(remoteJid)) {
+    dbgFwd('STOP: grup belum di-.acc');
     return true;
   }
 
@@ -117,6 +127,7 @@ async function process(sock, messageInfo) {
     // Ambil data grup dari database
     const dataGroupSettings = await findGroup(remoteJid);
     if (!dataGroupSettings) {
+      dbgFwd('STOP: data grup tidak ditemukan');
       logWithTime('System', `Data grup tidak ditemukan atau fitur belum diaktifkan.`);
       return true;
     }
@@ -129,6 +140,7 @@ async function process(sock, messageInfo) {
     // FIX: participants validation - groupMetadata bisa null (broadcast/gagal fetch)
     const participants = groupMetadata?.participants || [];
     if (!Array.isArray(participants) || participants.length === 0) {
+      dbgFwd('STOP: participants kosong');
       logHandlerError('[PARTICIPANTS_UNDEFINED]', {
         plugin: 'MODE ON/handler.js',
         command,
@@ -141,6 +153,12 @@ async function process(sock, messageInfo) {
     const isAdmin = participants.some(
       (p) => (p.phoneNumber === sender || p.id === senderLid) && p.admin,
     );
+
+    dbgFwd('data grup OK', {
+      isAdmin,
+      antiforward: fitur?.antiforward,
+      antiforward2: fitur?.antiforward2,
+    });
 
     if (isDevLogEnabled()) {
       devlog('admin', {
@@ -167,7 +185,23 @@ async function process(sock, messageInfo) {
       // `fromMe: false` WAJIB eksplisit: zapo membangun key revoke dari
       // `key.fromMe` apa adanya, dan tanpa field ini WhatsApp menolak
       // penghapusan pesan orang lain tanpa memberi error yang terlihat.
-      const target = { remoteJid, id, participant: senderLid, fromMe: false };
+      //
+      // Key revoke dibangun dari KEY ASLI pesan (message.key) bila ada, supaya
+      // membawa `participantAlt` (nomor @s.whatsapp.net) dan mode addressing
+      // yang sama dengan pesan aslinya. Versi lama hanya mengirim
+      // `{ remoteJid, id, participant: <lid> }` — cukup untuk pesan media biasa,
+      // tapi tidak selalu cocok untuk pesan khusus seperti tag status
+      // (groupStatusMentionMessage), sehingga revoke-nya diterima tapi TIDAK
+      // menghapus apa pun.
+      const baseKey = (message && typeof message === 'object' && message.key) || {};
+      const target = {
+        ...baseKey,
+        remoteJid, // pakai remoteJid handler (sudah dialihkan bila tag status)
+        id: id || baseKey.id,
+        participant: baseKey.participant || senderLid,
+        participantAlt: baseKey.participantAlt || sender,
+        fromMe: false,
+      };
       try {
         const result = await sock.sendMessage(remoteJid, { delete: target });
         devlog('handler', { aksi: 'deleteMessage', ok: true, command, target, hasil: result?.key?.id });
@@ -907,6 +941,16 @@ async function process(sock, messageInfo) {
       }
     }
 
+    // Kalau 'data grup OK' muncul tapi baris ini tidak, berarti ada fitur lain
+    // di atas (antilink, antitagsw, dst.) yang sudah return lebih dulu.
+    dbgFwd('sampai di cek antiforward', {
+      isAdmin,
+      isGroup,
+      antiforward: fitur?.antiforward,
+      antiforward2: fitur?.antiforward2,
+      akanDitindak: !isAdmin && isGroup && Boolean(fitur?.antiforward || fitur?.antiforward2),
+    });
+
     if (!isAdmin && fitur?.antiforward && isGroup && isForwarded) {
       let warningMessage = '⚠️ @sender _Terdeteksi Mengirim Pesan Terusan_';
       if (warningMessage) {
@@ -935,6 +979,7 @@ async function process(sock, messageInfo) {
       rateLimit_blacklist.set(sender, now);
     }
   } catch (error) {
+    dbgFwd('ERROR', { error: error.message });
     console.error('Terjadi kesalahan pada proses Handler.js:', error.message);
   }
   return true; // Lanjutkan ke plugin berikutnya

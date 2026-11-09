@@ -2,8 +2,7 @@ import { downloadQuotedMedia, downloadMedia, reply } from '../../lib/utils.js';
 import fs from 'fs';
 import path from 'path';
 import mess from '../../strings.js';
-import axios from 'axios';
-import config from '../../config.js';
+import { apiGet, apiRequest, isServerBusyError } from '../../lib/apiClient.js';
 import {
   uploadImageFile,
   logShort,
@@ -13,12 +12,10 @@ import {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const REMINI_URL = 'https://api.autoresbot.com/api/tools/remini';
+const REMINI_PATH = '/api/tools/remini';
 
-const http = axios.create({
-  timeout: 30000,
-  validateStatus: () => true,
-});
+// Pesan saat API tetap gagal setelah retry (timeout/ETIMEDOUT/5xx/429).
+const SERVER_BUSY_MESSAGE = '⏳ Server sedang sibuk, coba lagi sebentar.';
 
 const logHd = (shortMessage, detail) => logShort('HD', shortMessage, detail);
 
@@ -92,15 +89,15 @@ async function handle(sock, messageInfo) {
     // ===============================
     // CREATE JOB
     // ===============================
+    // Timeout 15 detik + retry gangguan jaringan/5xx ditangani lib/apiClient.js
     let createRes;
     try {
-      createRes = await http.get(REMINI_URL, {
-        params: { url: imageUrl },
-        headers: {
-          Authorization: `Bearer ${config.APIKEY}`,
-        },
-      });
+      createRes = await apiGet(REMINI_PATH, { feature: 'HD', params: { url: imageUrl } });
     } catch (err) {
+      if (isServerBusyError(err)) {
+        logHd(`Job gagal dibuat: ${err.message}`);
+        return await reply(m, SERVER_BUSY_MESSAGE);
+      }
       const detail = formatNetworkError(err, 'API HD');
       logHd(`Job gagal dibuat: ${detail}`, err);
       return await reply(m, withDetail('❌ Gagal memproses gambar.', detail));
@@ -127,19 +124,15 @@ async function handle(sock, messageInfo) {
       attempt++;
 
       try {
-        const pollRes = await http.get(REMINI_URL, {
-          params: { job_id: jobId },
-          headers: {
-            Authorization: `Bearer ${config.APIKEY}`,
-          },
-        });
+        const pollRes = await apiGet(REMINI_PATH, { feature: 'HD', params: { job_id: jobId } });
 
         const data = pollRes.data || {};
 
         // Error 4xx saat polling (job tidak ditemukan, apikey ditolak, dll)
         // tidak akan berubah dengan menunggu — dulu tetap diulang sampai
         // timeout ~70 detik lalu hanya tampil "Waktu proses terlalu lama".
-        // 5xx dianggap gangguan sementara dan tetap dicoba lagi.
+        // 5xx sudah dicoba ulang oleh apiClient; kalau tetap gagal dilempar
+        // sebagai "server sibuk" dan ditangani di catch di bawah.
         if (pollRes.status >= 400 && pollRes.status < 500) {
           const detail = formatApiResponse(pollRes);
           logHd(`Polling gagal: ${detail}`);
@@ -157,9 +150,11 @@ async function handle(sock, messageInfo) {
           return await reply(m, withDetail('❌ Proses HD gagal.\nSilakan coba lagi.', detail));
         }
       } catch (pollError) {
-        if (pollError.code !== 'ECONNRESET') {
-          throw pollError;
+        if (isServerBusyError(pollError)) {
+          logHd(`Polling gagal: ${pollError.message}`);
+          return await reply(m, SERVER_BUSY_MESSAGE);
         }
+        throw pollError;
       }
 
       await delay(delayMs);
@@ -179,8 +174,12 @@ async function handle(sock, messageInfo) {
     // ===============================
     // DOWNLOAD FINAL IMAGE
     // ===============================
-    const imageRes = await http.get(finalImageUrl, {
+    const imageRes = await apiRequest({
+      feature: 'HD',
+      url: finalImageUrl,
+      auth: false,
       responseType: 'arraybuffer',
+      timeout: 30000, // file hasil HD bisa beberapa MB
     });
 
     if (imageRes.status !== 200) {
@@ -200,6 +199,10 @@ async function handle(sock, messageInfo) {
       { quoted: message },
     );
   } catch (error) {
+    if (isServerBusyError(error)) {
+      logHd(`Error: ${error.message}`);
+      return await reply(m, SERVER_BUSY_MESSAGE);
+    }
     // Hanya satu baris ringkas di console; stack lengkap masuk logs/api.log.
     const detail =
       error?.serverMessage ||

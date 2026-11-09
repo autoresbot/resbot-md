@@ -1,9 +1,6 @@
-import ApiAutoresbotModule from "api-autoresbot";
-const ApiAutoresbot = ApiAutoresbotModule.default || ApiAutoresbotModule;
-
-import config from "../../config.js";
 import { logCustom } from "../../lib/logger.js";
-import { retryRequest } from "../../lib/retry.js"; // FIX: retry sholat API
+import { getJadwalSholatLengkap } from "../../lib/features.js";
+import { isServerBusyError } from "../../lib/apiClient.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, prefix, command, content } = messageInfo;
@@ -27,18 +24,15 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    const api = new ApiAutoresbot(config.APIKEY);
-
-    // Memanggil API jadwal sholat
-    // FIX: retry sholat API - maksimal 3x dengan delay 1s, 2s, 3s
-    const response = await retryRequest(
-      () => api.get("/api/jadwalsholat", { kota: content }),
-      { maxRetry: 3, label: "SHOLAT_RETRY", logFile: "api.log" }
-    );
+    // Timeout, retry & cache per kota per hari ditangani getJadwalSholatLengkap
+    const hasil = await getJadwalSholatLengkap(content);
 
     // Validasi respons
-    const prayerSchedule = response?.data?.jadwal;
+    const prayerSchedule = hasil?.jadwal;
     if (prayerSchedule) {
+      const catatanCache = hasil.kedaluwarsa
+        ? `\n\n_⚠️ Server sedang sibuk, menampilkan jadwal tersimpan terakhir._`
+        : "";
       const formattedSchedule =
         `_Jadwal Sholat Area *${content.toUpperCase()}*_\n\n` +
         `_${prayerSchedule.tanggal}_\n\n` +
@@ -48,7 +42,8 @@ async function handle(sock, messageInfo) {
         `◧ [ ${prayerSchedule.dzuhur} ] *Dzuhur*\n` +
         `◧ [ ${prayerSchedule.ashar} ] *Ashar*\n` +
         `◧ [ ${prayerSchedule.maghrib} ] *Maghrib*\n` +
-        `◧ [ ${prayerSchedule.isya} ] *Isya*`;
+        `◧ [ ${prayerSchedule.isya} ] *Isya*` +
+        catatanCache;
 
       // Mengirim data jadwal sholat ke pengguna
       await sock.sendMessage(
@@ -69,9 +64,10 @@ async function handle(sock, messageInfo) {
   } catch (error) {
     logCustom("info", content, `ERROR-COMMAND-${command}.txt`);
     // Pesan kesalahan kepada pengguna
-    const errorMessage =
-      `Maaf, terjadi kesalahan saat memproses permintaan Anda.\n\n` +
-      `Detail Kesalahan: ${error.message}`;
+    const errorMessage = isServerBusyError(error)
+      ? `⚠️ _Server sedang sibuk, coba lagi sebentar._`
+      : `Maaf, terjadi kesalahan saat memproses permintaan Anda.\n\n` +
+        `Detail Kesalahan: ${error.message}`;
     await sock.sendMessage(
       remoteJid,
       { text: errorMessage },

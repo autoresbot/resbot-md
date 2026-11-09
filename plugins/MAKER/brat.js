@@ -58,7 +58,7 @@ async function handle(sock, messageInfo) {
       await sock.sendMessage(
         remoteJid,
         {
-          text: "Ada kesalahan periksa apikey anda, ketik .apikey",
+          text: "⚠️ _Gagal membuat stiker brat. Server sedang bermasalah atau apikey tidak valid (cek .apikey). Coba lagi nanti._",
         },
         { quoted: message }
       );

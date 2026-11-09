@@ -58,7 +58,7 @@ async function handle(sock, messageInfo) {
       return await sock.sendMessage(
         remoteJid,
         {
-          text: `_⚠️ Gagal: Periksa Apikey Anda! (.apikey)_`,
+          text: `⚠️ _Gagal mengambil gambar anime. Server penyedia sedang bermasalah atau tidak merespons._\n\n_Silakan coba lagi beberapa saat lagi._`,
         },
         { quoted: message }
       );

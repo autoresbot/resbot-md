@@ -93,30 +93,36 @@ async function handle(sock, messageInfo) {
     res_linkgc = infoGrub.jid;
     let res_namegc = infoGrub.subject;
 
-    // Dulu kegagalan bergabung ditelan (`.catch(() => {})`), sehingga sewa
-    // tetap tercatat walau bot GAGAL masuk grup. Sekarang alasannya dibaca
-    // dan pencatatan dibatalkan.
-    const hasilGabung = await gabungGrupViaLink(sock, result_sewa);
+    // Bot sudah dimasukkan manual -> tidak perlu join lagi. Join ulang bisa
+    // gagal (mis. 463 account_reachout_restricted) padahal bot sudah di grup.
+    let cek = await pastikanAnggota(sock, res_linkgc);
 
-    if (!hasilGabung.ok) {
-      return await sock.sendMessage(
-        remoteJid,
-        {
-          text: `⚠️ _Gagal bergabung ke grup._\n\n${hasilGabung.alasan}\n\n_Sewa TIDAK dicatat._`,
-        },
-        { quoted: message },
-      );
+    if (!cek.ok) {
+      // Dulu kegagalan bergabung ditelan (`.catch(() => {})`), sehingga sewa
+      // tetap tercatat walau bot GAGAL masuk grup. Sekarang alasannya dibaca
+      // dan pencatatan dibatalkan.
+      const hasilGabung = await gabungGrupViaLink(sock, result_sewa);
+
+      if (!hasilGabung.ok) {
+        return await sock.sendMessage(
+          remoteJid,
+          {
+            text: `⚠️ _Gagal bergabung ke grup._\n\n${hasilGabung.alasan}\n\n_Sewa TIDAK dicatat._`,
+          },
+          { quoted: message },
+        );
+      }
+
+      // Pengaman terakhir: pastikan bot memang ada di dalam grupnya.
+      cek = await pastikanAnggota(sock, res_linkgc);
     }
-
-    // Pengaman terakhir: pastikan bot memang ada di dalam grupnya.
-    const cek = await pastikanAnggota(sock, res_linkgc);
     if (!cek.ok) {
       return await sock.sendMessage(
         remoteJid,
         {
           text:
             `⚠️ _Gagal memastikan bot masuk grup._\n\n${cek.alasan}\n\n` +
-            `_Sewa TIDAK dicatat. Kalau bot ternyata sudah di dalam grup, ketik *${prefix}tambahsewa* di grup itu._`,
+            `_Sewa TIDAK dicatat. Masukkan bot ke grup itu secara manual, lalu ulangi *${prefix + command} ${linkGrub} ${totalHari}*._`,
         },
         { quoted: message },
       );

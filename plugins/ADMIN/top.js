@@ -1,4 +1,4 @@
-import { sendTextWithMentions } from '../../lib/utils.js';
+import { sendMessageWithMention } from '../../lib/utils.js';
 import { readUsers } from '../../lib/users.js';
 import { getGroupMetadata } from '../../lib/cache.js';
 import mess from '../../strings.js';
@@ -7,22 +7,21 @@ const TOP_LIMIT = 10;
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
- * Pilih SATU JID yang dipakai untuk menampilkan & me-mention user.
- *
- * Satu user bisa punya alias di dua ruang identitas (@s.whatsapp.net dan @lid).
- * Domain milik pengirim command diprioritaskan supaya mention terender benar di
- * grup tersebut, tapi bila user tidak punya alias bertipe itu kita TETAP pakai
- * alias yang ada — versi lama membuang user tersebut sehingga daftar top bisa
- * kurang dari 10 baris dan urutannya terlihat bolong.
+ * Peta nomor (digit tanpa domain) -> money, dari SELURUH data user.
+ * Dipakai untuk menempelkan saldo ke tiap peserta grup.
  */
-function pickDisplayJid(aliases, senderType) {
-  if (!Array.isArray(aliases)) return null;
-
-  const valid = aliases.filter((a) => typeof a === 'string' && a.includes('@'));
-  if (valid.length === 0) return null;
-
-  const preferred = senderType === 'lid' ? '@lid' : '@s.whatsapp.net';
-  return valid.find((a) => a.endsWith(preferred)) || valid[0];
+function buildMoneyByNumber(dataUsers) {
+  const map = new Map();
+  for (const user of Object.values(dataUsers || {})) {
+    const money = Number(user?.money);
+    const nilai = Number.isFinite(money) ? money : 0;
+    for (const alias of user?.aliases ?? []) {
+      if (typeof alias !== 'string') continue;
+      const number = alias.replace(/\D/g, '');
+      if (number && !map.has(number)) map.set(number, nilai);
+    }
+  }
+  return map;
 }
 
 function formatMoney(value) {
@@ -48,32 +47,41 @@ async function handle(sock, messageInfo) {
 
     // Baca data user dari database atau file
     const dataUsers = await readUsers();
+    const moneyByNumber = buildMoneyByNumber(dataUsers);
 
-    // 1. Normalisasi dulu: money selalu berupa angka, dan setiap user harus
-    //    punya identitas yang bisa ditampilkan.
-    const candidates = Object.entries(dataUsers)
-      .map(([docId, user]) => {
-        const jid = pickDisplayJid(user?.aliases, senderType);
-        if (!jid) return null;
+    // 1. Daftar dibangun dari PESERTA GRUP (sama seperti .listadmin / .tagall),
+    //    bukan dari seluruh data user global. Ini syarat agar mention bisa
+    //    ter-render: WhatsApp hanya bisa men-tag anggota grup ini. Versi lama
+    //    membaca data user global -> kebanyakan bukan anggota grup, sehingga
+    //    hanya tampil nomor LID tanpa tag.
+    //
+    //    JID untuk mention: `phoneNumber` (@s.whatsapp.net) diutamakan, jatuh ke
+    //    `id` (@lid) bila peserta tidak membawa nomor telepon — persis pola
+    //    .listadmin yang sudah terbukti benar.
+    const candidates = participants
+      .map((p) => {
+        const jid = p?.phoneNumber || p?.id;
+        if (typeof jid !== 'string' || !jid.includes('@')) return null;
 
-        const money = Number(user?.money);
-        return {
-          docId,
-          jid,
-          number: jid.split('@')[0],
-          username: user?.username || '',
-          money: Number.isFinite(money) ? money : 0,
-        };
+        let money = 0;
+        for (const ident of [p.id, p.phoneNumber]) {
+          if (typeof ident !== 'string') continue;
+          const number = ident.replace(/\D/g, '');
+          if (number && moneyByNumber.has(number)) {
+            money = moneyByNumber.get(number);
+            break;
+          }
+        }
+
+        return { jid, number: jid.split('@')[0], money };
       })
       .filter(Boolean);
 
-    // 2. Sortir berdasarkan money (terbesar di atas). Bila sama, urutkan
-    //    berdasarkan username agar urutannya stabil (tidak berubah-ubah
-    //    tiap kali command dipanggil).
-    candidates.sort((a, b) => b.money - a.money || a.username.localeCompare(b.username));
+    // 2. Sortir berdasarkan money (terbesar di atas), tie-break nomor agar
+    //    urutannya stabil antar pemanggilan.
+    candidates.sort((a, b) => b.money - a.money || a.number.localeCompare(b.number));
 
-    // 3. Baru dipotong 10 besar — pemotongan dilakukan SETELAH filter supaya
-    //    jumlah baris yang tampil benar-benar 10 (bila datanya cukup).
+    // 3. Potong 10 besar.
     const topUsers = candidates.slice(0, TOP_LIMIT);
 
     if (topUsers.length === 0) {
@@ -94,15 +102,9 @@ async function handle(sock, messageInfo) {
 
     const textNotif = `┏━『 *TOP ${topUsers.length} MEMBER* 』\n┣\n${aliasList}\n┗━━━━━━━━━━━━━━━`;
 
-    // Kirim pesan dengan mention memakai JID lengkap tiap user, sehingga user
-    // ber-@lid maupun ber-@s.whatsapp.net sama-sama ter-mention dengan benar.
-    await sendTextWithMentions(
-      sock,
-      remoteJid,
-      textNotif,
-      topUsers.map((u) => u.jid),
-      message,
-    );
+    // Kirim dengan mention eksplisit lewat helper yang sama dengan .listadmin.
+    const mentions = topUsers.map((u) => u.jid);
+    await sendMessageWithMention(sock, remoteJid, textNotif, message, senderType, mentions);
   } catch (error) {
     console.error('Error in handle:', error);
     await sock.sendMessage(

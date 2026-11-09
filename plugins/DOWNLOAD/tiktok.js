@@ -18,6 +18,22 @@ async function sendMessageWithQuote(sock, remoteJid, message, text) {
 }
 
 /**
+ * Bungkus sebuah promise dengan batas waktu. Dulu `.tt` bisa "menggantung"
+ * tanpa akhir kalau resolve URL / API / download tidak pernah merespons
+ * (tidak ada timeout), sehingga user tidak pernah dapat pesan error.
+ */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Timeout: ${label} tidak merespons dalam ${ms / 1000}s`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
  * Fungsi utama untuk menangani perintah TikTok
  * @param {object} sock - Instance koneksi WhatsApp
  * @param {object} messageInfo - Informasi pesan yang diterima
@@ -54,21 +70,31 @@ async function handle(sock, messageInfo) {
       react: { text: "⏰", key: message.key },
     });
 
-    const validLink = await resolveTiktokUrl(content);
+    const validLink = await withTimeout(
+      resolveTiktokUrl(content),
+      15000,
+      "resolve URL TikTok",
+    );
 
       const api = new ApiAutoresbot(config.APIKEY);
 
     // Memanggil API untuk mendapatkan data video TikTok
-     const response = await api.get('/api/downloader/tiktok', {
-        url: validLink,
-      });
+     const response = await withTimeout(
+        api.get('/api/downloader/tiktok', { url: validLink }),
+        30000,
+        "API TikTok",
+      );
 
       if (!response || response.code !== 200 || !response.data) {
-        throw new Error('Fallback tidak mengembalikan data valid');
+        throw new Error('Server TikTok tidak mengembalikan data valid');
       }
 
     // Download file ke buffer
-    const audioBuffer = await downloadToBuffer(response.data.url, "mp4");
+    const audioBuffer = await withTimeout(
+      downloadToBuffer(response.data.url, "mp4"),
+      60000,
+      "download video TikTok",
+    );
 
     // Mengirim video tanpa watermark dan caption
     await sock.sendMessage(

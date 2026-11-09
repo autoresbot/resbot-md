@@ -107,9 +107,14 @@ async function handle(sock, messageInfo) {
 
     // Bot bisa saja sudah keluar/dikeluarkan dari grup ini. Dulu kegagalan
     // bergabung ditelan, jadi perpanjangan tetap tercatat walau botnya tidak
-    // ada di grup. Sekarang dipastikan dulu.
-    const hasilGabung = await gabungGrupViaLink(sock, result_sewa);
-    const cek = await pastikanAnggota(sock, res_linkgc);
+    // ada di grup. Sekarang dipastikan dulu; join hanya kalau bot belum di
+    // dalam grup (join ulang bisa gagal walau bot sudah anggota).
+    let hasilGabung = { ok: true };
+    let cek = await pastikanAnggota(sock, res_linkgc);
+    if (!cek.ok) {
+      hasilGabung = await gabungGrupViaLink(sock, result_sewa);
+      cek = await pastikanAnggota(sock, res_linkgc);
+    }
 
     if (!cek.ok) {
       return await sock.sendMessage(

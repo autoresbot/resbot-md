@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.6
+║ 📦 Version   : 5.4.8
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -47,6 +47,7 @@ import { logCustom } from './lib/logger.js';
 import { createBoundedMap } from './lib/boundedStore.js';
 import { isDestinationAllowed } from './lib/destination.js';
 import { isAccGroup } from './lib/accGroups.js';
+import { devDetect } from './lib/devlog.js';
 import { chatBerhenti, chatSelesai, chatTahap, chatError, jejakAktif } from './lib/trace.js';
 import { pecahRantai, jalankanRantai } from './lib/rantaiCommand.js';
 
@@ -139,6 +140,22 @@ async function processMessage(sock, messageInfo) {
 
   const isPremiumUsers = isPremiumUser(senderLid);
   const isOwnerUsers = isOwner(senderLid);
+
+  // ─── Deteksi DEV MODE (hanya log, TIDAK menindak) ──────────────────────
+  // Di mode development, laporkan ke console kalau serialize MENGENALI pesan
+  // terusan / tag status, WALAUPUN grup belum di-.acc (jadi fitur "on" seperti
+  // antiforward / antitagsw tidak akan benar-benar dijalankan). Dipasang SEBELUM
+  // semua gerbang (.acc, destination, sesi) supaya tetap tampil untuk grup yang
+  // belum diaktifkan. Kalau log ini tidak muncul padahal pesannya forwarded /
+  // tag status, berarti serializeMessage.js perlu diperbaiki.
+  if (String(config.mode).toLowerCase() === 'development' && !isAccGroup(remoteJid)) {
+    const { isForwarded, isTagSw, isTagSwGc, type } = messageInfo;
+    if (isForwarded && isGroup) devDetect('antiforward', { remoteJid, sender, isGroup });
+    if (isTagSw || isTagSwGc) {
+      devDetect('antitagsw', { remoteJid, sender, isGroup, isTagSwGc: Boolean(isTagSwGc) });
+    }
+    if (type === 'poll' && isGroup) devDetect('antipolling', { remoteJid, sender, isGroup });
+  }
 
   try {
     // ─── Handle Destination ──────────────────────────────────────────────

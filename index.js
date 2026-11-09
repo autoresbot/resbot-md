@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.6
+║ 📦 Version   : 5.4.8
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -13,6 +13,10 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 
 📌 Script ini Open Source dan gratis.
 */
+// ─── Setelan jaringan (IPv4 dulu, Happy Eyeballs 2 detik) ───
+// HARUS import pertama: dievaluasi sebelum modul lain sempat membuka koneksi.
+import './lib/netBootstrap.js';
+
 // ─── Import modul internal via path relatif ───────────
 import './lib/version.js';
 import { checkAndInstallModules, clearDirectory, warning } from './lib/utils.js';

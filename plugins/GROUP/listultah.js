@@ -1,5 +1,26 @@
 import { getAllUsersWithBirthday } from '../../lib/users.js';
-import { sendMessageWithMention, convertToJid } from '../../lib/utils.js';
+import { sendMessageWithMention, resolveSendableJid } from '../../lib/utils.js';
+
+/**
+ * Pilih JID nomor telepon (@s.whatsapp.net) untuk ditampilkan & di-mention.
+ * Dulu listultah memakai aliases[0] mentah yang sering berupa nomor LID,
+ * sehingga yang tampil adalah nomor LID, bukan nomor WhatsApp asli.
+ */
+async function resolvePhoneJid(sock, aliases) {
+  const list = Array.isArray(aliases) ? aliases : [];
+
+  // 1. Kalau sudah ada alias @s.whatsapp.net, itu nomor asli -> pakai langsung.
+  const phone = list.find((a) => typeof a === 'string' && a.endsWith('@s.whatsapp.net'));
+  if (phone) return phone;
+
+  // 2. Kalau hanya ada LID / nomor, konversi via lidMapping (tidak pernah @lid).
+  const first = list.find((a) => typeof a === 'string' && a);
+  if (first) {
+    const resolved = await resolveSendableJid(sock, first);
+    if (resolved) return resolved;
+  }
+  return null;
+}
 
 /**
  * Hitung hari menuju ulang tahun
@@ -58,14 +79,12 @@ async function handle(sock, messageInfo) {
       const [dd, mm] = userData.birthday.split('-').map(Number);
       const namaBulan = BULAN[mm - 1];
 
-      // ✅ bersihin nomor
-      const nomor = userData.aliases?.[0]?.replace(/\D/g, '') || '';
-
-      // ✅ convert ke jid
-      const jid = await convertToJid(sock, nomor);
+      // ✅ Nomor WhatsApp ASLI (bukan LID)
+      const jid = await resolvePhoneJid(sock, userData.aliases);
+      const fallbackNumber = userData.aliases?.[0]?.replace(/\D/g, '') || '';
 
       // ✅ untuk mention cukup nomor (tanpa @s.whatsapp.net)
-      const mentionNumber = jid?.split('@')[0] || nomor;
+      const mentionNumber = jid?.split('@')[0] || fallbackNumber;
 
       // umur
       let ageInfo = '';
@@ -87,6 +106,7 @@ async function handle(sock, messageInfo) {
       return {
         daysLeft,
         mention: mentionNumber,
+        jid: jid || (fallbackNumber ? `${fallbackNumber}@s.whatsapp.net` : null),
         text: `📌 @${mentionNumber}
    📅 ${dd} ${namaBulan}${ageInfo}
    ⏳ ${daysLeft === 0 ? '🎉 Hari ini!' : `${daysLeft} hari lagi`}`,
@@ -106,8 +126,10 @@ async function handle(sock, messageInfo) {
     `\n\n━━━━━━━━━━━━━━━━━━━━\n` +
     `Total: ${list.length} orang`;
 
-  // ✅ kirim dengan mention
-  return sendMessageWithMention(sock, remoteJid, text, message, senderType);
+  // ✅ kirim dengan mention memakai JID nomor telepon secara eksplisit,
+  // sehingga mention akurat dan tidak menebak domain dari senderType.
+  const mentions = list.map((item) => item.jid).filter(Boolean);
+  return sendMessageWithMention(sock, remoteJid, text, message, senderType, mentions);
 }
 
 export default {

@@ -1,199 +1,292 @@
-Update Resbot MD 5.4.6
+Update Resbot MD 5.4.8
 
 
 RINGKASAN
 =========
-- .jj sekarang punya 10 pilihan template (.jj 1 sampai .jj 10, atau
-  .jj1 sampai .jj10)
-- Fitur baru di menu maker: .fakeff, .fakedana, .fakebca, .fakeovo,
-  .fakegc, dan .spotifycard
-- .tiktok dan .ttslide sekarang bisa memakai link pendek vm.tiktok.com
-- .smeme tidak lagi gagal "File too large" untuk foto di atas 5 MB, dan
-  tidak lagi diam tanpa balasan
-- Fitur baru .idch di menu tools: cek ID saluran WhatsApp dari link
-  saluran, atau dengan membalas pesan terusan dari saluran
-- Nama file backup Telegram sekarang diberi nomor HP bot di ujungnya
-- Di grup "pesan sementara", command dengan cara reply (.kick, .sticker,
-  .smeme, .rvo, dll) dan balasan ke bot (autoai) kembali berfungsi
+- .top / .topgrub tidak lagi memunculkan "@Pengguna tak dikenal"
+- Game .snakes lebih cepat (foto profil pemain diambil paralel + disimpan)
+- .brat tidak lagi error "ffmpeg SIGSEGV" untuk gambar diam
+- Pesan error .anime dan .brat tidak lagi menyalahkan apikey saat yang
+  bermasalah adalah server penyedia
+- .kodam / .cekodam menampilkan NAMA pengguna yang di-tag, bukan nomor/id
+- .fixchat tidak lagi error saat membersihkan chat
+- .addpremgrub menerima link ATAU id grup ATAU dijalankan di dalam grup,
+  dengan validasi jumlah hari
+- .listultah menampilkan nomor WhatsApp asli (bukan nomor LID)
+- .tiktok / .tt tidak lagi menggantung saat gagal
+- Fitur baru: .open / .close, .setopen / .setclose, .resetultah,
+  .shortlink / .slink, .copylistid / .dellistid
+- Notifikasi Telegram otomatis saat bot logout (kalau Telegram aktif)
+- Dependency yang tidak terpakai dihapus dari package.json
 
 
 DETAIL
 ======
 
-[UBAH] .jj - bisa pilih template video
-File   : plugins/MAKER/jj.js, lib/rantaiCommand.js
-Gejala : .jj hanya bisa membuat video dengan satu gaya
+[BUG] .top / .topgrub - muncul "@Pengguna tak dikenal"
+File   : plugins/ADMIN/top.js, plugins/ADMIN/topgrub.js
+Command: .top, .topgrub
+Gejala : saat menandai pemenang, sebagian tampil "@Pengguna tak dikenal"
+Sebab  : mention memakai alias @lid yang tidak dikenali WhatsApp
+Solusi : selalu utamakan alias nomor (@s.whatsapp.net) saat memilih jid
+         yang ditampilkan
+
+
+[BUG] .snakes - lambat saat mengambil foto profil
+File   : plugins/GAMES/snakes.js
+Command: .snakes
+Gejala : jalannya game terasa delay, terutama saat banyak pemain
+Sebab  : foto profil tiap pemain diambil satu per satu (berurutan)
+Solusi : foto profil diambil paralel (Promise.all) dan disimpan di cache
+         per game, jadi tidak diambil ulang tiap giliran
+
+
+[BUG] .brat - error "ffmpeg was killed with signal SIGSEGV"
+File   : lib/exif.js
+Command: .brat (dan pembuatan stiker gambar diam lain)
+Gejala : stiker gagal dibuat dengan error ffmpeg SIGSEGV di panel/klien
+Sebab  : biner ffmpeg crash saat mengonversi gambar diam ke webp
+Solusi : gambar diam dikonversi memakai sharp lebih dulu; ffmpeg hanya
+         dipakai sebagai cadangan kalau sharp gagal
+Catatan: kalau masih error, bersihkan cache: hapus folder .npm / .cache
+
+
+[UBAH] Pesan error .anime dan .brat tidak lagi menyalahkan apikey
+File   : plugins/ANIME/anime.js, plugins/MAKER/brat.js
+Command: .anime, .brat
+Gejala : saat server penyedia bermasalah, pesan error menyuruh "Periksa
+         Apikey Anda!" padahal apikey tidak salah
+Solusi : pesan diganti menjadi penjelasan bahwa server penyedia sedang
+         bermasalah, bukan apikey
+
+
+[BUG] .kodam / .cekodam - menampilkan nomor/id, bukan nama
+File   : plugins/GAMES/cek kodam.js
+Command: .kodam, .cekodam
+Gejala : saat men-tag pengguna, yang muncul nomor/id, bukan namanya
+Sebab  : jid yang di-tag langsung dipakai sebagai nama
+Solusi : nama di-tag diambil memakai getName; kalau kosong pakai pushName
+
+
+[BUG] .fixchat - error saat membersihkan chat
+File   : plugins/ADMIN/fixchat.js
+Command: .fixchat
+Gejala : .fixchat error
+Sebab  : daftar mention berisi jid tidak valid dan proses pembersihan
+         chat melempar error yang menghentikan seluruh perintah
+Solusi : mention difilter hanya jid valid; pembersihan chat dibungkus
+         try/catch sendiri agar tidak fatal
+
+
+[UBAH] .addpremgrub - filter input
+File   : plugins/OWNER/addpremgrub.js
+Command: .addpremgrub
+Gejala : mudah error kalau input bukan format yang diharapkan
+Solusi : menerima link undangan ATAU id grup (@g.us) ATAU dijalankan di
+         dalam grup (cukup isi jumlah hari); jumlah hari divalidasi harus
+         angka positif
+
+
+[BUG] .listultah - menampilkan nomor LID, bukan nomor asli
+File   : plugins/GROUP/listultah.js
+Command: .listultah
+Gejala : nomor yang tampil kadang nomor LID, tidak konsisten
+Sebab  : jid LID tidak dipetakan ke nomor WhatsApp asli
+Solusi : nomor dipetakan ke @s.whatsapp.net (resolveSendableJid) dan
+         mention dikirim secara eksplisit
+
+
+[BUG] .tiktok / .tt - menggantung saat gagal
+File   : plugins/DOWNLOAD/tiktok.js
+Command: .tiktok, .tt
+Gejala : saat error, perintah menggantung tanpa balasan
+Sebab  : tidak ada batas waktu pada proses resolve/unduh
+Solusi : ditambah timeout (resolve 15 detik, request API 30 detik, unduh
+         60 detik) sehingga selalu memberi pesan error bila gagal
+
+
+[BARU] .open / .close - buka/tutup grup langsung
+File   : plugins/ADMIN/open close.js, lib/groupOpenClose.js
+Command: .open, .close
+Isi    : alias langsung untuk membuka/menutup grup tanpa harus mengetik
+         .gc open / .gc close. Khusus admin/owner
+
+
+[BARU] .setopen / .setclose - pesan buka/tutup custom per grup
+File   : plugins/ADMIN/set open close.js, lib/groupOpenClose.js
+Command: .setopen, .setclose
+Isi    : admin bisa mengatur teks sendiri yang menggantikan teks default
+         saat grup dibuka/ditutup (berlaku untuk .gc open/close dan
+         .open/.close). Reset ke default: .setopen reset / .setclose reset
+Catatan: disimpan di penyimpanan yang sama dengan .setopengc/.setclosegc
+
+
+[BARU] .resetultah - reset data ulang tahun per grup
+File   : plugins/GROUP/resetultah.js
+Command: .resetultah
+Isi    : admin bisa menghapus data ulang tahun anggota grup saat ini.
+         Owner bisa .resetultah all untuk menghapus semua
+
+
+[BARU] .shortlink / .slink - perpendek URL
+File   : plugins/TOOLS/shortlink.js
+Command: .shortlink, .slink
+Isi    : memperpendek URL memakai layanan gratis tanpa apikey, dicoba
+         berurutan is.gd -> v.gd -> tinyurl
+
+
+[BARU] .listdbgrub / .copylistid / .dellistid - kelola list grup lewat ID
+File   : plugins/OWNER/list db grub.js
+Command: .listdbgrub, .copylistid, .dellistid
+Isi    : mengelola database LIST sebuah grup lewat ID-nya, berguna saat
+         grup sudah TERBLOKIR sehingga bot tidak bisa menjalankan perintah
+         di dalam grup itu. Khusus owner
+         - .listdbgrub            -> tampilkan SEMUA grup yang masih punya list
+                                     di database (ID + jumlah keyword + UKURAN
+                                     + tgl update), diurutkan dari yang terbesar
+                                     plus total semua grup. Ukuran = teks JSON
+                                     list + file media (database/media) yang
+                                     dirujuk tiap keyword. Dipakai untuk
+                                     MENEMUKAN id grup terblokir tanpa harus
+                                     masuk ke grupnya, sekaligus melihat grup
+                                     mana yang paling makan ruang
+         - .copylistid <idSumber> (di grup tujuan) atau <idSumber> <idTujuan>
+         - .dellistid <idGrup>
+Alur grup terblokir:
+         1. .listdbgrub            -> catat id grup yang datanya masih ada
+         2. .copylistid <id>       -> salin list-nya ke grup lain (penyelamatan),
+            atau .dellistid <id>   -> hapus kalau memang mau dibuang
+
+
+[BARU] Notifikasi Telegram saat bot logout
+File   : lib/telegramBackup.js, lib/connection.js
+Isi    : saat perangkat logout / sesi hilang dan Telegram sudah
+         dikonfigurasi (seperti .backuptele), bot mengirim info ke Telegram
+Catatan: hanya untuk sesi utama
+
+
+[UBAH] Hapus dependency yang tidak terpakai
+File   : package.json
+Isi    : paket berikut dihapus karena tidak pernah di-import:
+         google-it, javascript-obfuscator, ssh2, unzipper
+Catatan: jalankan "npm install" / "npm prune" agar node_modules ikut
+         dibersihkan
+
+
+========================================================================
+
+
+Update Resbot MD 5.4.7
+
+
+RINGKASAN
+=========
+- Koneksi WhatsApp lebih stabil: 405 berulang, restart, dan logout
+  sekarang ditangani dengan benar
+- Request ke API tidak lagi sering gagal ETIMEDOUT / ENETUNREACH di
+  panel tanpa IPv6
+- .sewabot / .tambahsewa menjelaskan dengan jelas kalau nomor bot sedang
+  dibatasi WhatsApp sehingga tidak bisa masuk grup lewat link
+- .sewabot / .tambahsewa tidak lagi mencoba masuk grup kalau bot sudah
+  ada di dalamnya (mis. dimasukkan manual oleh admin)
+- .hd membalas "Server sedang sibuk, coba lagi sebentar" saat API gagal
+- Jadwal sholat disimpan per kota per hari, tetap jalan saat API gagal
+
+
+DETAIL
+======
+
+[BUG] Koneksi WhatsApp sering reconnect (405 / restart required)
+File   : lib/connection.js
+Gejala : bot terus-menerus reconnect, terutama setelah WhatsApp merilis
+         versi WA Web baru
+Sebab  : kode 405 (versi WA ditolak) tidak pernah dikenali, jadi bot
+         reconnect terus dengan versi yang sama
+Solusi : - versi WA Web terbaru diambil saat connect, dan diambil ulang
+           setiap kali muncul 405. Kalau 405 terus berulang, bot
+           menyarankan .updatezapo
+         - restart required / koneksi putus -> reconnect setelah 3 detik
+         - logout (401) -> berhenti reconnect dan menampilkan pesan untuk
+           pairing ulang
+         - socket lama ditutup dulu sebelum membuat yang baru, dan tidak
+           ada dua reconnect yang berjalan bersamaan
+
+
+[BUG] Request API gagal: connect ETIMEDOUT / ENETUNREACH
+File   : lib/netBootstrap.js (baru), index.js
+Gejala : request ke API (autoresbot dan lainnya) sering gagal dengan
+         "connect ETIMEDOUT" atau "ENETUNREACH", terutama di panel yang
+         tidak punya IPv6
+Sebab  : Node 20 mencoba semua alamat IP (Happy Eyeballs) dengan batas
+         hanya 250 ms per alamat. Saat bot sibuk (mis. sedang reconnect
+         WhatsApp), batas itu terlewati sehingga semua alamat dianggap
+         timeout
+Solusi : alamat IPv4 dicoba lebih dulu dan batas per alamat dinaikkan
+         jadi 2 detik
+Catatan: berlaku otomatis untuk semua request HTTP di bot
+
+
+[UBAH] Helper API bersama
+File   : lib/apiClient.js (baru)
+Gejala : -
 Sebab  : -
-Solusi : ada 10 pilihan gaya video. Tulis nomornya setelah .jj, boleh
-         pakai spasi atau tidak: .jj 3 sama dengan .jj3. Tanpa nomor
-         memakai template 1. Nomor di luar 1-10 dibalas cara pakai
-Catatan: .jj1 sampai .jj10 juga bisa dirantai seperti .jj (mis. .hd + .jj3)
+Solusi : helper untuk memanggil API dengan timeout 15 detik dan retry 3x
+         (jeda 1, 2, lalu 4 detik). Retry hanya dilakukan untuk error
+         jaringan dan HTTP 5xx / 429. Setiap percobaan yang gagal
+         dicatat di console: [API:<fitur>] percobaan n/4 gagal
+Catatan: untuk saat ini baru dipakai oleh jadwal sholat dan .hd. Fitur
+         lain tidak diubah
 
 
-[BARU] Maker baru: .fakeff, .fakedana, .fakebca, .fakeovo, .fakegc,
-       .spotifycard
-File   : plugins/MAKER/fakeff.js, fakesaldo.js, fakegc.js, spotifycard.js
-         (semua baru), lib/maker.js
-Gejala : belum ada fitur untuk membuat gambar-gambar ini
-Sebab  : -
-Solusi : semua otomatis muncul di menu maker dan memotong 1 limit.
-         Cara pakai:
-         - .fakeff nama           -> template acak
-           .fakeff nama | 3       -> pilih template 1 sampai 8
-           Nama wajib diisi. Kalau kosong atau template di luar 1-8,
-           bot membalas format: .fakeff nama | 1-8
-         - .fakedana nama|50000   (tanpa nama = pakai nama WA)
-         - .fakebca nama|50000    (tanpa nama = pakai nama WA)
-         - .fakeovo 50000         (OVO hanya nominal, tanpa nama)
-         - .fakegc nama grup | 1024 (alias .fakegrup). Nama dan jumlah
-           member wajib diisi, kalau kosong / bukan angka bot membalas
-           format
-         - .spotifycard Judul|Artis (alias .fakespotify). Tanpa artis =
-           nama WA
-         - Foto .fakegc dan cover .spotifycard bisa diganti: kirim gambar
-           dengan caption command, atau balas (reply) gambar / stiker.
-           Tanpa gambar, .fakegc memakai foto grup (kalau di grup) atau
-           foto profil pengirim, .spotifycard memakai foto profil
-           pengirim
-Catatan: - Nominal boleh ditulis 50.000 atau Rp50,000, titik/koma/Rp
-           dibuang otomatis. Teks campuran huruf dan angka (mis. .fakedana
-           budi123) tidak dianggap nominal - bot membalas format, bukan
-           membuat gambar bernominal 123
-         - Kalau API menolak (mis. template di luar 1-8), alasannya
-           ditampilkan ke pengguna
-         - Memakai APIKEY dari config, sama seperti maker lain
+[BUG] .hd - API gagal tanpa pesan yang jelas
+File   : plugins/TOOLS/hd.js
+Command: .hd
+Gejala : saat server API bermasalah, .hd gagal tanpa penjelasan
+Sebab  : request hanya dicoba satu kali tanpa retry
+Solusi : memakai lib/apiClient.js (otomatis retry). Kalau tetap gagal,
+         pengguna dibalas "⏳ Server sedang sibuk, coba lagi sebentar."
 
 
-[BUG] .tiktok gagal dengan link vm.tiktok.com - "URL harus dari TikTok"
-File   : lib/scrape/tiktok.js, plugins/DOWNLOAD/tiktok.js,
-         plugins/DOWNLOAD/tiktok slide.js
-Command: .tiktok, .tt, .ttslide, .tiktokslide
-Gejala : link bagikan dari aplikasi TikTok (vm.tiktok.com/...) selalu
-         gagal dengan pesan "URL harus dari TikTok", padahal linknya benar
-Sebab  : API hanya menerima link www.tiktok.com dan vt.tiktok.com. Link
-         vm.tiktok.com dan m.tiktok.com ditolak, padahal keduanya hanya
-         link pendek yang diarahkan (redirect) ke www.tiktok.com/@user/
-         video/<id>. Selain itu .tiktok mengirim SELURUH isi pesan ke API,
-         bukan linknya saja, dan link tanpa https:// dianggap tidak valid
-Solusi : sebelum ke API, link TikTok diambil dari pesan lalu redirect-nya
-         diikuti sampai ke link www.tiktok.com/@user/video/<id> (atau
-         /photo/<id>). Link akhir inilah yang dikirim ke API, tanpa
-         tambahan ?_r=1&_t=... di belakangnya
-Catatan: - Diuji: vm.tiktok.com, vt.tiktok.com, www.tiktok.com/t/...,
-           m.tiktok.com/v/..., link lengkap, dan link tanpa https://
-           semuanya berhasil
-         - Kalau link pendek ternyata tidak mengarah ke video (salah ketik
-           atau videonya sudah dihapus / private), bot membalas "Link
-           TikTok tidak valid, atau videonya sudah dihapus / private"
-         - .ttmp3 tidak diubah karena sumber datanya (tikwm) sudah bisa
-           membaca link pendek sendiri
+[UBAH] Jadwal sholat - cache per kota per hari
+File   : lib/features.js, plugins/ISLAMI/jadwal sholat.js, .gitignore
+Command: .jadwalsholat dan pengingat waktu sholat otomatis
+Gejala : jadwal sholat ikut gagal setiap kali API sedang bermasalah
+Sebab  : jadwal diambil ulang dari API tanpa disimpan
+Solusi : API dipanggil sekali per kota per hari, lalu hasilnya disimpan
+         di database/jadwal_sholat_cache.json. Kalau API gagal, dipakai
+         jadwal tersimpan yang terakhir
+Catatan: - pengaturan retry lama (SHOLAT_RETRY) dihapus, diganti retry
+           dari lib/apiClient.js
+         - file cache dibuat otomatis dan tidak ikut ke git
 
 
-[BUG] .smeme gagal untuk gambar besar - "HTTP 413 - File too large"
-File   : lib/uploader.js, lib/imageNormalizer.js, plugins/MAKER/smeme.js,
-         plugins/MAKER/stickercircle.js
-Command: .smeme, .stickercircle
-Gejala : "❌ Gagal membuat sticker meme. HTTP 413 - File too large. Max 5 MB
-         allowed." saat membalas foto HD atau screenshot berukuran besar
-Sebab  : gambar harus diupload dulu ke server sebelum diproses, dan server
-         upload hanya menerima file sampai 5 MB. .smeme dan .stickercircle
-         mengupload gambar apa adanya tanpa diperkecil, jadi foto di atas
-         5 MB langsung ditolak
-Solusi : sebelum upload, gambar di atas 5 MB diperkecil dulu menjadi JPEG
-         (sisi terpanjang maksimal 2048 px, turun ke 1600 / 1280 px kalau
-         masih kebesaran). Gambar di bawah 5 MB dan sticker tetap dikirim
-         apa adanya seperti sebelumnya
-Catatan: - Diuji dengan PNG 12 MB: cara lama gagal dengan HTTP 413 yang
-           sama, cara baru diperkecil jadi 2,5 MB lalu sticker meme
-           berhasil dibuat
-         - Berlaku otomatis juga untuk fitur lain yang mengonversi gambar
-           sebelum upload (.hd, .removebg, .jj, dll)
-         - .tovid, .toimg, dan .tourl tidak diubah, karena fitur itu harus
-           mengirim file asli tanpa diubah formatnya
+[UBAH] .sewabot / .tambahsewa - pesan "account_reachout_restricted"
+File   : lib/gabungGrup.js
+Command: .sewabot, .tambahsewa
+Gejala : .sewabot dibalas "Pesan dari server: group.joinViaInvite iq
+         failed (463: account_reachout_restricted)" tanpa penjelasan
+Sebab  : nomor bot sedang dibatasi WhatsApp (anti-spam), biasanya karena
+         terlalu sering masuk grup / mengirim pesan dalam waktu singkat.
+         Selama dibatasi, bot tidak bisa bergabung ke grup lewat link.
+         Ini batasan dari WhatsApp, bukan kesalahan link atau bot
+Solusi : pesan error diganti penjelasan dan solusinya: tunggu batasannya
+         hilang sendiri (beberapa jam s/d beberapa hari), atau minta admin
+         grup memasukkan bot secara manual lalu ulangi perintah tadi
+Catatan: sewa tetap TIDAK dicatat selama bot gagal masuk grup
 
 
-[BARU] .idch - cek ID saluran WhatsApp
-File   : plugins/TOOLS/idch.js (baru)
-Command: .idch, .cekidch, .idsaluran
-Gejala : belum ada cara mendapatkan ID saluran (xxxx@newsletter), padahal
-         ID ini dibutuhkan untuk fitur yang mengirim ke saluran
-Sebab  : -
-Solusi : ada dua cara pakai:
-         - .idch https://whatsapp.com/channel/xxxx (boleh juga langsung
-           ID ...@newsletter)
-         - balas pesan yang diteruskan dari saluran dengan .idch
-         Bot membalas ID saluran, nama, jumlah pengikut, status verifikasi,
-         status saluran, tanggal dibuat, link, dan cuplikan deskripsi
-         (satu baris, maksimal sekitar 100 huruf). Memotong 1 limit dan
-         otomatis muncul di menu tools
-Catatan: - Datanya diambil langsung dari WhatsApp lewat zapo-js, tanpa API
-           key dan bot tidak perlu mengikuti salurannya
-         - Cara balas pesan terusan tetap menampilkan ID dan nama saluran
-           walaupun detail lainnya gagal diambil
-         - Link salah atau saluran yang sudah dihapus dibalas "Saluran
-           tidak ditemukan"
-
-
-[UBAH] Nama file backup Telegram diberi nomor HP bot
-File   : lib/telegramBackup.js
-Command: AUTO_BACKUP dan .backuptele
-Gejala : semua file backup bernama autoresbot-backup.zip, jadi kalau
-         beberapa bot mengirim backup ke chat Telegram yang sama, tidak
-         ketahuan file mana milik bot yang mana
-Sebab  : -
-Solusi : nomor HP bot ditambahkan di ujung nama file, mis.
-         autoresbot-backup-6281234567890.zip
-Catatan: - Nomor diambil dari sesi WhatsApp yang sedang login. Kalau belum
-           terbaca, dipakai NOMOR_BOT dari config.js. Kalau dua-duanya
-           kosong, nama file tetap autoresbot-backup.zip seperti dulu
-         - Hanya nama file yang dikirim ke Telegram yang berubah. File zip
-           di folder bot dan backup manual .backup ke WhatsApp tidak diubah
-
-
-[BUG] .smeme diam tanpa balasan
-File   : plugins/MAKER/smeme.js
-Gejala : setelah .smeme hanya muncul reaksi ⏰, tidak ada sticker maupun
-         pesan error, padahal limit sudah terpotong
-Sebab  : hasil dari API hanya dikirim kalau formatnya WebP atau PNG.
-         Kalau API membalas JPEG / GIF, atau membalas pesan error (bukan
-         gambar), bot tidak melakukan apa-apa
-Solusi : semua format gambar sekarang diubah jadi sticker. Kalau balasan
-         API bukan gambar, bot membalas "Gagal membuat sticker meme"
-         beserta alasan dari API
-
-
-[UBAH] File .zip tidak ikut ke git
-File   : .gitignore
-Gejala : file backup (autoresbot backup.zip) di folder bot bisa ikut
-         ter-commit, padahal isinya local.config.js (apikey, token
-         Telegram) dan database
-Sebab  : -
-Solusi : semua file .zip dimasukkan ke .gitignore
-Catatan: hanya berpengaruh untuk yang mengelola bot lewat git. File zip
-         yang sudah ada di folder tidak dihapus
-
-
-[BUG] Grup "pesan sementara": pesan yang di-reply tidak terbaca
-File   : lib/utils.js, lib/serializeMessage.js, plugins/TOOLS/idch.js
-Gejala : di grup yang menyalakan pesan sementara, semua command dengan
-         cara reply bertingkah seolah tidak ada yang di-reply:
-         - .kick / .promote / .demote / .delete / .ban tidak tahu targetnya
-         - .sticker, .smeme, .hd, .jj, .rvo, .fakegc, .spotifycard dengan
-           reply gambar dibalas "kirim/balas gambar"
-         - autoai, autosimi, autorusuh tidak menanggapi reply ke pesan bot
-         - .idch dengan reply pesan terusan saluran dibalas cara pakai
-Sebab  : grup pesan sementara membungkus setiap pesan dalam satu lapis
-         tambahan (ephemeralMessage). Perbaikan antilink di 5.4.5 sudah
-         membuka lapis ini untuk teks pesan, tapi bagian yang membaca
-         pesan yang di-reply masih membaca lapis paling luar saja
-Solusi : lapis ephemeralMessage dibuka dulu sebelum pesan yang di-reply
-         dibaca. Hanya lapis itu yang dibuka, jadi pesan di grup / chat
-         biasa diproses persis seperti sebelumnya
-Catatan: - Diuji dengan 11 jenis pesan (teks, link, reply teks, reply
-           gambar, gambar + caption, mention, sekali lihat, pesan bot,
-           terusan saluran, stiker): untuk pesan biasa hasil versi lama dan
-           baru identik, untuk pesan sementara hasilnya sekarang sama
-           dengan pesan biasa
-         - Ikut diperbaiki: antibot sekarang mengenali pesan tombol dari
-           bot lain di grup pesan sementara, dan pesan sekali lihat di
-           grup itu kembali terbaca sebagai sekali lihat
+[BUG] .sewabot gagal walau bot sudah dimasukkan manual ke grup
+File   : plugins/OWNER/sewabot.js, plugins/OWNER/tambah sewa.js,
+         lib/gabungGrup.js
+Command: .sewabot, .tambahsewa
+Gejala : bot sudah dimasukkan manual oleh admin, tapi .sewabot tetap
+         dibalas "Gagal bergabung ke grup" dan sewa tidak dicatat. Saran
+         di pesan error (ketik .tambahsewa) juga tidak bisa dipakai karena
+         .tambahsewa hanya untuk grup yang sewanya sudah tercatat
+Sebab  : bot selalu mencoba masuk grup lewat link lebih dulu, walaupun
+         sudah ada di dalamnya. Saat nomor bot dibatasi WhatsApp,
+         percobaan itu gagal
+Solusi : bot mengecek dulu apakah sudah ada di grup. Kalau sudah, sewa
+         langsung dicatat tanpa mencoba masuk lagi. Pesan error sekarang
+         menyarankan memasukkan bot manual lalu mengulangi perintah yang
+         sama

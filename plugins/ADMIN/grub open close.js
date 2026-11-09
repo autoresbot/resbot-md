@@ -1,5 +1,6 @@
 import mess from "../../strings.js";
 import { getGroupMetadata } from "../../lib/cache.js";
+import { applyGroupToggle } from "../../lib/groupOpenClose.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, isGroup, content, prefix, command } =
@@ -45,20 +46,7 @@ async function handle(sock, messageInfo) {
         { quoted: message }
       );
     }
-    const responseText = `${
-      action === "open" ? mess.action.grub_open : mess.action.grub_close
-    }`;
-
-    await sock.groupSettingUpdate(
-      remoteJid,
-      action === "open" ? "not_announcement" : "announcement"
-    );
-
-    return sock.sendMessage(
-      remoteJid,
-      { text: responseText },
-      { quoted: message }
-    );
+    return await applyGroupToggle(sock, messageInfo, action);
   } catch (error) {
     return sock.sendMessage(
       remoteJid,

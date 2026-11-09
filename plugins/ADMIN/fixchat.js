@@ -31,23 +31,33 @@ async function handle(sock, messageInfo) {
   }
 
   try {
-    const participantIds = participants.map((p) => p.id);
+    // Hanya JID valid yang dipakai untuk mention; id kosong/aneh bisa membuat
+    // sendMessage gagal total sehingga fixchat selalu error.
+    const participantIds = participants
+      .map((p) => p.id)
+      .filter((id) => typeof id === "string" && id.includes("@"));
 
     await sock.sendMessage(remoteJid, {
       text: `✅ Grup *${groupMetadata.subject}* telah diperbaiki!\nPeserta: ${participantIds.length} anggota.`,
       mentions: participantIds,
     });
 
-    // Jika ingin menghapus pesan tertentu dari chat (clear), pastikan `message` memiliki `key`
+    // chatModify bersifat opsional: pada sebagian versi/akun ia bisa melempar
+    // error. Dibungkus sendiri supaya kegagalan di sini TIDAK membatalkan
+    // seluruh perintah (pesan sukses tetap terkirim).
     if (message && message.key && message.key.id) {
-      await sock.chatModify(
-        {
-          clear: {
-            messages: [{ id: message.key.id, fromMe: message.key.fromMe }],
+      try {
+        await sock.chatModify(
+          {
+            clear: {
+              messages: [{ id: message.key.id, fromMe: message.key.fromMe }],
+            },
           },
-        },
-        remoteJid
-      );
+          remoteJid
+        );
+      } catch (clearErr) {
+        console.warn("[FIXCHAT] clear chat dilewati:", clearErr.message);
+      }
     }
 
     await sock.sendMessage(

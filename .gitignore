@@ -12,6 +12,7 @@ npm-debug.log
 yarn-error.log
 .pnpm-debug.log
 .env
+plan.md
 local.config.js
 database/bot.db
 database/bot.db-wal
@@ -23,3 +24,6 @@ database/.restart-disk-penuh
 
 # File zip (backup berisi local.config.js & database, zip rilis, dll)
 *.zip
+
+# Cache jadwal sholat (dibuat otomatis)
+database/jadwal_sholat_cache.json
