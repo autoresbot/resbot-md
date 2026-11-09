@@ -74,8 +74,10 @@ async function process(sock, messageInfo) {
 
   // [DEBUG ANTIFORWARD] jejak alur khusus pesan terusan: kalau sebuah tahap
   // tidak muncul di console, berarti handler berhenti sebelum tahap itu.
+  // MATI secara default — nyalakan dengan env DEBUG_ANTIFORWARD=1 (sama dengan
+  // log [ANTIFORWARD][serialize]) hanya saat perlu men-debug.
   const dbgFwd = (tahap, extra = {}) => {
-    if (!isForwarded) return;
+    if (!isForwarded || process.env.DEBUG_ANTIFORWARD !== '1') return;
     console.log('[ANTIFORWARD][handler]', tahap, JSON.stringify({ id, remoteJid, sender, ...extra }));
   };
   dbgFwd('masuk handler', { isGroup, isTagSw, command });
