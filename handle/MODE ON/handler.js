@@ -45,7 +45,10 @@ const BATAS_VIRTEX = 10000;
 
 const botNumber = config.phone_number_bot; // misalnya '1234'
 
-async function process(sock, messageInfo) {
+// CATATAN: fungsi ini TIDAK boleh dinamai `process` — nama itu membayangi objek
+// global Node `process`, sehingga `process.env.*` di dalam fungsi membaca properti
+// dari fungsi ini (undefined) dan memicu error. Dinamai `handleModeOn`.
+async function handleModeOn(sock, messageInfo) {
   const {
     m,
     id,
@@ -990,5 +993,5 @@ async function process(sock, messageInfo) {
 export default {
   name: 'Mode On Handler :',
   priority: 2,
-  process,
+  process: handleModeOn,
 };

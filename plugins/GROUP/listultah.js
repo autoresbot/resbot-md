@@ -1,5 +1,6 @@
 import { getAllUsersWithBirthday } from '../../lib/users.js';
 import { sendMessageWithMention, resolveSendableJid } from '../../lib/utils.js';
+import { getGroupMetadata, nomorDari } from '../../lib/cache.js';
 
 /**
  * Pilih JID nomor telepon (@s.whatsapp.net) untuk ditampilkan & di-mention.
@@ -59,9 +60,9 @@ const BULAN = [
 ];
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, senderType } = messageInfo;
+  const { remoteJid, message, senderType, isGroup } = messageInfo;
 
-  const allUsers = getAllUsersWithBirthday();
+  let allUsers = getAllUsersWithBirthday();
 
   if (!allUsers?.length) {
     return sock.sendMessage(
@@ -69,6 +70,34 @@ async function handle(sock, messageInfo) {
       { text: `📋 Belum ada yang mendaftarkan ulang tahun.` },
       { quoted: message },
     );
+  }
+
+  // Di dalam GRUP, daftar ulang tahun dibatasi HANYA untuk anggota grup ini —
+  // bukan seluruh pengguna bot (global). Identitas dicocokkan lewat nomor
+  // telanjang (nomorDari) karena grup ber-alamat LID menyimpan peserta sebagai
+  // @lid sementara data user memakai beberapa alias (nomor & LID).
+  if (isGroup) {
+    const groupMetadata = await getGroupMetadata(sock, remoteJid);
+    const participants = groupMetadata?.participants || [];
+    const nomorAnggota = new Set(
+      participants
+        .flatMap((p) => [p.phoneNumber, p.id, p.jid, p.lid])
+        .map(nomorDari)
+        .filter(Boolean),
+    );
+
+    allUsers = allUsers.filter(([id, userData]) => {
+      const identitas = [id, ...(Array.isArray(userData.aliases) ? userData.aliases : [])];
+      return identitas.map(nomorDari).some((n) => n && nomorAnggota.has(n));
+    });
+
+    if (!allUsers.length) {
+      return sock.sendMessage(
+        remoteJid,
+        { text: `📋 Belum ada anggota grup ini yang mendaftarkan ulang tahun.` },
+        { quoted: message },
+      );
+    }
   }
 
   // ✅ pakai Promise.all agar await di dalam map valid

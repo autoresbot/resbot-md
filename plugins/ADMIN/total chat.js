@@ -1,7 +1,7 @@
 import mess from "../../strings.js";
 import { getTotalChatPerGroup } from "../../lib/totalchat.js";
 import { sendMessageWithMention } from "../../lib/utils.js";
-import { getGroupMetadata } from "../../lib/cache.js";
+import { getGroupMetadata, nomorDari } from "../../lib/cache.js";
 
 async function handle(sock, messageInfo) {
   const { remoteJid, message, sender, isGroup, senderType } = messageInfo;
@@ -29,10 +29,21 @@ async function handle(sock, messageInfo) {
     // ✅ Ambil total chat per grup
     const totalChatData = await getTotalChatPerGroup(remoteJid);
 
-    // ✅ Gabungkan data peserta dengan total chat mereka
+    // ✅ Gabungkan data peserta dengan total chat mereka.
+    // totalChatData berkunci NOMOR telanjang (lihat lib/totalchat.js). Satu
+    // peserta bisa punya beberapa identitas (phoneNumber / id / jid / lid) —
+    // semuanya dinormalkan lalu dijumlahkan supaya cocok dengan baris chat yang
+    // tersimpan baik di bawah nomor telepon maupun LID.
     const chatWithParticipants = participants.map((participant) => {
-      const jid = participant.phoneNumber || participant.id; // ambil yang valid
-      const totalChat = totalChatData[jid] || 0;
+      const jid = participant.phoneNumber || participant.id; // untuk mention/tampilan
+      const nomorUnik = [
+        ...new Set(
+          [participant.phoneNumber, participant.id, participant.jid, participant.lid]
+            .map(nomorDari)
+            .filter(Boolean)
+        ),
+      ];
+      const totalChat = nomorUnik.reduce((sum, n) => sum + (totalChatData[n] || 0), 0);
       return { jid, totalChat };
     });
 

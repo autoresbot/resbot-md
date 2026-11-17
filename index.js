@@ -5,7 +5,7 @@ Script ini **TIDAK BOLEH DIPERJUALBELIKAN** dalam bentuk apa pun!
 ╔══════════════════════════════════════════════╗
 ║                🛠️ INFORMASI SCRIPT           ║
 ╠══════════════════════════════════════════════╣
-║ 📦 Version   : 5.4.8
+║ 📦 Version   : 5.4.9
 ║ 👨‍💻 Developer  : Azhari Creative              ║
 ║ 🌐 Website    : https://autoresbot.com       ║
 ║ 💻 GitHub  : github.com/autoresbot/resbot-md ║
@@ -40,6 +40,14 @@ if (major < 20) {
   const config = (await import('./config.js')).default;
 
   const BOT_NUMBER = config.phone_number_bot || '';
+
+  // ─── Auto-update library zapo-js ──────────────────────────────────────────
+  // Setel `true` agar bot otomatis memperbarui zapo-js (+ @zapo-js/store-sqlite)
+  // ke versi terbaru setiap start, dengan ROLLBACK otomatis bila update membuat
+  // bot gagal terhubung (lihat lib/zapoUpdater.js). Setel `false` untuk mematikan
+  // (versi dikunci sesuai package.json). Setelan ini SENGAJA di sini, bukan di
+  // config.js.
+  const AUTO_UPDATE_ZAPO = true;
 
   // ─── Fungsi report crash ─────────────────────────
   async function reportCrash(status) {
@@ -89,10 +97,15 @@ if (major < 20) {
     const { mulaiPenjagaDisk } = await import('./lib/diskGuard.js');
     mulaiPenjagaDisk();
 
+    // Pengawas masa aktif jadibot: stop otomatis saat durasi (.jadibot <nomor>
+    // <hari>) habis.
+    const { mulaiPengawasJadibot } = await import('./lib/jadibotGuard.js');
+    mulaiPengawasJadibot();
+
     // Jalankan setiap 3 jam (3 jam = 10800000 ms)
     setInterval(
       () => {
-        console.log('[SCHEDULE] Membersihkan folder tmp...');
+        // Pembersihan tmp berkala tetap jalan tanpa log (dulu mengganggu konsol).
         clearDirectory('./tmp');
       },
       3 * 60 * 60 * 1000,
@@ -130,8 +143,27 @@ if (major < 20) {
     initDatabase();
     console.log('[✔] SQLite database ready.');
 
+    // Jaga zapo-js selalu terbaru. WAJIB sebelum start_app(): koneksi WhatsApp
+    // baru membuka (dan meng-import) zapo-js di dalam start_app, jadi versi baru
+    // ikut terpakai. Rollback otomatis ditangani di dalam sinkronkanZapo.
+    try {
+      const { sinkronkanZapo } = await import('./lib/zapoUpdater.js');
+      await sinkronkanZapo({ autoUpdate: AUTO_UPDATE_ZAPO });
+    } catch (error) {
+      warning('Zapo', `Auto-update dilewati: ${error?.message || error}`);
+    }
+
     const { start_app } = await import('./lib/startup.js');
     await start_app();
+
+    // Setelah bot mencoba konek: verifikasi update zapo-js (hapus penanda bila
+    // koneksi berhasil; bila tidak, rollback dilakukan saat restart berikutnya).
+    try {
+      const { pantauVerifikasiZapo } = await import('./lib/zapoUpdater.js');
+      pantauVerifikasiZapo();
+    } catch {
+      // abaikan — verifikasi hanya penyempurnaan
+    }
 
     // Dashboard web dijalankan paling akhir (menunggu bot terhubung) dan
     // terpisah dari bot: kegagalan apa pun di sini tidak menghentikan bot.

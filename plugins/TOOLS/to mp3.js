@@ -32,9 +32,12 @@ async function handle(sock, messageInfo) {
       throw new Error("File media tidak ditemukan setelah diunduh.");
     }
 
-    // Menggunakan UUID untuk membuat nama file unik
-    const inputPath = path.join(__dirname, `${uuidv4()}.mp4`);
-    const outputPath = path.join(__dirname, `${uuidv4()}.mp3`);
+    // Menggunakan UUID untuk membuat nama file unik.
+    // Catatan: project ini ESM, jadi `__dirname` TIDAK tersedia (dulu memicu
+    // "ReferenceError: __dirname is not defined"). File sementara ditaruh di
+    // folder ./tmp yang memang dibersihkan berkala (lihat index.js).
+    const inputPath = path.join("tmp", `${uuidv4()}.mp4`);
+    const outputPath = path.join("tmp", `${uuidv4()}.mp3`);
 
     // Membaca file menjadi Buffer dan menyimpannya dengan nama unik
     const mediaBuffer = fs.readFileSync(mediaPath);

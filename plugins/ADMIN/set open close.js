@@ -61,10 +61,24 @@ async function handle(sock, messageInfo) {
     }
 
     await setJadwalTeks(remoteJid, property, teks);
+
+    // Teks custom bisa panjang/berbaris banyak. Supaya balasan tetap rapi,
+    // pratinjau dipotong dan dibingkai, bukan ditempel mentah di akhir kalimat.
+    const MAKS_PRATINJAU = 300;
+    const satuBaris = teks.replace(/\s*\n\s*/g, ' ').trim();
+    const pratinjau =
+      satuBaris.length > MAKS_PRATINJAU
+        ? `${satuBaris.slice(0, MAKS_PRATINJAU).trimEnd()}…`
+        : satuBaris;
+
     return sock.sendMessage(
       remoteJid,
       {
-        text: `✅ _Pesan saat grup di${labelAksi} berhasil diatur menjadi:_\n\n${teks}`,
+        text:
+          `✅ _Pesan saat grup di${labelAksi} berhasil diatur._\n\n` +
+          `┌─ *Pesan*\n` +
+          `│ ${pratinjau}\n` +
+          `└───────────`,
       },
       { quoted: message }
     );

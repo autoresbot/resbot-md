@@ -1,292 +1,141 @@
-Update Resbot MD 5.4.8
+Update Resbot MD 5.4.9
 
 
 RINGKASAN
 =========
-- .top / .topgrub tidak lagi memunculkan "@Pengguna tak dikenal"
-- Game .snakes lebih cepat (foto profil pemain diambil paralel + disimpan)
-- .brat tidak lagi error "ffmpeg SIGSEGV" untuk gambar diam
-- Pesan error .anime dan .brat tidak lagi menyalahkan apikey saat yang
-  bermasalah adalah server penyedia
-- .kodam / .cekodam menampilkan NAMA pengguna yang di-tag, bukan nomor/id
-- .fixchat tidak lagi error saat membersihkan chat
-- .addpremgrub menerima link ATAU id grup ATAU dijalankan di dalam grup,
-  dengan validasi jumlah hari
-- .listultah menampilkan nomor WhatsApp asli (bukan nomor LID)
-- .tiktok / .tt tidak lagi menggantung saat gagal
-- Fitur baru: .open / .close, .setopen / .setclose, .resetultah,
-  .shortlink / .slink, .copylistid / .dellistid
-- Notifikasi Telegram otomatis saat bot logout (kalau Telegram aktif)
-- Dependency yang tidak terpakai dihapus dari package.json
+- Handler "Mode On" tidak lagi error "Cannot read properties of undefined
+  (reading 'DEBUG_ANTIFORWARD')"
+- Fitur suara (TTS) seperti .cekodam tidak lagi error "Request path contains
+  unescaped characters"
+- Log "[SCHEDULE] Membersihkan folder tmp..." tidak lagi muncul di konsol
+- .listultah di dalam grup kini HANYA menampilkan ulang tahun anggota grup itu
+  (bukan seluruh pengguna bot / global)
+- .jadibot mendukung durasi: *.jadibot 628xxxx 7* (aktif 7 hari, lalu stop
+  otomatis)
+- .brat / .brat2 tidak lagi error "ENOENT ... tmp/sistem/xxxx.webp"
+- .tomp3 tidak lagi error "ReferenceError: __dirname is not defined"
+- Notifikasi .setpromote / .setdemote kini menampilkan SIAPA pelakunya
+  (gunakan variabel @actor, atau otomatis ditambahkan)
+- .setopen / .setclose: balasan konfirmasi rapi walau teksnya panjang
+- .totalchat kini menghitung chat dengan benar (identitas nomor & LID disatukan)
+- Video sambutan (welcome) kini diputar OTOMATIS saat anggota baru masuk
+  (mode GIF: berulang & tanpa suara)
+- zapo-js otomatis diperbarui ke versi terbaru saat start (rollback otomatis
+  bila update bikin bot gagal konek); diatur lewat AUTO_UPDATE_ZAPO di index.js
+- Pesan gagal terkirim dengan "negative publish ack ... error=421" kini dicoba
+  ulang otomatis (mis. .ping tepat setelah bot connect)
 
 
 DETAIL
 ======
 
-[BUG] .top / .topgrub - muncul "@Pengguna tak dikenal"
-File   : plugins/ADMIN/top.js, plugins/ADMIN/topgrub.js
-Command: .top, .topgrub
-Gejala : saat menandai pemenang, sebagian tampil "@Pengguna tak dikenal"
-Sebab  : mention memakai alias @lid yang tidak dikenali WhatsApp
-Solusi : selalu utamakan alias nomor (@s.whatsapp.net) saat memilih jid
-         yang ditampilkan
+[BUG] Mode On Handler - error "Cannot read properties of undefined
+      (reading 'DEBUG_ANTIFORWARD')"
+File   : handle/MODE ON/handler.js
+Sebab  : fungsi handler bernama `process`, membayangi objek global Node
+         `process`, sehingga `process.env.DEBUG_ANTIFORWARD` dibaca dari
+         fungsi (undefined).
+Solusi : fungsi diganti nama menjadi `handleModeOn` (export tetap `process`).
 
 
-[BUG] .snakes - lambat saat mengambil foto profil
-File   : plugins/GAMES/snakes.js
-Command: .snakes
-Gejala : jalannya game terasa delay, terutama saat banyak pemain
-Sebab  : foto profil tiap pemain diambil satu per satu (berurutan)
-Solusi : foto profil diambil paralel (Promise.all) dan disimpan di cache
-         per game, jadi tidak diambil ulang tiap giliran
+[BUG] TTS .cekodam / fitur suara - "Request path contains unescaped characters"
+File   : lib/features.js (textToAudio)
+Sebab  : teks dimasukkan langsung ke URL Google TTS tanpa encoding.
+Solusi : teks dibungkus encodeURIComponent() sebelum masuk URL.
 
 
-[BUG] .brat - error "ffmpeg was killed with signal SIGSEGV"
-File   : lib/exif.js
-Command: .brat (dan pembuatan stiker gambar diam lain)
-Gejala : stiker gagal dibuat dengan error ffmpeg SIGSEGV di panel/klien
-Sebab  : biner ffmpeg crash saat mengonversi gambar diam ke webp
-Solusi : gambar diam dikonversi memakai sharp lebih dulu; ffmpeg hanya
-         dipakai sebagai cadangan kalau sharp gagal
-Catatan: kalau masih error, bersihkan cache: hapus folder .npm / .cache
+[UBAH] Log pembersihan tmp tidak lagi ditampilkan
+File   : index.js
+Solusi : console.log "[SCHEDULE] Membersihkan folder tmp..." dihapus;
+         pembersihan tiap 3 jam tetap berjalan.
 
 
-[UBAH] Pesan error .anime dan .brat tidak lagi menyalahkan apikey
-File   : plugins/ANIME/anime.js, plugins/MAKER/brat.js
-Command: .anime, .brat
-Gejala : saat server penyedia bermasalah, pesan error menyuruh "Periksa
-         Apikey Anda!" padahal apikey tidak salah
-Solusi : pesan diganti menjadi penjelasan bahwa server penyedia sedang
-         bermasalah, bukan apikey
-
-
-[BUG] .kodam / .cekodam - menampilkan nomor/id, bukan nama
-File   : plugins/GAMES/cek kodam.js
-Command: .kodam, .cekodam
-Gejala : saat men-tag pengguna, yang muncul nomor/id, bukan namanya
-Sebab  : jid yang di-tag langsung dipakai sebagai nama
-Solusi : nama di-tag diambil memakai getName; kalau kosong pakai pushName
-
-
-[BUG] .fixchat - error saat membersihkan chat
-File   : plugins/ADMIN/fixchat.js
-Command: .fixchat
-Gejala : .fixchat error
-Sebab  : daftar mention berisi jid tidak valid dan proses pembersihan
-         chat melempar error yang menghentikan seluruh perintah
-Solusi : mention difilter hanya jid valid; pembersihan chat dibungkus
-         try/catch sendiri agar tidak fatal
-
-
-[UBAH] .addpremgrub - filter input
-File   : plugins/OWNER/addpremgrub.js
-Command: .addpremgrub
-Gejala : mudah error kalau input bukan format yang diharapkan
-Solusi : menerima link undangan ATAU id grup (@g.us) ATAU dijalankan di
-         dalam grup (cukup isi jumlah hari); jumlah hari divalidasi harus
-         angka positif
-
-
-[BUG] .listultah - menampilkan nomor LID, bukan nomor asli
+[UBAH] .listultah per grup (bukan global)
 File   : plugins/GROUP/listultah.js
-Command: .listultah
-Gejala : nomor yang tampil kadang nomor LID, tidak konsisten
-Sebab  : jid LID tidak dipetakan ke nomor WhatsApp asli
-Solusi : nomor dipetakan ke @s.whatsapp.net (resolveSendableJid) dan
-         mention dikirim secara eksplisit
+Gejala : di dalam grup, daftar ulang tahun menampilkan semua pengguna bot.
+Solusi : saat dijalankan di grup, daftar disaring hanya untuk anggota grup
+         tersebut (identitas dicocokkan via nomor telanjang: nomor & LID).
 
 
-[BUG] .tiktok / .tt - menggantung saat gagal
-File   : plugins/DOWNLOAD/tiktok.js
-Command: .tiktok, .tt
-Gejala : saat error, perintah menggantung tanpa balasan
-Sebab  : tidak ada batas waktu pada proses resolve/unduh
-Solusi : ditambah timeout (resolve 15 detik, request API 30 detik, unduh
-         60 detik) sehingga selalu memberi pesan error bila gagal
+[FITUR] .jadibot dukung durasi (hari)
+File   : plugins/OWNER/jadibot.js, lib/jadibot.js, lib/jadibotGuard.js,
+         lib/database.js
+Gejala : "*.jadibot 628xxxx 7*" sebelumnya menggabungkan angka durasi ke
+         nomor sehingga nomor jadi tidak valid.
+Solusi : argumen dipisah (nomor + durasi hari). Kedaluwarsa disimpan di kolom
+         baru `jadibot.expired_at`. Pengawas berkala (lib/jadibotGuard.js)
+         menghentikan jadibot otomatis saat masa aktifnya habis.
+         Tanpa durasi -> aktif selamanya (perilaku lama).
 
 
-[BARU] .open / .close - buka/tutup grup langsung
-File   : plugins/ADMIN/open close.js, lib/groupOpenClose.js
-Command: .open, .close
-Isi    : alias langsung untuk membuka/menutup grup tanpa harus mengetik
-         .gc open / .gc close. Khusus admin/owner
+[BUG] .brat / .brat2 - "ENOENT ... tmp/sistem/xxxx.webp"
+File   : lib/exif.js
+Sebab  : os.tmpdir() dialihkan ke ./tmp/sistem (lib/diskGuard.js); folder itu
+         bisa belum ada / hilang saat penulisan berkas stiker.
+Solusi : folder tmp dipastikan ada (pastikanDirTmp) sebelum setiap penulisan.
 
 
-[BARU] .setopen / .setclose - pesan buka/tutup custom per grup
-File   : plugins/ADMIN/set open close.js, lib/groupOpenClose.js
-Command: .setopen, .setclose
-Isi    : admin bisa mengatur teks sendiri yang menggantikan teks default
-         saat grup dibuka/ditutup (berlaku untuk .gc open/close dan
-         .open/.close). Reset ke default: .setopen reset / .setclose reset
-Catatan: disimpan di penyimpanan yang sama dengan .setopengc/.setclosegc
+[BUG] .tomp3 - "ReferenceError: __dirname is not defined"
+File   : plugins/TOOLS/to mp3.js
+Sebab  : project ESM tidak punya `__dirname`.
+Solusi : berkas sementara ditaruh di folder ./tmp (yang memang dibersihkan
+         berkala), bukan `__dirname`.
 
 
-[BARU] .resetultah - reset data ulang tahun per grup
-File   : plugins/GROUP/resetultah.js
-Command: .resetultah
-Isi    : admin bisa menghapus data ulang tahun anggota grup saat ini.
-         Owner bisa .resetultah all untuk menghapus semua
+[FITUR] .setpromote / .setdemote - tampilkan pelaku
+File   : lib/participant_update.js, lib/connection.js
+Gejala : notifikasi promote/demote hanya menampilkan target, bukan pelakunya.
+Solusi : pelaku (author event) diteruskan ke handler. Tersedia variabel baru
+         @actor untuk template; bila template belum memuatnya, baris
+         "Dipromote/Didemote oleh: @pelaku" ditambahkan otomatis.
 
 
-[BARU] .shortlink / .slink - perpendek URL
-File   : plugins/TOOLS/shortlink.js
-Command: .shortlink, .slink
-Isi    : memperpendek URL memakai layanan gratis tanpa apikey, dicoba
-         berurutan is.gd -> v.gd -> tinyurl
+[UBAH] .setopen / .setclose - balasan rapi untuk teks panjang
+File   : plugins/ADMIN/set open close.js
+Solusi : pratinjau teks dirapikan (satu baris, dibingkai, dipotong 300 char).
 
 
-[BARU] .listdbgrub / .copylistid / .dellistid - kelola list grup lewat ID
-File   : plugins/OWNER/list db grub.js
-Command: .listdbgrub, .copylistid, .dellistid
-Isi    : mengelola database LIST sebuah grup lewat ID-nya, berguna saat
-         grup sudah TERBLOKIR sehingga bot tidak bisa menjalankan perintah
-         di dalam grup itu. Khusus owner
-         - .listdbgrub            -> tampilkan SEMUA grup yang masih punya list
-                                     di database (ID + jumlah keyword + UKURAN
-                                     + tgl update), diurutkan dari yang terbesar
-                                     plus total semua grup. Ukuran = teks JSON
-                                     list + file media (database/media) yang
-                                     dirujuk tiap keyword. Dipakai untuk
-                                     MENEMUKAN id grup terblokir tanpa harus
-                                     masuk ke grupnya, sekaligus melihat grup
-                                     mana yang paling makan ruang
-         - .copylistid <idSumber> (di grup tujuan) atau <idSumber> <idTujuan>
-         - .dellistid <idGrup>
-Alur grup terblokir:
-         1. .listdbgrub            -> catat id grup yang datanya masih ada
-         2. .copylistid <id>       -> salin list-nya ke grup lain (penyelamatan),
-            atau .dellistid <id>   -> hapus kalau memang mau dibuang
+[BUG] .totalchat - tidak bertambah saat user chat
+File   : lib/totalchat.js, plugins/ADMIN/total chat.js
+Sebab  : kunci chat tersimpan tidak konsisten (kadang @s.whatsapp.net, kadang
+         @lid), sehingga chat orang yang sama terpecah ke beberapa baris dan
+         tidak cocok saat ditampilkan.
+Solusi : kunci dinormalkan ke nomor telanjang saat disimpan & dijumlahkan;
+         saat menampilkan, semua identitas peserta (nomor & LID) disatukan.
 
 
-[BARU] Notifikasi Telegram saat bot logout
-File   : lib/telegramBackup.js, lib/connection.js
-Isi    : saat perangkat logout / sesi hilang dan Telegram sudah
-         dikonfigurasi (seperti .backuptele), bot mengirim info ke Telegram
-Catatan: hanya untuk sesi utama
+[FITUR] Video welcome diputar otomatis
+File   : lib/participant_update.js
+Gejala : video sambutan harus ditekan dulu untuk diputar.
+Solusi : video welcome/left dikirim dengan gifPlayback aktif agar langsung
+         jalan. Konsekuensi: diputar berulang & tanpa suara (satu-satunya cara
+         WhatsApp memutar video tanpa ditekan).
 
 
-[UBAH] Hapus dependency yang tidak terpakai
-File   : package.json
-Isi    : paket berikut dihapus karena tidak pernah di-import:
-         google-it, javascript-obfuscator, ssh2, unzipper
-Catatan: jalankan "npm install" / "npm prune" agar node_modules ikut
-         dibersihkan
+[FITUR] Auto-update zapo-js + rollback
+File   : lib/zapoUpdater.js, index.js
+Alasan : zapo-js (koneksi WhatsApp) rilis sangat sering; versi lama bisa
+         berhenti konek saat protokol WA berubah.
+Cara   : saat start, versi terbaru dicek di npm. Jika lebih baru dan
+         AUTO_UPDATE_ZAPO=true (di index.js), versi lama dicatat lalu
+         `npm install zapo-js@latest @zapo-js/store-sqlite@latest` dijalankan.
+         Setelah koneksi pertama berhasil, penanda dihapus (terverifikasi).
+         Jika koneksi gagal, restart berikutnya otomatis rollback ke versi
+         lama. Matikan dengan AUTO_UPDATE_ZAPO=false di index.js.
 
 
-========================================================================
-
-
-Update Resbot MD 5.4.7
-
-
-RINGKASAN
-=========
-- Koneksi WhatsApp lebih stabil: 405 berulang, restart, dan logout
-  sekarang ditangani dengan benar
-- Request ke API tidak lagi sering gagal ETIMEDOUT / ENETUNREACH di
-  panel tanpa IPv6
-- .sewabot / .tambahsewa menjelaskan dengan jelas kalau nomor bot sedang
-  dibatasi WhatsApp sehingga tidak bisa masuk grup lewat link
-- .sewabot / .tambahsewa tidak lagi mencoba masuk grup kalau bot sudah
-  ada di dalamnya (mis. dimasukkan manual oleh admin)
-- .hd membalas "Server sedang sibuk, coba lagi sebentar" saat API gagal
-- Jadwal sholat disimpan per kota per hari, tetap jalan saat API gagal
-
-
-DETAIL
-======
-
-[BUG] Koneksi WhatsApp sering reconnect (405 / restart required)
-File   : lib/connection.js
-Gejala : bot terus-menerus reconnect, terutama setelah WhatsApp merilis
-         versi WA Web baru
-Sebab  : kode 405 (versi WA ditolak) tidak pernah dikenali, jadi bot
-         reconnect terus dengan versi yang sama
-Solusi : - versi WA Web terbaru diambil saat connect, dan diambil ulang
-           setiap kali muncul 405. Kalau 405 terus berulang, bot
-           menyarankan .updatezapo
-         - restart required / koneksi putus -> reconnect setelah 3 detik
-         - logout (401) -> berhenti reconnect dan menampilkan pesan untuk
-           pairing ulang
-         - socket lama ditutup dulu sebelum membuat yang baru, dan tidak
-           ada dua reconnect yang berjalan bersamaan
-
-
-[BUG] Request API gagal: connect ETIMEDOUT / ENETUNREACH
-File   : lib/netBootstrap.js (baru), index.js
-Gejala : request ke API (autoresbot dan lainnya) sering gagal dengan
-         "connect ETIMEDOUT" atau "ENETUNREACH", terutama di panel yang
-         tidak punya IPv6
-Sebab  : Node 20 mencoba semua alamat IP (Happy Eyeballs) dengan batas
-         hanya 250 ms per alamat. Saat bot sibuk (mis. sedang reconnect
-         WhatsApp), batas itu terlewati sehingga semua alamat dianggap
-         timeout
-Solusi : alamat IPv4 dicoba lebih dulu dan batas per alamat dinaikkan
-         jadi 2 detik
-Catatan: berlaku otomatis untuk semua request HTTP di bot
-
-
-[UBAH] Helper API bersama
-File   : lib/apiClient.js (baru)
-Gejala : -
-Sebab  : -
-Solusi : helper untuk memanggil API dengan timeout 15 detik dan retry 3x
-         (jeda 1, 2, lalu 4 detik). Retry hanya dilakukan untuk error
-         jaringan dan HTTP 5xx / 429. Setiap percobaan yang gagal
-         dicatat di console: [API:<fitur>] percobaan n/4 gagal
-Catatan: untuk saat ini baru dipakai oleh jadwal sholat dan .hd. Fitur
-         lain tidak diubah
-
-
-[BUG] .hd - API gagal tanpa pesan yang jelas
-File   : plugins/TOOLS/hd.js
-Command: .hd
-Gejala : saat server API bermasalah, .hd gagal tanpa penjelasan
-Sebab  : request hanya dicoba satu kali tanpa retry
-Solusi : memakai lib/apiClient.js (otomatis retry). Kalau tetap gagal,
-         pengguna dibalas "⏳ Server sedang sibuk, coba lagi sebentar."
-
-
-[UBAH] Jadwal sholat - cache per kota per hari
-File   : lib/features.js, plugins/ISLAMI/jadwal sholat.js, .gitignore
-Command: .jadwalsholat dan pengingat waktu sholat otomatis
-Gejala : jadwal sholat ikut gagal setiap kali API sedang bermasalah
-Sebab  : jadwal diambil ulang dari API tanpa disimpan
-Solusi : API dipanggil sekali per kota per hari, lalu hasilnya disimpan
-         di database/jadwal_sholat_cache.json. Kalau API gagal, dipakai
-         jadwal tersimpan yang terakhir
-Catatan: - pengaturan retry lama (SHOLAT_RETRY) dihapus, diganti retry
-           dari lib/apiClient.js
-         - file cache dibuat otomatis dan tidak ikut ke git
-
-
-[UBAH] .sewabot / .tambahsewa - pesan "account_reachout_restricted"
-File   : lib/gabungGrup.js
-Command: .sewabot, .tambahsewa
-Gejala : .sewabot dibalas "Pesan dari server: group.joinViaInvite iq
-         failed (463: account_reachout_restricted)" tanpa penjelasan
-Sebab  : nomor bot sedang dibatasi WhatsApp (anti-spam), biasanya karena
-         terlalu sering masuk grup / mengirim pesan dalam waktu singkat.
-         Selama dibatasi, bot tidak bisa bergabung ke grup lewat link.
-         Ini batasan dari WhatsApp, bukan kesalahan link atau bot
-Solusi : pesan error diganti penjelasan dan solusinya: tunggu batasannya
-         hilang sendiri (beberapa jam s/d beberapa hari), atau minta admin
-         grup memasukkan bot secara manual lalu ulangi perintah tadi
-Catatan: sewa tetap TIDAK dicatat selama bot gagal masuk grup
-
-
-[BUG] .sewabot gagal walau bot sudah dimasukkan manual ke grup
-File   : plugins/OWNER/sewabot.js, plugins/OWNER/tambah sewa.js,
-         lib/gabungGrup.js
-Command: .sewabot, .tambahsewa
-Gejala : bot sudah dimasukkan manual oleh admin, tapi .sewabot tetap
-         dibalas "Gagal bergabung ke grup" dan sewa tidak dicatat. Saran
-         di pesan error (ketik .tambahsewa) juga tidak bisa dipakai karena
-         .tambahsewa hanya untuk grup yang sewanya sudah tercatat
-Sebab  : bot selalu mencoba masuk grup lewat link lebih dulu, walaupun
-         sudah ada di dalamnya. Saat nomor bot dibatasi WhatsApp,
-         percobaan itu gagal
-Solusi : bot mengecek dulu apakah sudah ada di grup. Kalau sudah, sewa
-         langsung dicatat tanpa mencoba masuk lagi. Pesan error sekarang
-         menyarankan memasukkan bot manual lalu mengulangi perintah yang
-         sama
+[BUG] Kirim pesan gagal "negative publish ack ... class=message error=421"
+File   : lib/zapo/socket.js
+Gejala : pesan (mis. .ping) gagal dengan MessagePublishNackError error=421,
+         dan log menampilkan error mentah yang membingungkan.
+Sebab  : error=421 umumnya karena grup disetel "hanya admin yang boleh kirim"
+         (obrolan terbatas) sementara bot BUKAN admin -> server WA menolak
+         semua pengiriman bot. Bisa juga penolakan sementara sesaat setelah
+         koneksi baru terbentuk.
+Solusi : 1) sock.sendMessage mengulang kirim otomatis untuk nack sementara
+            (421/420) hingga 3x dengan jeda menaik (aman, pesan belum terkirim
+            jadi tidak menimbulkan ganda) — menolong kasus transient;
+         2) bila tetap gagal, error mentah diganti pesan yang jelas, mis.:
+            "Bot tidak bisa mengirim pesan ke chat ini. Kemungkinan grup
+            disetel 'hanya admin yang boleh kirim' sementara bot bukan admin.
+            Matikan 'obrolan terbatas' atau jadikan bot admin. (error 421)".

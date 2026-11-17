@@ -25,7 +25,8 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const SESSION_PATH = "./session/";
 
-async function startNewSession(masterSessions, senderId, type_connection) {
+async function startNewSession(masterSessions, senderId, type_connection, durasiHari = 0) {
+  const infoDurasi = durasiHari > 0 ? ` _(aktif ${durasiHari} hari)_` : "";
   logWithTime("System", `Menjalankan startNewSession`, "merah");
   const sessionFolder = path.join(SESSION_PATH, senderId);
 
@@ -67,7 +68,7 @@ async function startNewSession(masterSessions, senderId, type_connection) {
       try {
         const code = await client.auth.requestPairingCode(senderId.trim());
         logWithTime("System", `Pairing Code : ${code}`);
-        const textResponse = `⏳ _Jadibot ${senderId}_\n
+        const textResponse = `⏳ _Jadibot ${senderId}_${infoDurasi}\n
 _Code Pairing :_ ${code}`;
         await masterSessions.sock.sendMessage(
           masterSessions.remoteJid,
@@ -166,7 +167,7 @@ _Code Pairing :_ ${code}`;
       await updateJadibot(senderId, "active");
       await masterSessions.sock.sendMessage(
         masterSessions.remoteJid,
-        { text: `✅ _Berhasil! Nomor *${senderId}* telah menjadi bot._` },
+        { text: `✅ _Berhasil! Nomor *${senderId}* telah menjadi bot._${infoDurasi}` },
         { quoted: masterSessions.message }
       );
       if (sock) {
@@ -192,17 +193,42 @@ async function handle(sock, messageInfo) {
     await sock.sendMessage(
       remoteJid,
       {
-        text: `_⚠️ Format Penggunaan:_\n\n_💬 Contoh:_ _*${
+        text: `_⚠️ Format Penggunaan:_\n\n_💬 Contoh:_\n_*${
           prefix + command
-        } 6285246154386*_\n\n_Ketik *${prefix}stopjadibot* untuk berhenti_`,
+        } 6285246154386*_ _(aktif selamanya)_\n_*${
+          prefix + command
+        } 6285246154386 7*_ _(aktif 7 hari)_\n\n_Ketik *${prefix}stopjadibot* untuk berhenti_`,
       },
       { quoted: message }
     );
     return;
   }
 
-  // Ekstrak nomor telepon dari input
-  let targetNumber = content.replace(/\D/g, ""); // Hanya angka
+  // Format: "<nomor> [durasi_hari]". Nomor & durasi dipisah spasi, jadi tidak
+  // boleh digabung mentah (dulu `replace(/\D/g,"")` menempelkan angka durasi ke
+  // belakang nomor sehingga "628.. 7" jadi nomor tidak valid).
+  const bagian = content.trim().split(/\s+/);
+  let targetNumber = (bagian[0] || "").replace(/\D/g, ""); // Hanya angka
+
+  // Durasi (hari) opsional pada argumen kedua.
+  let durasiHari = 0;
+  if (bagian[1] !== undefined) {
+    durasiHari = parseInt(bagian[1].replace(/\D/g, ""), 10);
+    if (!Number.isFinite(durasiHari) || durasiHari <= 0) {
+      await sock.sendMessage(
+        remoteJid,
+        {
+          text: `⚠️ _Durasi (hari) tidak valid._\n\n_💬 Contoh:_ _*${
+            prefix + command
+          } ${targetNumber || "6285246154386"} 7*_`,
+        },
+        { quoted: message }
+      );
+      return;
+    }
+  }
+
+  const expiredAt = durasiHari > 0 ? Date.now() + durasiHari * 24 * 60 * 60 * 1000 : null;
 
   // Validasi panjang nomor telepon
   if (targetNumber.length < 10 || targetNumber.length > 15) {
@@ -242,8 +268,8 @@ async function handle(sock, messageInfo) {
     const senderId = targetNumber.replace("@s.whatsapp.net", "");
     const sessionPath = path.join(SESSION_PATH, senderId);
 
-    // Mulai sesi baru
-    await updateJadibot(senderId, "inactive");
+    // Mulai sesi baru — sekaligus simpan kedaluwarsa (null = selamanya).
+    await updateJadibot(senderId, "inactive", expiredAt);
 
     // Hapus sesi aktif
     const sockSesi = sessions.get(`session/${senderId}`);
@@ -258,14 +284,16 @@ async function handle(sock, messageInfo) {
       await startNewSession(
         { sock, remoteJid, message },
         senderId,
-        type_connection
+        type_connection,
+        durasiHari
       );
       return;
     } else {
       await startNewSession(
         { sock, remoteJid, message },
         senderId,
-        type_connection
+        type_connection,
+        durasiHari
       );
     }
   } catch (error) {
