@@ -29,6 +29,8 @@ RINGKASAN
   sebelum habis juga terkirim tanpa menunggu ada chat
 - Ulang tahun kini PER GRUP: .ultah, .listultah, .resetultah, dan ucapan
   ulang tahun hanya berlaku di grup itu, tidak ada hubungan antar grup
+- PERINTAH BARU npm run resetdb: mengosongkan seluruh isi database/bot.db
+  (persiapan production / serah terima ke pembeli), schema tetap utuh
 
 
 PERHATIAN SAAT UPDATE
@@ -82,6 +84,21 @@ Catatan:
 
 DETAIL
 ======
+
+[FITUR] npm run resetdb - kosongkan database untuk production
+File   : lib/resetdb.js (baru), package.json
+Alasan : sebelumnya belum ada cara resmi mengosongkan bot.db; data uji
+         (user, grup, sewa, alarm, dll.) ikut terbawa saat bot dipasang
+         untuk production.
+Cara   : MATIKAN BOT DULU, lalu jalankan salah satu:
+           npm run resetdb              -> tampil isi DB, minta ketik RESET
+           npm run resetdb -- --yes     -> tanpa konfirmasi (panel/script)
+           npm run resetdb -- --backup  -> simpan salinan ke tmp/ dulu
+         - Semua baris di semua tabel dihapus, struktur tabel tetap ada,
+           lalu file dipadatkan (VACUUM) dan sisa bot.db-wal dibersihkan.
+         - Folder session/, local.config.js, dan file lain di database/
+           TIDAK disentuh.
+
 
 [FITUR] .sa - Sticker Audio (stiker bersuara)
 File   : plugins/MAKER/stickeraudio.js (baru)
