@@ -62,7 +62,7 @@ const OWNER_NAMES = {
 // Konfiqurasi Chat
 const ANTI_CALL = false; // jika true (setiap yang nelpon pribadi akan di block)
 const AUTO_READ = false; // jika true (setiap chat akan di baca/centang 2 biru)
-const AUTO_BACKUP = true; // jika true (setiap restart server & tiap 4 jam, data backup dikirim ke Telegram - isi TELEGRAM di bawah);
+const AUTO_BACKUP = false; // jika true (setiap restart server & tiap 4 jam, data backup dikirim ke Telegram - isi TELEGRAM di bawah);
 
 // Konfiqurasi Backup Telegram (dipakai .backuptele & AUTO_BACKUP)
 // Token   : dari @BotFather -> /newbot -> salin token (format 123456789:AAE-xxxx)
