@@ -3,8 +3,28 @@ import { getGroupMetadata, pesertaAdalahAdmin } from '../../lib/cache.js';
 import { isOwner } from '../../lib/users.js';
 import mess from '../../strings.js';
 import { convertTime, getTimeRemaining } from '../../lib/utils.js';
+import { cekSyaratJadwal, botAdalahAdmin } from '../../lib/groupOpenClose.js';
 
 const TIME_REGEX = /^([01]?\d|2[0-3]):[0-5]\d$/; // HH:mm
+
+/**
+ * Analisis syarat jadwal SEBELUM jam-nya tiba, supaya admin langsung tahu
+ * kalau grup nanti tidak akan dibuka (bot bukan admin, grup belum .acc, dll).
+ */
+function analisisSyarat(sock, remoteJid, groupMetadata, jam) {
+  const masalah = cekSyaratJadwal(sock, remoteJid, groupMetadata);
+  if (masalah.length) {
+    return (
+      `⚠️ *Jadwal tersimpan, TAPI tidak akan berjalan karena:*\n` +
+      masalah.map((m, i) => `${i + 1}. ${m.pesan}`).join('\n') +
+      `\n\n_Perbaiki hal di atas sebelum jam ${jam} WIB._`
+    );
+  }
+  if (botAdalahAdmin(sock, groupMetadata) === null) {
+    return `ℹ️ _Status admin bot tidak bisa dicek, pastikan bot sudah admin._`;
+  }
+  return `✅ _Cek syarat: bot admin, grup sudah di-.acc, jadwal aktif — siap berjalan._`;
+}
 
 async function handle(sock, messageInfo) {
   const { remoteJid, isGroup, message, content, sender, senderLid, command, prefix } = messageInfo;
@@ -99,7 +119,7 @@ async function handle(sock, messageInfo) {
         `✅ _Berhasil, Grup otomatis dibuka pada jam *${jam}* WIB_\n` +
         `⏰ _Sekitar ${hours} jam ${minutes} menit lagi_\n\n` +
         `│ Pesan : _${teksDipakai}_${teksCustom ? '' : ' _(default)_'}\n\n` +
-        `_Pastikan bot sudah admin untuk menggunakan fitur ini_`,
+        analisisSyarat(sock, remoteJid, groupMetadata, jam),
     },
     { quoted: message },
   );

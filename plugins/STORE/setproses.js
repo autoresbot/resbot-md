@@ -71,7 +71,7 @@ _Ketik .setproses reset untuk mengembalikan ke semula_`;
 _${prefix}${command} PROCESS_
 
 Jam : @time
-Tanggal : @tanggal
+Tanggal : @tanggal  (atau @date)
 Grub : @grub
 Catatan : @catatan
 

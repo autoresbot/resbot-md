@@ -182,6 +182,7 @@ export default {
     "listwarn",
     "deletewarning",
     "delwarning",
+    "delwarn",
     "debugwarn",
   ],
   // CAMPURAN: warn/warning, listwarning/listwarn, dan

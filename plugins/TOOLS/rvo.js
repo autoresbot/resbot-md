@@ -32,6 +32,22 @@ async function handle(sock, messageInfo) {
 
     // Download
     const media = await downloadQuotedMedia(message);
+    if (!media) {
+      // WhatsApp tidak mengirim media sekali lihat ke perangkat tertaut
+      // (bot = linked device): yang diterima hanya penanda
+      // <unavailable type="view_once"/>, dan quote-nya pun tanpa mediaKey.
+      return await reply(
+        m,
+        '⚠️ *Media sekali lihat tidak bisa diambil*\n\n' +
+          'Bot terhubung ke WhatsApp sebagai *perangkat tertaut* (seperti WhatsApp Web). ' +
+          'Sejak kebijakan privasi terbaru, WhatsApp *tidak mengirimkan isi media sekali lihat* ' +
+          'ke perangkat tertaut — bot hanya menerima penanda kosong tanpa gambar/video/suaranya.\n\n' +
+          '• Ini *bukan* karena batas waktu, media lama, atau bot sedang offline.\n' +
+          '• Ini *bukan* error bot — berlaku untuk semua bot WhatsApp.\n' +
+          '• Media sekali lihat hanya bisa dibuka langsung di *HP penerima*.\n\n' +
+          '_Fitur ini tetap bisa dipakai bila suatu saat WhatsApp kembali mengirimkan medianya._',
+      );
+    }
     const mediaPath = path.join('tmp', media);
 
     if (!fs.existsSync(mediaPath)) {
@@ -41,7 +57,9 @@ async function handle(sock, messageInfo) {
     // Membaca file menjadi Buffer
     const mediaBuffer = fs.readFileSync(mediaPath);
 
-    if (isQuoted?.rawMessageType === 'audioMessage') {
+    const ext = path.extname(media).toLowerCase();
+
+    if (ext === '.mp3' || ext === '.ogg') {
       await sock.sendMessage(
         remoteJid,
         {
@@ -54,7 +72,7 @@ async function handle(sock, messageInfo) {
       return;
     }
 
-    if (isQuoted?.rawMessageType === 'imageMessage') {
+    if (ext === '.jpg') {
       await sock.sendMessage(
         remoteJid,
         {
@@ -66,7 +84,7 @@ async function handle(sock, messageInfo) {
       return;
     }
 
-    if (isQuoted?.rawMessageType === 'videoMessage') {
+    if (ext === '.mp4') {
       await sock.sendMessage(
         remoteJid,
         { video: mediaBuffer, caption: mess.general.success },

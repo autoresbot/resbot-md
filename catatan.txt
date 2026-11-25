@@ -1,141 +1,322 @@
-Update Resbot MD 5.4.9
+Update Resbot MD 5.5.0
 
 
 RINGKASAN
 =========
-- Handler "Mode On" tidak lagi error "Cannot read properties of undefined
-  (reading 'DEBUG_ANTIFORWARD')"
-- Fitur suara (TTS) seperti .cekodam tidak lagi error "Request path contains
-  unescaped characters"
-- Log "[SCHEDULE] Membersihkan folder tmp..." tidak lagi muncul di konsol
-- .listultah di dalam grup kini HANYA menampilkan ulang tahun anggota grup itu
-  (bukan seluruh pengguna bot / global)
-- .jadibot mendukung durasi: *.jadibot 628xxxx 7* (aktif 7 hari, lalu stop
-  otomatis)
-- .brat / .brat2 tidak lagi error "ENOENT ... tmp/sistem/xxxx.webp"
-- .tomp3 tidak lagi error "ReferenceError: __dirname is not defined"
-- Notifikasi .setpromote / .setdemote kini menampilkan SIAPA pelakunya
-  (gunakan variabel @actor, atau otomatis ditambahkan)
-- .setopen / .setclose: balasan konfirmasi rapi walau teksnya panjang
-- .totalchat kini menghitung chat dengan benar (identitas nomor & LID disatukan)
-- Video sambutan (welcome) kini diputar OTOMATIS saat anggota baru masuk
-  (mode GIF: berulang & tanpa suara)
-- zapo-js otomatis diperbarui ke versi terbaru saat start (rollback otomatis
-  bila update bikin bot gagal konek); diatur lewat AUTO_UPDATE_ZAPO di index.js
-- Pesan gagal terkirim dengan "negative publish ack ... error=421" kini dicoba
-  ulang otomatis (mis. .ping tepat setelah bot connect)
+- FITUR BARU .sa (Sticker Audio): membuat STIKER BERSUARA — stiker yang
+  berbunyi saat diputar (fitur "sound sticker" WhatsApp)
+- .wm kini bisa dipakai pada stiker bersuara: wm/paket diganti, suaranya
+  TETAP ada (sebelumnya suaranya hilang)
+- .wm tidak lagi meninggalkan file sampah di folder tmp/
+- zapo-js diperbarui ke 1.12.1
+- Fitur MAKER (.fakestory, .tweet, .fakegc, dll.) kini otomatis mencoba
+  ulang sampai 3x bila server API sedang gangguan (mis. HTTP 520 / 525),
+  dan pesan errornya lebih jelas
+- .qcstick DIHAPUS karena web sumbernya (bot.lyo.su) sudah tidak bisa dipakai.
+  Gunakan .qc sebagai gantinya
+- Template .setdone / .setproses kini mendukung @date (sama dengan @tanggal)
+- .swhd: hasilnya kini bisa diunduh & diputar (video iPhone/MOV/HEVC, MKV,
+  foto HEIC/BMP, audio WAV, dll. dikonversi otomatis ke format WhatsApp)
+  dan tidak lagi membalas "Format Salah" saat unduhan gagal
+- .setopengc / .setclosegc: jam jadwal kini tepat di server berzona waktu
+  apa pun (sebelumnya bisa meleset berjam-jam sehingga grup "tidak nutup"),
+  syarat dicek langsung saat jadwal diatur (bot admin? grup sudah .acc?), dan
+  alasan gagal selalu dilaporkan, tidak lagi diam
+- .addalarm kini bisa diatur untuk HARI TERTENTU, mis. hanya Jumat,
+  Senin & Kamis, Senin–Jumat, atau akhir pekan
+- Sewabot: bot kini OTOMATIS keluar dari grup yang sewanya habis walau tidak
+  ada yang chat di grup itu (dicek tiap 5 menit), dan peringatan 3 hari
+  sebelum habis juga terkirim tanpa menunggu ada chat
+- Ulang tahun kini PER GRUP: .ultah, .listultah, .resetultah, dan ucapan
+  ulang tahun hanya berlaku di grup itu, tidak ada hubungan antar grup
+
+
+PERHATIAN SAAT UPDATE
+=====================
+- Jalankan npm install (zapo-js 1.12.1).
+- Database diperbarui OTOMATIS saat bot start (kolom alarms.days, tabel
+  group_birthdays & group_birthdays_migrated). Tidak perlu langkah manual,
+  data lama tidak hilang. Sebaiknya backup folder database/ sebelum update.
+- Jadwal .setopengc / .setclosegc yang sudah ada otomatis memakai jam yang
+  benar setelah bot di-restart, tidak perlu diatur ulang.
+- Perubahan perilaku:
+  - .ultah dan .listultah kini hanya bisa dipakai di dalam grup.
+  - .qcstick sudah tidak ada, gunakan .qc.
+  - .swhd yang perlu konversi ulang (mis. video MOV/HEVC dari iPhone) butuh
+    waktu lebih lama dan memakai CPU server lebih banyak.
+- File log baru: logs/jadwal-grup.log dan logs/sewa.log.
+
+
+CARA PAKAI .sa
+==============
+Alias: .sa / .stickeraudio / .stikeraudio — suara maksimal 5 detik.
+
+1. Gambar/stiker + teks (suara dibacakan seperti .vn)
+   Kirim gambar dengan caption  : .sa halo semua
+   atau balas gambar/stiker     : .sa halo semua
+
+2. Video bersuara
+   Kirim video dengan caption .sa, atau balas video dengan .sa
+   Video tanpa suara / GIF: tambahkan teks, mis. .sa halo
+
+3. Gabungkan stiker/gambar/video + VN yang SUDAH ADA di chat
+   Balas stiker/gambar/videonya dengan .sa, lalu balas VN/audionya
+   dengan .sa (urutan bebas, maks 1 menit). Batal: .sa batal
+
+4. VN yang membalas stiker/gambar/video
+   Cukup balas VN itu dengan .sa
+
+5. Kirim gambar/video sambil membalas VN
+   Geser/balas VN-nya, lampirkan gambar/video, beri caption .sa
+
+Catatan:
+- Suaranya hanya terdengar bila WhatsApp penerima sudah mendapat fitur
+  stiker bersuara (dibuka WhatsApp secara bertahap). Di WhatsApp yang belum,
+  stiker tetap tampil tapi tanpa suara.
+- Stiker otomatis memakai paket stiker bot (sticker_packname /
+  sticker_author di config.js), sama seperti .s.
+- Limit dipotong 1 HANYA setelah stiker berhasil terkirim. Pesan bantuan,
+  ".sa batal", dan langkah "✅ dipilih" tidak memotong limit.
+  Premium, owner, dan grup premium tidak dipotong.
 
 
 DETAIL
 ======
 
-[BUG] Mode On Handler - error "Cannot read properties of undefined
-      (reading 'DEBUG_ANTIFORWARD')"
-File   : handle/MODE ON/handler.js
-Sebab  : fungsi handler bernama `process`, membayangi objek global Node
-         `process`, sehingga `process.env.DEBUG_ANTIFORWARD` dibaca dari
-         fungsi (undefined).
-Solusi : fungsi diganti nama menjadi `handleModeOn` (export tetap `process`).
+[FITUR] .sa - Sticker Audio (stiker bersuara)
+File   : plugins/MAKER/stickeraudio.js (baru)
+         lib/stickerSuara.js (baru)
+         lib/stickerAudioCache.js (baru)
+         handle/stickeraudio_ingat.js (baru)
+Cara   : stiker dan suaranya diunggah terpisah ke server WhatsApp, lalu
+         dikirim sebagai satu pesan stiker yang membawa audio. zapo-js belum
+         punya fungsi khusus untuk ini, jadi pesannya disusun manual.
+         - Gambar dijadikan stiker animasi pendek agar suaranya diputar.
+         - Video dipotong 5 detik (sama seperti .s untuk video).
+         - Stiker animasi milik orang lain tetap bergerak; paketnya diganti
+           paket bot.
+         - Suara teks memakai sumber yang sama dengan .vn (/api/tts, cadangan
+           Google TTS).
+         - Setiap langkah punya batas waktu, dan bot membalas
+           "Macet di langkah ..." bila ada yang tersendat (tidak lagi hanya
+           ⏰ tanpa kabar). Log langkah tampil di console dengan awalan [SA].
 
 
-[BUG] TTS .cekodam / fitur suara - "Request path contains unescaped characters"
-File   : lib/features.js (textToAudio)
-Sebab  : teks dimasukkan langsung ke URL Google TTS tanpa encoding.
-Solusi : teks dibungkus encodeURIComponent() sebelum masuk URL.
+[FITUR] .sa - mengenali balasan dari gambar/video ber-caption
+File   : plugins/MAKER/stickeraudio.js
+Sebab  : deteksi balasan bawaan bot hanya membaca balasan dari pesan teks;
+         gambar/video ber-caption yang membalas VN tidak terdeteksi.
+Solusi : .sa membaca balasan langsung dari media mana pun. Deteksi bawaan
+         TIDAK diubah, supaya perilaku plugin lain (mis. .s) tetap sama.
 
 
-[UBAH] Log pembersihan tmp tidak lagi ditampilkan
-File   : index.js
-Solusi : console.log "[SCHEDULE] Membersihkan folder tmp..." dihapus;
-         pembersihan tiap 3 jam tetap berjalan.
+[FITUR] Ingatan singkat untuk .sa dan .wm
+File   : lib/stickerAudioCache.js, handle/stickeraudio_ingat.js
+Alasan : WhatsApp kadang tidak menyertakan isi pesan yang dibalas secara
+         lengkap (mis. stiker yang dibalas VN, atau suara di dalam stiker
+         yang di-quote).
+Cara   : bot mencatat VN yang membalas stiker/gambar/video dan stiker bersuara
+         yang lewat. Yang dicatat hanya alamat media (bukan filenya), di
+         memori saja, maks 1000 catatan per jenis dan berlaku 6 jam; pilihan
+         dua langkah berlaku 1 menit. Hilang saat bot di-restart.
 
 
-[UBAH] .listultah per grup (bukan global)
-File   : plugins/GROUP/listultah.js
-Gejala : di dalam grup, daftar ulang tahun menampilkan semua pengguna bot.
-Solusi : saat dijalankan di grup, daftar disaring hanya untuk anggota grup
-         tersebut (identitas dicocokkan via nomor telanjang: nomor & LID).
+[FITUR] .wm mendukung stiker bersuara
+File   : plugins/MAKER/wm.js
+Gejala : .wm pada stiker bersuara menghasilkan stiker TANPA suara.
+Solusi : bila yang dibalas stiker bersuara, hanya paketnya yang diganti
+         (gerakan stiker tidak di-encode ulang), lalu suaranya diunduh dan
+         diunggah ulang. Bila suaranya gagal diambil (mis. stiker sudah
+         lama), .wm tetap jalan seperti biasa (wm diganti, tanpa suara).
+         Stiker/gambar biasa tetap lewat jalur .wm yang lama.
 
 
-[FITUR] .jadibot dukung durasi (hari)
-File   : plugins/OWNER/jadibot.js, lib/jadibot.js, lib/jadibotGuard.js,
-         lib/database.js
-Gejala : "*.jadibot 628xxxx 7*" sebelumnya menggabungkan angka durasi ke
-         nomor sehingga nomor jadi tidak valid.
-Solusi : argumen dipisah (nomor + durasi hari). Kedaluwarsa disimpan di kolom
-         baru `jadibot.expired_at`. Pengawas berkala (lib/jadibotGuard.js)
-         menghentikan jadibot otomatis saat masa aktifnya habis.
-         Tanpa durasi -> aktif selamanya (perilaku lama).
+[BUG] .wm meninggalkan file di tmp/
+File   : plugins/MAKER/wm.js
+Gejala : setiap .wm menyisakan file stiker di folder tmp/.
+Solusi : file unduhan dihapus setelah selesai (berhasil maupun gagal).
 
 
-[BUG] .brat / .brat2 - "ENOENT ... tmp/sistem/xxxx.webp"
-File   : lib/exif.js
-Sebab  : os.tmpdir() dialihkan ke ./tmp/sistem (lib/diskGuard.js); folder itu
-         bisa belum ada / hilang saat penulisan berkas stiker.
-Solusi : folder tmp dipastikan ada (pastikanDirTmp) sebelum setiap penulisan.
+[UBAH] Rantai command
+File   : lib/rantaiCommand.js
+Solusi : .sa bisa dipakai di rantai, tapi hanya sebagai LANGKAH TERAKHIR
+         dan menerima video, mis. *.tovid + sa*. Rantai seperti
+         *.sa halo + tovid* ditolak sejak awal dengan pesan yang jelas.
 
 
-[BUG] .tomp3 - "ReferenceError: __dirname is not defined"
-File   : plugins/TOOLS/to mp3.js
-Sebab  : project ESM tidak punya `__dirname`.
-Solusi : berkas sementara ditaruh di folder ./tmp (yang memang dibersihkan
-         berkala), bukan `__dirname`.
+[UBAH] .vn
+File   : plugins/AI/vn.js
+Solusi : fungsi pembuat suara dibagikan ke .sa supaya suaranya sama.
+         Perilaku .vn tidak berubah.
 
 
-[FITUR] .setpromote / .setdemote - tampilkan pelaku
-File   : lib/participant_update.js, lib/connection.js
-Gejala : notifikasi promote/demote hanya menampilkan target, bukan pelakunya.
-Solusi : pelaku (author event) diteruskan ke handler. Tersedia variabel baru
-         @actor untuk template; bila template belum memuatnya, baris
-         "Dipromote/Didemote oleh: @pelaku" ditambahkan otomatis.
+[UBAH] zapo-js 1.12.0 -> 1.12.1
+File   : package.json, package-lock.json
+Catatan: .sa dikembangkan & diuji dengan zapo-js 1.12.1.
 
 
-[UBAH] .setopen / .setclose - balasan rapi untuk teks panjang
-File   : plugins/ADMIN/set open close.js
-Solusi : pratinjau teks dirapikan (satu baris, dibingkai, dipotong 300 char).
+[BUG] Fitur MAKER error "API membalas HTTP 525 / 520"
+File   : lib/maker.js
+Gejala : .fakestory "Error: API membalas HTTP 525", .tweet "Error: API
+         membalas HTTP 520". Kode 52x berasal dari Cloudflare: server API
+         sedang gangguan, bukan kesalahan bot.
+Solusi : gangguan sementara (HTTP 5xx termasuk 520-526, 408, 429, timeout,
+         koneksi putus, balasan kosong) dicoba ulang otomatis sampai 3x
+         dengan jeda 1,5 lalu 3 detik. Error 4xx (API key salah, parameter
+         kurang) TIDAK diulang. Pesan error kini menjelaskan penyebabnya,
+         mis. "Gagal handshake SSL ke server API (Cloudflare 525) (sudah
+         dicoba 3x, coba lagi nanti)". Percobaan ulang dicatat di console
+         dengan awalan [MAKER].
+Berlaku: semua plugin yang memakai lib/maker.js (.fakestory, .tweet,
+         .fakegc, .fakeff, .fakesaldo, .sertifikat, .ship, .spotifycard,
+         .jadian2).
 
 
-[BUG] .totalchat - tidak bertambah saat user chat
-File   : lib/totalchat.js, plugins/ADMIN/total chat.js
-Sebab  : kunci chat tersimpan tidak konsisten (kadang @s.whatsapp.net, kadang
-         @lid), sehingga chat orang yang sama terpecah ke beberapa baris dan
-         tidak cocok saat ditampilkan.
-Solusi : kunci dinormalkan ke nomor telanjang saat disimpan & dijumlahkan;
-         saat menampilkan, semua identitas peserta (nomor & LID) disatukan.
+[HAPUS] .qcstick
+File   : plugins/MAKER/qcstick.js (dihapus)
+         lib/scrape/quote.js (dihapus, tidak dipakai di tempat lain)
+Alasan : keduanya memakai web bot.lyo.su yang sudah tidak bisa diakses.
+         Untuk membuat quote, gunakan .qc.
 
 
-[FITUR] Video welcome diputar otomatis
-File   : lib/participant_update.js
-Gejala : video sambutan harus ditekan dulu untuk diputar.
-Solusi : video welcome/left dikirim dengan gifPlayback aktif agar langsung
-         jalan. Konsekuensi: diputar berulang & tanpa suara (satu-satunya cara
-         WhatsApp memutar video tanpa ditekan).
+[FITUR] .done / .proses mendukung @date
+File   : plugins/STORE/done.js, plugins/STORE/proses.js
+         plugins/STORE/setdone.js, plugins/STORE/setproses.js (teks bantuan)
+Solusi : placeholder @date di template .setdone / .setproses kini diganti
+         tanggal saat ini, sama seperti @tanggal. Template lama yang memakai
+         @tanggal tetap jalan.
 
 
-[FITUR] Auto-update zapo-js + rollback
-File   : lib/zapoUpdater.js, index.js
-Alasan : zapo-js (koneksi WhatsApp) rilis sangat sering; versi lama bisa
-         berhenti konek saat protokol WA berubah.
-Cara   : saat start, versi terbaru dicek di npm. Jika lebih baru dan
-         AUTO_UPDATE_ZAPO=true (di index.js), versi lama dicatat lalu
-         `npm install zapo-js@latest @zapo-js/store-sqlite@latest` dijalankan.
-         Setelah koneksi pertama berhasil, penanda dihapus (terverifikasi).
-         Jika koneksi gagal, restart berikutnya otomatis rollback ke versi
-         lama. Matikan dengan AUTO_UPDATE_ZAPO=false di index.js.
+[BUG] .swhd hasilnya sering tidak bisa diunduh & sering tidak berjalan
+File   : plugins/OWNER/swhd.js
+Gejala : video/foto hasil .swhd sering tidak bisa diunduh/diputar di HP
+         penerima, dan perintahnya sering terlihat tidak jalan.
+Sebab  : - isi document dikirim ulang apa adanya. Video iPhone (MOV + HEVC),
+           MKV, video 10-bit/4:4:4, foto HEIC/BMP, dan audio WAV/FLAC bukan
+           format yang diterima WhatsApp untuk pesan media.
+         - durasi & ukuran video tidak ikut dikirim.
+         - saat unduhan document dari WhatsApp gagal, bot membalas
+           "Format Salah" sehingga terlihat seperti perintahnya tidak jalan.
+         - reply hanya terbaca bila balasannya berupa pesan teks.
+Solusi : - file dicek dengan ffmpeg lalu disesuaikan:
+           video -> MP4 H.264 + AAC. Video yang sudah H.264 hanya dibungkus
+           ulang (cepat, kualitas tetap); selain itu dikonversi ulang dengan
+           mutu tinggi, maks. Full HD (1920 px).
+           foto  -> JPEG/PNG dikirim apa adanya, format lain diubah ke JPEG.
+           GIF   -> video yang diputar berulang.
+           audio -> MP3/M4A/OGG-Opus apa adanya, format lain diubah ke MP3.
+         - durasi, lebar, dan tinggi video ikut dikirim.
+         - jenis file juga dikenali dari isinya bila mimetype document
+           kosong / application/octet-stream.
+         - pesan error dibedakan: "Format Salah" hanya bila memang tidak ada
+           media; unduhan gagal diberi tahu untuk kirim ulang document-nya.
+         - reply dari pesan jenis apa pun (teks, gambar, document ber-caption)
+           kini terbaca.
+         - reaksi ⏰ -> ✅ / ❌ supaya jelas prosesnya selesai atau gagal.
+           Konversi dibatasi 10 menit.
 
 
-[BUG] Kirim pesan gagal "negative publish ack ... class=message error=421"
-File   : lib/zapo/socket.js
-Gejala : pesan (mis. .ping) gagal dengan MessagePublishNackError error=421,
-         dan log menampilkan error mentah yang membingungkan.
-Sebab  : error=421 umumnya karena grup disetel "hanya admin yang boleh kirim"
-         (obrolan terbatas) sementara bot BUKAN admin -> server WA menolak
-         semua pengiriman bot. Bisa juga penolakan sementara sesaat setelah
-         koneksi baru terbentuk.
-Solusi : 1) sock.sendMessage mengulang kirim otomatis untuk nack sementara
-            (421/420) hingga 3x dengan jeda menaik (aman, pesan belum terkirim
-            jadi tidak menimbulkan ganda) — menolong kasus transient;
-         2) bila tetap gagal, error mentah diganti pesan yang jelas, mis.:
-            "Bot tidak bisa mengirim pesan ke chat ini. Kemungkinan grup
-            disetel 'hanya admin yang boleh kirim' sementara bot bukan admin.
-            Matikan 'obrolan terbatas' atau jadikan bot admin. (error 421)".
+[BUG] .setopengc / .setclosegc sudah diatur tapi grup tidak tertutup/terbuka
+File   : lib/utils.js (convertTime), lib/scheduled.js, lib/groupOpenClose.js,
+         plugins/ADMIN/setopengc.js, plugins/ADMIN/setclosegc.js
+Gejala : jadwal tersimpan, tapi pada jamnya grup tidak tertutup/terbuka dan
+         tidak ada kabar apa pun.
+Sebab  : 1. Konversi jam WIB -> jam server hanya benar bila zona waktu server
+            UTC atau tepat "Asia/Jakarta". Di zona lain jadwal meleset, mis.
+            .setclosegc 22:00 berjalan jam 08:00 (server Asia/Bangkok) atau
+            07:00 (server Singapura/WITA).
+         2. Jadwal dilewati DIAM-DIAM bila grup belum di-.acc, data grup
+            gagal diambil, atau koneksi sedang putus tepat di menit itu.
+         3. Bila bot bukan admin, pesan errornya teknis (mis. not-authorized),
+            dan log alasan hanya tampil di mode development.
+Solusi : - convertTime ditulis ulang: jam WIB dihitung ke jam lokal server
+           dengan benar untuk zona waktu apa pun (sudah diuji UTC, Jakarta,
+           Bangkok, Makassar, Jayapura, Singapura, Amsterdam, New York).
+         - ANALISIS SAAT DIATUR: balasan .setopengc / .setclosegc kini
+           memeriksa syarat dan menyebutkan masalahnya:
+             1. fitur jadwal mati di config (scheduled: false)
+             2. grup belum di-.acc owner
+             3. bot belum admin grup
+           Bila semua terpenuhi: "✅ Cek syarat: ... siap berjalan".
+         - SAAT JADWAL JALAN: bila koneksi putus, dicoba ulang 3x (jeda 15
+           detik) memakai socket terbaru. Bila bot bukan admin / ditolak
+           WhatsApp, grup diberi tahu alasannya dalam bahasa yang jelas.
+         - Setiap hasil (BERHASIL / GAGAL + alasan / DILEWATI) selalu tampil
+           di console dengan awalan [JADWAL TUTUP/BUKA jam WIB] dan disimpan
+           di logs/jadwal-grup.log.
+Syarat : bot harus ADMIN dan grup harus sudah di-.acc. Grup yang belum di-.acc
+         tetap DIAM (tidak dikirimi pesan) sesuai aturan .acc, alasannya hanya
+         dicatat di console/log; peringatannya muncul saat jadwal diatur.
+
+
+[FITUR] .addalarm mendukung hari tertentu
+File   : lib/alarm.js, plugins/ADMIN/alarm.js, lib/database.js
+Cara   : tambahkan bagian hari (boleh di posisi mana pun setelah nama):
+           .addalarm jumatan | Jumat berkah, siap-siap jumatan | 11:30 | jumat
+           .addalarm rapat | Rapat mingguan | 19:00 | senin, kamis
+           .addalarm kerja | Semangat kerja! | 07:00 | senin-jumat
+           .addalarm libur | Selamat berlibur | 08:00 | weekend --tagall
+         Penulisan hari yang dikenali:
+         - satu hari: jumat (juga jum'at, hari jumat, setiap jumat)
+         - beberapa hari: senin, rabu, jumat / senin dan kamis / sabtu & minggu
+         - rentang: senin-jumat / senin s/d jumat (boleh lewat Minggu,
+           mis. jumat-senin)
+         - kelompok: hari kerja / weekday (Senin–Jumat),
+           weekend / akhir pekan (Sabtu & Minggu), setiap hari
+         Tanpa bagian hari = setiap hari, seperti sebelumnya. Alarm yang
+         sudah ada otomatis tetap setiap hari.
+Catatan: - nama alarm tidak pernah dianggap hari (alarm boleh bernama
+           "jumat"); bagian hari hanya dikenali bila SELURUH isinya nama
+           hari, jadi pesan seperti "Jumat berkah" tetap jadi pesan.
+         - hari dihitung menurut WIB, apa pun zona waktu servernya.
+         - .alarm menampilkan harinya, mis. "1. jumatan — 11:30 WIB · Jumat".
+         - database: kolom baru alarms.days (dibuat otomatis saat start).
+
+
+[BUG] Sewabot tidak keluar dari grup yang sewanya habis bila grup sepi
+File   : lib/sewaCek.js (baru), handle/sewa.js, lib/connection.js
+Gejala : bot hanya keluar bila sewa habis DAN ada yang chat di grup. Grup
+         yang sepi tidak pernah ditinggalkan bot.
+Sebab  : - pengecekan sewa hanya berjalan di handler pesan masuk.
+         - data sewa dihapus SEBELUM bot keluar, dan error keluar grup
+           ditelan diam-diam. Bila keluar gagal (mis. koneksi putus), data
+           sudah hilang sehingga bot tertinggal di grup selamanya.
+Solusi : - pengecek berkala: semua grup sewa dicek tiap 5 menit (pertama kali
+           1 menit setelah bot connect), tanpa perlu ada chat. Sewa habis ->
+           kirim pesan sewa habis -> keluar grup -> hapus data sewa. Sisa 3
+           hari -> kirim peringatan. Berjalan walau config.scheduled = false.
+         - data sewa baru dihapus SETELAH bot benar-benar keluar (atau memang
+           sudah tidak ada di grup). Bila keluar gagal, dicoba lagi otomatis di
+           putaran berikutnya tanpa mengirim ulang pesan sewa habis.
+         - pesan "sewa habis" dan peringatan hanya dikirim sekali per periode
+           sewa (penandanya disimpan di data sewa, tetap berlaku setelah
+           restart).
+         - handler pesan memakai logika yang sama, jadi tidak bertabrakan
+           dengan pengecek berkala. Ambil data grup per pesan di grup sewa
+           juga dihilangkan (lebih ringan).
+         - semua kejadian tercatat di console dengan awalan [SEWA] dan di
+           logs/sewa.log.
+
+
+[BUG] .listultah / .resetultah masih saling terhubung antar grup
+File   : lib/ultahGrup.js (baru), lib/database.js, plugins/GROUP/ultah.js,
+         plugins/GROUP/listultah.js, plugins/GROUP/resetultah.js,
+         handle/MODE ON/handler.js
+Gejala : - ulang tahun yang didaftarkan di grup A ikut tampil di .listultah
+           grup B bila orangnya anggota kedua grup.
+         - .resetultah di grup A ikut menghapus ulang tahun orang itu di grup B.
+Sebab  : tanggal ulang tahun disimpan di data user (global), bukan per grup.
+Solusi : data ulang tahun disimpan PER GRUP (tabel baru group_birthdays).
+         - .ultah     : menyimpan untuk grup tempat perintah diketik saja.
+                        Di chat pribadi diminta mendaftar di grup.
+         - .listultah : hanya yang mendaftar di grup ini dan masih anggota.
+         - .resetultah: hanya menghapus data grup ini; grup lain tidak
+                        tersentuh. Cek admin diperbaiki (grup ber-alamat LID
+                        dulu bisa membuat admin dianggap bukan admin).
+           .resetultah all (owner) tetap menghapus semua grup.
+         - ucapan ulang tahun otomatis: hanya di grup tempat orangnya
+           mendaftar; tanda "sudah diucapkan" juga per grup.
+Data lama: ulang tahun yang sudah terdaftar sebelum update dipindahkan
+         OTOMATIS sekali per grup (saat .listultah dibuka atau ada chat di
+         grup itu), untuk anggota grup saat itu. Jadi daftar lama tidak
+         hilang; setelah dipindahkan, tiap grup berdiri sendiri.

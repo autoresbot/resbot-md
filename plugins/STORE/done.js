@@ -73,6 +73,7 @@ async function handle(sock, messageInfo) {
           const messageSetdone = first_checksetdone
             .replace(/@time/g, time)
             .replace(/@tanggal/g, date)
+            .replace(/@date/g, date)
             .replace(/@grub/g, groupName)
             .replace(/@catatan/g, note)
             .replace(/@sender/g, quotedSender);

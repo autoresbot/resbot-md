@@ -1,7 +1,19 @@
-import { findUser, updateUser, addUser } from '../../lib/users.js';
+import { simpanUltah } from '../../lib/ultahGrup.js';
 
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, senderLid, content } = messageInfo;
+  const { remoteJid, message, sender, senderLid, content, isGroup } = messageInfo;
+
+  // Ulang tahun disimpan PER GRUP: hanya tampil & diucapkan di grup tempat
+  // didaftarkan, tidak ikut ke grup lain.
+  if (!isGroup) {
+    return await sock.sendMessage(
+      remoteJid,
+      {
+        text: `🎂 Daftarkan ulang tahun di dalam *grup*.\nData ulang tahun berlaku untuk grup tempat kamu mendaftar saja.`,
+      },
+      { quoted: message },
+    );
+  }
 
   if (!content) {
     return await sock.sendMessage(
@@ -67,35 +79,18 @@ async function handle(sock, messageInfo) {
 
   const formattedBirthday = `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}`;
 
-  const dataUsers = await findUser(senderLid);
+  const { diperbarui } = simpanUltah(remoteJid, [senderLid, sender], formattedBirthday, year);
 
-  if (dataUsers) {
-    await updateUser(senderLid, {
-      birthday: formattedBirthday,
-      birthYear: year,
-    });
-
-    return await sock.sendMessage(
-      remoteJid,
-      {
-        text: `🎉 Tanggal ulang tahun kamu berhasil disimpan!\n📅 ${formattedBirthday}-${year}`,
-      },
-      { quoted: message },
-    );
-  } else {
-    await addUser(senderLid, {
-      birthday: formattedBirthday,
-      birthYear: year,
-    });
-
-    return await sock.sendMessage(
-      remoteJid,
-      {
-        text: `🎉 Data kamu berhasil dibuat!\n📅 Ulang tahun: ${formattedBirthday}-${year}`,
-      },
-      { quoted: message },
-    );
-  }
+  return await sock.sendMessage(
+    remoteJid,
+    {
+      text:
+        `🎉 Tanggal ulang tahun kamu berhasil ${diperbarui ? 'diperbarui' : 'disimpan'}!\n` +
+        `📅 ${formattedBirthday}-${year}\n\n` +
+        `_Berlaku untuk grup ini saja._`,
+    },
+    { quoted: message },
+  );
 }
 
 export default {

@@ -1,6 +1,6 @@
-import { getAllUsersWithBirthday } from '../../lib/users.js';
 import { sendMessageWithMention, resolveSendableJid } from '../../lib/utils.js';
 import { getGroupMetadata, nomorDari } from '../../lib/cache.js';
+import { daftarUltahGrup, pindahkanDataLama } from '../../lib/ultahGrup.js';
 
 /**
  * Pilih JID nomor telepon (@s.whatsapp.net) untuk ditampilkan & di-mention.
@@ -62,42 +62,55 @@ const BULAN = [
 async function handle(sock, messageInfo) {
   const { remoteJid, message, senderType, isGroup } = messageInfo;
 
-  let allUsers = getAllUsersWithBirthday();
-
-  if (!allUsers?.length) {
+  // Ulang tahun disimpan PER GRUP (lib/ultahGrup.js): daftar ini hanya berisi
+  // yang mendaftar di grup ini, tidak ada hubungan dengan grup lain.
+  if (!isGroup) {
     return sock.sendMessage(
       remoteJid,
-      { text: `📋 Belum ada yang mendaftarkan ulang tahun.` },
+      { text: `📋 Daftar ulang tahun hanya bisa dilihat di dalam grup.` },
       { quoted: message },
     );
   }
 
-  // Di dalam GRUP, daftar ulang tahun dibatasi HANYA untuk anggota grup ini —
-  // bukan seluruh pengguna bot (global). Identitas dicocokkan lewat nomor
-  // telanjang (nomorDari) karena grup ber-alamat LID menyimpan peserta sebagai
-  // @lid sementara data user memakai beberapa alias (nomor & LID).
-  if (isGroup) {
-    const groupMetadata = await getGroupMetadata(sock, remoteJid);
-    const participants = groupMetadata?.participants || [];
-    const nomorAnggota = new Set(
-      participants
-        .flatMap((p) => [p.phoneNumber, p.id, p.jid, p.lid])
-        .map(nomorDari)
-        .filter(Boolean),
+  const groupMetadata = await getGroupMetadata(sock, remoteJid);
+  const participants = groupMetadata?.participants || [];
+
+  // Data lama (sebelum per grup) dipindahkan sekali untuk anggota grup ini.
+  pindahkanDataLama(remoteJid, participants);
+
+  // Yang sudah keluar dari grup tidak ditampilkan. Identitas dicocokkan lewat
+  // nomor telanjang karena peserta bisa tercatat sebagai LID atau nomor HP.
+  const nomorAnggota = new Set(
+    participants
+      .flatMap((p) => [p.phoneNumber, p.id, p.jid, p.lid])
+      .map(nomorDari)
+      .filter(Boolean),
+  );
+
+  const allUsers = daftarUltahGrup(remoteJid)
+    .filter(
+      (row) =>
+        !nomorAnggota.size || nomorAnggota.has(row.user_num) || nomorAnggota.has(row.phone_num),
+    )
+    .map((row) => [
+      row.user_num,
+      {
+        birthday: row.birthday,
+        birthYear: row.birth_year,
+        // Nomor HP lebih dulu supaya yang tampil & di-mention nomor asli, bukan LID.
+        aliases: [
+          row.phone_num && `${row.phone_num}@s.whatsapp.net`,
+          `${row.user_num}@lid`,
+        ].filter(Boolean),
+      },
+    ]);
+
+  if (!allUsers.length) {
+    return sock.sendMessage(
+      remoteJid,
+      { text: `📋 Belum ada anggota grup ini yang mendaftarkan ulang tahun.` },
+      { quoted: message },
     );
-
-    allUsers = allUsers.filter(([id, userData]) => {
-      const identitas = [id, ...(Array.isArray(userData.aliases) ? userData.aliases : [])];
-      return identitas.map(nomorDari).some((n) => n && nomorAnggota.has(n));
-    });
-
-    if (!allUsers.length) {
-      return sock.sendMessage(
-        remoteJid,
-        { text: `📋 Belum ada anggota grup ini yang mendaftarkan ulang tahun.` },
-        { quoted: message },
-      );
-    }
   }
 
   // ✅ pakai Promise.all agar await di dalam map valid

@@ -8,6 +8,7 @@ import badwordDetection from '../../lib/badwordDetection.js';
 import config from '../../config.js';
 import { devlog, isDevLogEnabled } from '../../lib/devlog.js';
 import { updateUser, findUser } from '../../lib/users.js';
+import { cariUltah, tandaiUcapan, pindahkanDataLama } from '../../lib/ultahGrup.js';
 import autoAi from '../../lib/autoai.js';
 import autoSimi from '../../lib/autosimi.js';
 import autoRusuh from '../../lib/autorusuh.js';
@@ -900,47 +901,45 @@ async function handleModeOn(sock, messageInfo) {
     }
 
     if (fitur?.notifultah && isGroup) {
-      if (user) {
-        const [docId, userData] = user;
+      // Ulang tahun disimpan PER GRUP: ucapan hanya dikirim di grup tempat
+      // orangnya mendaftar, dan tanda "sudah diucapkan" juga per grup.
+      pindahkanDataLama(remoteJid, participants);
+      const ultah = cariUltah(remoteJid, [senderLid, sender]);
 
-        if (userData.birthday) {
-          const today = new Date();
-          const day = String(today.getDate()).padStart(2, '0');
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const year = today.getFullYear();
+      if (ultah?.birthday) {
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const year = today.getFullYear();
 
-          const todayStr = `${day}-${month}`;
-          const birthdayWishKey = `${todayStr}-${year}`;
-          const birthdayNotifKey = `${senderLid}-${birthdayWishKey}`;
+        const todayStr = `${day}-${month}`;
+        const birthdayWishKey = `${todayStr}-${year}`;
+        const birthdayNotifKey = `${remoteJid}-${ultah.user_num}-${birthdayWishKey}`;
 
-          // cek apakah hari ini ulang tahun
-          if (todayStr === userData.birthday) {
-            const hasSentBirthdayWish =
-              String(userData.lastBirthdayWish) === String(year) ||
-              userData.lastBirthdayWish === birthdayWishKey ||
-              notifiedBirthdayUsers.has(birthdayNotifKey);
+        // cek apakah hari ini ulang tahun
+        if (todayStr === ultah.birthday) {
+          const hasSentBirthdayWish =
+            String(ultah.last_wish) === String(year) ||
+            ultah.last_wish === birthdayWishKey ||
+            notifiedBirthdayUsers.has(birthdayNotifKey);
 
-            // cek apakah sudah pernah dikirim hari ini
-            if (hasSentBirthdayWish) {
-            } else {
-              let warningMessage = mess.handler.notifultah || '@sender Selamat Ulang Tahun 🎉🎂';
-              warningMessage = warningMessage.replace('@sender', `@${sender.split('@')[0]}`);
+          // cek apakah sudah pernah dikirim hari ini
+          if (!hasSentBirthdayWish) {
+            let warningMessage = mess.handler.notifultah || '@sender Selamat Ulang Tahun 🎉🎂';
+            warningMessage = warningMessage.replace('@sender', `@${sender.split('@')[0]}`);
 
-              // tambahkan info ulang tahun ke berapa jika ada tahun lahir
-              if (userData.birthYear) {
-                const age = year - userData.birthYear;
-                warningMessage += `\n🎂 Ulang tahun yang ke-*${age}*`;
-              }
-
-              await sendText(warningMessage, true);
-
-              // tandai sudah dikirim
-              notifiedBirthdayUsers.add(birthdayNotifKey);
-              await updateUser(senderLid, {
-                lastBirthdayWish: birthdayWishKey,
-              });
-              return false;
+            // tambahkan info ulang tahun ke berapa jika ada tahun lahir
+            if (ultah.birth_year) {
+              const age = year - ultah.birth_year;
+              warningMessage += `\n🎂 Ulang tahun yang ke-*${age}*`;
             }
+
+            // tandai SEBELUM kirim, supaya pesan yang masuk bersamaan tidak
+            // sama-sama mengirim ucapan
+            notifiedBirthdayUsers.add(birthdayNotifKey);
+            await sendText(warningMessage, true);
+            tandaiUcapan(remoteJid, ultah.user_num, birthdayWishKey);
+            return false;
           }
         }
       }

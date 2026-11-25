@@ -119,6 +119,10 @@ async function handle(sock, messageInfo) {
   }
 }
 
+// Dipakai juga oleh .sa (plugins/MAKER/stickeraudio.js) supaya suaranya sama
+// dengan .vn. Loader plugin hanya membaca `default`, jadi export ini aman.
+export { getVoiceBuffer };
+
 export default {
   handle,
   Commands: ["vn"],

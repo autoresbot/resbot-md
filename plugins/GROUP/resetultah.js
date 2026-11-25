@@ -1,90 +1,56 @@
 import mess from '../../strings.js';
-import { getGroupMetadata } from '../../lib/cache.js';
-import { findUser, updateUser, getAllUsersWithBirthday } from '../../lib/users.js';
-import { isOwner } from '../../lib/users.js';
+import { getGroupMetadata, pesertaAdalahAdmin } from '../../lib/cache.js';
+import { isOwner, getAllUsersWithBirthday, updateUser } from '../../lib/users.js';
+import { hapusUltahGrup, hapusUltahSemua } from '../../lib/ultahGrup.js';
 
 /**
- * `.resetultah`      -> hapus data ulang tahun SEMUA member grup ini (khusus admin)
- * `.resetultah all`  -> hapus data ulang tahun SELURUH user (khusus owner)
+ * `.resetultah`      -> hapus data ulang tahun GRUP INI SAJA (admin)
+ * `.resetultah all`  -> hapus data ulang tahun di SEMUA grup (owner)
  *
- * Data ulang tahun disimpan di record user (global), jadi "reset per grup"
- * berarti membersihkan birthday milik user yang menjadi member grup ini.
+ * Data ulang tahun disimpan per grup (lib/ultahGrup.js), jadi reset di satu
+ * grup tidak menyentuh data grup lain — walau orangnya anggota kedua grup.
  */
-async function clearBirthday(jid) {
-  const found = await findUser(jid);
-  if (!found) return false;
-  const userData = Array.isArray(found) ? found[1] : found;
-  if (!userData?.birthday) return false;
-
-  await updateUser(jid, { birthday: null, birthYear: null, lastBirthdayWish: null });
-  return true;
-}
-
 async function handle(sock, messageInfo) {
-  const { remoteJid, message, sender, isGroup, content } = messageInfo;
+  const { remoteJid, message, sender, senderLid, isGroup, content } = messageInfo;
 
   const mode = (content || '').trim().toLowerCase();
+  const balas = (text) => sock.sendMessage(remoteJid, { text }, { quoted: message });
 
-  // ===== Reset global (owner) =====
+  // ===== Reset semua grup (owner) =====
   if (mode === 'all') {
-    if (!isOwner(sender)) {
-      return sock.sendMessage(remoteJid, { text: mess.general.isOwner }, { quoted: message });
-    }
+    if (!isOwner(senderLid) && !isOwner(sender)) return balas(mess.general.isOwner);
 
-    const all = getAllUsersWithBirthday();
-    let total = 0;
-    for (const [id] of all) {
+    const total = hapusUltahSemua();
+
+    // Data lama (global, sebelum per grup) ikut dibersihkan supaya tidak
+    // dipindahkan lagi ke grup yang belum pernah membuka .listultah.
+    for (const [id] of getAllUsersWithBirthday() || []) {
       try {
-        if (await clearBirthday(id)) total++;
+        await updateUser(id, { birthday: null, birthYear: null, lastBirthdayWish: null });
       } catch {
         /* lewati user yang gagal */
       }
     }
 
-    return sock.sendMessage(
-      remoteJid,
-      { text: `♻️ _Berhasil menghapus data ulang tahun ${total} user (global)._` },
-      { quoted: message },
-    );
+    return balas(`♻️ _Berhasil menghapus ${total} data ulang tahun di semua grup._`);
   }
 
-  // ===== Reset per grup (admin) =====
-  if (!isGroup) {
-    return sock.sendMessage(remoteJid, { text: mess.general.isGroup }, { quoted: message });
-  }
+  // ===== Reset grup ini (admin) =====
+  if (!isGroup) return balas(mess.general.isGroup);
 
   const groupMetadata = await getGroupMetadata(sock, remoteJid);
-  const participants = groupMetadata.participants || [];
-  const isAdmin = participants.some(
-    (p) => (p.phoneNumber === sender || p.id === sender) && p.admin,
-  );
-  if (!isAdmin) {
-    return sock.sendMessage(remoteJid, { text: mess.general.isAdmin }, { quoted: message });
-  }
+  const isAdmin =
+    pesertaAdalahAdmin(groupMetadata?.participants, sender, senderLid) ||
+    isOwner(senderLid) ||
+    isOwner(sender);
+  if (!isAdmin) return balas(mess.general.isAdmin);
 
-  let total = 0;
-  const sudah = new Set();
-  for (const p of participants) {
-    for (const ident of [p.id, p.phoneNumber]) {
-      if (!ident || sudah.has(ident)) continue;
-      sudah.add(ident);
-      try {
-        if (await clearBirthday(ident)) total++;
-      } catch {
-        /* lewati */
-      }
-    }
-  }
+  const total = hapusUltahGrup(remoteJid);
 
-  return sock.sendMessage(
-    remoteJid,
-    {
-      text:
-        total > 0
-          ? `♻️ _Berhasil menghapus data ulang tahun ${total} member di grup ini._`
-          : `ℹ️ _Tidak ada member grup ini yang punya data ulang tahun._`,
-    },
-    { quoted: message },
+  return balas(
+    total > 0
+      ? `♻️ _Berhasil menghapus ${total} data ulang tahun di grup ini._\n_Data di grup lain tidak terpengaruh._`
+      : `ℹ️ _Belum ada data ulang tahun di grup ini._`,
   );
 }
 

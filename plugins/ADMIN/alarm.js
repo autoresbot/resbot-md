@@ -8,6 +8,7 @@ import {
   simpanAlarm,
   hapusAlarm,
   syncAlarm,
+  labelHari,
   MODE_TAG,
   MAKS_ALARM_PER_GRUP,
 } from '../../lib/alarm.js';
@@ -26,14 +27,22 @@ const IKON_MODE = {
 };
 
 function contohPenggunaan(prefix) {
-  return `_⏰ *ALARM GRUP* — pesan otomatis tiap hari_
+  return `_⏰ *ALARM GRUP* — pesan otomatis terjadwal_
 
 _📌 Format:_
-_*${prefix}addalarm nama | pesan | jam | opsi*_
+_*${prefix}addalarm nama | pesan | jam | hari | opsi*_
 
 _📝 Contoh:_
 _*${prefix}addalarm pagi | Selamat pagi semua, semangat hari ini! | 06:00 | --tagall*_
 _*${prefix}addalarm tidur | Jangan lupa istirahat ya | 22:00*_
+_*${prefix}addalarm jumatan | Jumat berkah, yuk siap-siap jumatan | 11:30 | jumat*_
+_*${prefix}addalarm rapat | Rapat mingguan nanti malam | 19:00 | senin, kamis*_
+
+_📅 Hari (boleh dikosongkan = setiap hari):_
+_• satu hari: *jumat*_
+_• beberapa hari: *senin, rabu, jumat*_
+_• rentang: *senin-jumat*_
+_• *hari kerja* (Senin–Jumat) / *weekend* (Sabtu & Minggu)_
 
 _⚙️ Opsi tag (boleh dikosongkan):_
 _• tanpa opsi = pesan biasa_
@@ -85,7 +94,7 @@ async function handle(sock, messageInfo) {
       const isi = daftar
         .map(
           (alarm, index) =>
-            `${index + 1}. *${alarm.name}* — ${alarm.time} WIB ${IKON_MODE[alarm.tag] ?? IKON_MODE.none}`,
+            `${index + 1}. *${alarm.name}* — ${alarm.time} WIB · ${labelHari(alarm.days)} ${IKON_MODE[alarm.tag] ?? IKON_MODE.none}`,
         )
         .join('\n');
 
@@ -143,10 +152,11 @@ async function handle(sock, messageInfo) {
 
     syncAlarm(ambilSock(sock));
 
-    const { name, time, tag, message: isiPesan } = hasil.data;
+    const { name, time, tag, days, message: isiPesan } = hasil.data;
     return balas(
       `_✅ Alarm *${name}* ${simpan.diperbarui ? 'diperbarui' : 'ditambahkan'}._\n\n` +
-        `⏰ _Jam:_ *${time} WIB* (setiap hari)\n` +
+        `⏰ _Jam:_ *${time} WIB*\n` +
+        `📅 _Hari:_ *${labelHari(days)}*\n` +
         `${LABEL_MODE[tag]} _(${MODE_TAG[tag]})_\n` +
         `💬 _Pesan:_\n${isiPesan}\n\n` +
         `_📋 Lihat semua: *${prefix}alarm*_`,
