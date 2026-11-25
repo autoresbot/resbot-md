@@ -17,12 +17,16 @@ import {
  * @returns {Promise<Buffer|null>}
  */
 async function getVoiceBuffer(text) {
-  try {
-    const api = new ApiAutoresbot(config.APIKEY);
-    const buffer = await api.getBuffer("/api/tts", { text });
-    if (buffer?.length) return buffer;
-  } catch (err) {
-    console.warn("[VN] /api/tts gagal:", err.message);
+  // Tanpa APIKEY, /api/tts pasti ditolak: langsung pakai Google TTS (gratis,
+  // tanpa apikey) supaya tidak ada jeda & warning yang sia-sia.
+  if (config.APIKEY) {
+    try {
+      const api = new ApiAutoresbot(config.APIKEY);
+      const buffer = await api.getBuffer("/api/tts", { text });
+      if (buffer?.length) return buffer;
+    } catch (err) {
+      console.warn("[VN] /api/tts gagal, pakai Google TTS:", err.message);
+    }
   }
 
   try {

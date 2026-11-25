@@ -18,6 +18,11 @@
  *     (WhatsApp mengizinkan membalas pesan dengan media: geser VN-nya, lalu
  *     lampirkan gambar.)
  *
+ * "VN/audio" di atas juga mencakup file audio yang dikirim sebagai DOKUMEN
+ * (mis. lagu .mp3 lewat menu File) — lihat mediaSa di lib/stickerAudioCache.js.
+ *
+ * Tanpa APIKEY semua cara tetap jalan: suara teks langsung memakai Google TTS.
+ *
  * VIDEO/GIF diperlakukan seperti gambar (sumber visual), hanya saja hasilnya
  * stiker animasi (maks DURASI_MAKS detik) dan suara bawaannya adalah suara
  * video itu sendiri. Urutan sumber suara untuk video:
@@ -55,6 +60,7 @@ import {
 } from '../../lib/utils.js';
 import { getVoiceBuffer } from '../AI/vn.js';
 import {
+  mediaSa,
   visualDibalasAudio,
   cariVisualDibalasVN,
   simpanPilihan,
@@ -252,7 +258,7 @@ function unduhDariProto(message, remoteJid, media) {
 }
 
 /** Unggah stiker + audio ke CDN WhatsApp, lalu kirim sebagai sound sticker. */
-async function kirimStikerAudio(sock, remoteJid, message, stiker, audio) {
+async function kirimStikerAudio(sock, remoteJid, message, stiker, audio, langkah) {
   const upAudio = await langkah('upload audio', 60_000, () =>
     sock.waUploadToServer(fs.readFileSync(audio.file), { type: 'audio', mimetype: MIME_AUDIO }),
   );
@@ -297,8 +303,8 @@ function teksBantuan(cmd) {
     `*3. Gabungkan stiker/gambar/video + VN yang sudah ada*\n` +
     `Balas stiker/gambar/videonya dengan *${cmd}*, lalu balas VN/audionya dengan *${cmd}*\n` +
     `_Urutan bebas, maks ${menit} menit. Batal: *${cmd} batal*_\n\n` +
-    `*4. VN yang membalas stiker/gambar/video*\n` +
-    `Cukup balas VN itu dengan *${cmd}*\n\n` +
+    `*4. VN/audio/file mp3 yang membalas stiker/gambar/video*\n` +
+    `Cukup balas VN/audio itu dengan *${cmd}*\n\n` +
     `*5. Kirim gambar/video sambil membalas VN*\n` +
     `Geser/balas VN-nya, lampirkan gambar/video, beri caption *${cmd}*`
   );
@@ -320,7 +326,8 @@ function infoDibalas(message) {
   const quoted = ctx?.quotedMessage;
   if (!quoted) return { jenis: null, media: null };
   return {
-    jenis: extractMedia(quoted)?.mediaType ?? null,
+    // mediaSa: mp3 yang dikirim sebagai file (documentMessage) = 'audio'.
+    jenis: mediaSa(quoted)?.mediaType ?? null,
     media: { quoted, stanzaId: ctx.stanzaId, participant: ctx.participant },
   };
 }
@@ -400,8 +407,10 @@ function susunRencana({ type, dibalas, teks, remoteJid, user, cmd, message }) {
     return {
       balas:
         `✅ VN/audio dipilih.\n\n` +
-        `Sekarang *balas stiker atau gambar* yang mau dipakai dengan *${cmd}* ` +
-        `(dalam ${MASA_PILIHAN / 60_000} menit).`,
+        `Sekarang *balas stiker/gambar/video* yang mau dipakai dengan *${cmd}* ` +
+        `(dalam ${MASA_PILIHAN / 60_000} menit).\n` +
+        `_Kalau VN/audio ini membalas stiker tapi stikernya tidak terbaca ` +
+        `(mis. dikirim saat bot belum aktif), balas stiker itu dengan *${cmd}*._`,
     };
   }
 
@@ -413,41 +422,60 @@ function susunRencana({ type, dibalas, teks, remoteJid, user, cmd, message }) {
 }
 
 /**
- * Jalankan satu langkah dengan batas waktu + log durasi ke console.
+ * Pencatat langkah untuk SATU proses .sa. Tiap langkah diberi batas waktu
+ * dan durasinya dicatat, lalu di akhir dicetak SATU baris ringkasan ke
+ * console (dulu 2 baris per langkah + baris rencana + baris gagal).
  *
- * Tanpa ini, satu langkah yang menggantung (mis. axios ke Google TTS yang
- * tidak punya timeout dan koneksinya tertahan di panel) membuat pengguna
- * hanya melihat ⏰ selamanya tanpa error. Dengan batas waktu, pengguna
- * mendapat pesan "macet di langkah X" dan console menunjukkan langkah mana
- * yang terakhir jalan.
+ * Batas waktu tetap perlu: tanpa itu satu langkah yang menggantung (mis.
+ * koneksi TTS yang tertahan di panel) membuat pengguna hanya melihat ⏰
+ * selamanya. Dengan batas waktu, pengguna mendapat pesan "macet di langkah
+ * X" dan ringkasan console menyebut langkah mana yang gagal.
  */
-async function langkah(nama, ms, fn) {
+function buatJejak() {
   const mulai = Date.now();
-  console.log(`[SA] ▶ ${nama}`);
-  let timer;
-  try {
-    // ms = null -> tanpa batas waktu (hanya log). Dipakai untuk pengiriman
-    // pesan: kalau dibatalkan timeout, pesannya tetap bisa sampai belakangan.
-    const hasil =
-      ms == null
-        ? await fn()
-        : await Promise.race([
-            fn(),
-            new Promise((_, reject) => {
-              timer = setTimeout(
-                () => reject(new Error(`Macet di langkah "${nama}" (lebih dari ${ms / 1000} detik).`)),
-                ms,
-              );
-            }),
-          ]);
-    console.log(`[SA] ✔ ${nama} (${Date.now() - mulai} ms)`);
-    return hasil;
-  } catch (error) {
-    console.log(`[SA] ✘ ${nama} (${Date.now() - mulai} ms): ${error?.message || error}`);
-    throw error;
-  } finally {
-    clearTimeout(timer);
+  const selesai = [];
+  let gagalDi = null;
+
+  async function langkah(nama, ms, fn) {
+    const t0 = Date.now();
+    let timer;
+    try {
+      // ms = null -> tanpa batas waktu. Dipakai untuk pengiriman pesan: kalau
+      // dibatalkan timeout, pesannya tetap bisa sampai belakangan.
+      const hasil =
+        ms == null
+          ? await fn()
+          : await Promise.race([
+              fn(),
+              new Promise((_, reject) => {
+                timer = setTimeout(
+                  () => reject(new Error(`Macet di langkah "${nama}" (lebih dari ${ms / 1000} detik).`)),
+                  ms,
+                );
+              }),
+            ]);
+      selesai.push(`${nama} ${Date.now() - t0}ms`);
+      return hasil;
+    } catch (error) {
+      gagalDi ??= nama;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  const detik = () => ((Date.now() - mulai) / 1000).toFixed(1);
+
+  return {
+    langkah,
+    berhasil(ringkas) {
+      console.log(`[SA] ✔ ${ringkas} | ${detik()} dtk (${selesai.join(' · ')})`);
+    },
+    gagal(ringkas, error) {
+      const di = gagalDi ? ` di langkah "${gagalDi}"` : '';
+      console.log(`[SA] ✘ ${ringkas} | gagal${di} setelah ${detik()} dtk: ${error?.message || error}`);
+    },
+  };
 }
 
 /**
@@ -542,6 +570,12 @@ async function handle(sock, messageInfo) {
   }
 
   const sampah = [];
+  const jejak = buatJejak();
+  const { langkah } = jejak;
+  const namaSuara = { tts: 'teks/TTS', visual: 'suara video', dibalas: 'VN/audio', proto: 'VN/audio' };
+  const ringkas =
+    `${namaVisual(mode.visual.jenis)} (${mode.visual.asal}) + ` +
+    `${namaSuara[mode.suara.asal] ?? mode.suara.asal} (${mode.suara.asal})`;
 
   try {
     await sock.sendMessage(remoteJid, { react: { text: '⏰', key: message.key } });
@@ -557,11 +591,6 @@ async function handle(sock, messageInfo) {
         : asal === 'dibalas'
           ? downloadQuotedMedia(message)
           : downloadMedia(message);
-
-    console.log(
-      `[SA] rencana: visual=${mode.visual?.asal ?? '-'}/${mode.visual?.jenis ?? '-'} ` +
-        `suara=${mode.suara?.asal ?? '-'} | teks: "${teks}"`,
-    );
 
     const jenisVisual = namaVisual(mode.visual.jenis);
     const visualPath = await langkah(`unduh ${jenisVisual}`, 60_000, async () =>
@@ -611,13 +640,14 @@ async function handle(sock, messageInfo) {
     );
     sampah.push(stiker.tmp);
 
-    await kirimStikerAudio(sock, remoteJid, message, stiker, audio);
+    await kirimStikerAudio(sock, remoteJid, message, stiker, audio, langkah);
+    jejak.berhasil(ringkas);
     // Pilihan dua langkah baru dihapus setelah BERHASIL: kalau unduh/kirim
     // gagal, user cukup mengulang langkah kedua tanpa memilih ulang.
     hapusPilihan(remoteJid, user);
     await potongLimit(senderLid, remoteJid);
   } catch (error) {
-    console.error('[STICKER AUDIO] Gagal:', error?.message || error);
+    jejak.gagal(ringkas, error);
     await sock.sendMessage(
       remoteJid,
       { text: `❌ Gagal membuat sticker audio.\n\n${error?.message || error}` },

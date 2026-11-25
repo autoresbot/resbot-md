@@ -29,6 +29,11 @@ RINGKASAN
   sebelum habis juga terkirim tanpa menunggu ada chat
 - Ulang tahun kini PER GRUP: .ultah, .listultah, .resetultah, dan ucapan
   ulang tahun hanya berlaku di grup itu, tidak ada hubungan antar grup
+- .sa: stiker yang dibalas FILE mp3 atau VN, lalu file/VN itu dibalas .sa,
+  kini langsung jadi stiker bersuara (sebelumnya hanya membalas cara pakai).
+  Log console .sa kini cukup 1 baris per proses
+- .sa / .vn tanpa APIKEY: suara teks langsung memakai Google TTS (tanpa
+  jeda & warning "/api/tts gagal")
 - PERINTAH BARU npm run resetdb: mengosongkan seluruh isi database/bot.db
   (persiapan production / serah terima ke pembeli), schema tetap utuh
 
@@ -84,6 +89,36 @@ Catatan:
 
 DETAIL
 ======
+
+[BUG] .sa hanya membalas cara pakai saat membalas file mp3 / VN
+File   : plugins/MAKER/stickeraudio.js, lib/stickerAudioCache.js,
+         handle/stickeraudio_ingat.js
+Gejala : - stiker dibalas file mp3 (dikirim lewat menu File/Dokumen), lalu
+           file itu dibalas .sa -> bot hanya mengirim cara pakai.
+         - stiker dibalas VN, lalu VN dibalas .sa -> stikernya tidak ikut
+           terbaca bila WhatsApp tidak menyertakan stiker di balasan.
+Sebab  : mp3 yang dikirim sebagai file terbaca "dokumen", bukan audio, dan
+         tidak pernah dicatat sebagai audio yang membalas stiker.
+Solusi : file audio berupa dokumen (mp3, m4a, ogg, opus, wav, flac, aac,
+         amr, dll.) kini dianggap VN/audio di semua cara pakai .sa, dan
+         ikut dicatat saat membalas stiker/gambar/video. Bila stikernya
+         tetap tidak terbaca (mis. VN dikirim saat bot belum aktif), bot
+         memberi petunjuk untuk membalas stikernya dengan .sa.
+
+[UBAH] Log console .sa dirapikan
+File   : plugins/MAKER/stickeraudio.js
+Sebelum: 2 baris per langkah ([SA] ▶ / ✔) + baris rencana + baris gagal.
+Sesudah: 1 baris per proses, mis.
+         [SA] ✔ stiker (proto) + VN/audio (dibalas) | 2.4 dtk (unduh stiker
+              310ms · unduh VN/audio 280ms · ...)
+         [SA] ✘ ... | gagal di langkah "unduh stiker" setelah 3.0 dtk: ...
+
+[UBAH] .sa / .vn bisa dipakai tanpa APIKEY
+File   : plugins/AI/vn.js, lib/features.js
+Solusi : bila APIKEY kosong, /api/tts dilewati dan suara langsung dibuat
+         lewat Google TTS. Google TTS kini diberi batas waktu 20 detik
+         supaya tidak menggantung.
+
 
 [FITUR] npm run resetdb - kosongkan database untuk production
 File   : lib/resetdb.js (baru), package.json

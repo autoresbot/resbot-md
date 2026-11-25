@@ -1,5 +1,5 @@
 /**
- * Catat VN/audio yang membalas stiker/gambar (untuk `.sa`) dan stiker suara
+ * Catat VN/audio (termasuk mp3 yang dikirim sebagai file) yang membalas stiker/gambar (untuk `.sa`) dan stiker suara
  * yang masuk (untuk `.wm`) — lihat lib/stickerAudioCache.js. Hanya
  * mencatat — tidak pernah menghentikan pesan, dan tidak mengirim apa pun.
  */
@@ -8,7 +8,9 @@ import { ingatVisualDibalasVN, ingatStikerSuaraMasuk } from '../lib/stickerAudio
 
 async function process(sock, messageInfo) {
   try {
-    if (messageInfo?.type === 'audio') {
+    // 'document': lagu .mp3 yang dikirim sebagai file (dicek isinya di
+    // visualDibalasAudio, dokumen non-audio diabaikan).
+    if (messageInfo?.type === 'audio' || messageInfo?.type === 'document') {
       ingatVisualDibalasVN(messageInfo.remoteJid, messageInfo.message);
     } else if (messageInfo?.type === 'sticker') {
       // Stiker suara yang masuk -> untuk .wm (lihat lib/stickerAudioCache.js).
