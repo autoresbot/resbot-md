@@ -24,8 +24,8 @@
  * Tanpa APIKEY semua cara tetap jalan: suara teks langsung memakai Google TTS.
  *
  * VIDEO/GIF diperlakukan seperti gambar (sumber visual), hanya saja hasilnya
- * stiker animasi (maks DURASI_MAKS detik) dan suara bawaannya adalah suara
- * video itu sendiri. Urutan sumber suara untuk video:
+ * stiker animasi (hingga DURASI_MAKS detik, dipendekkan bila gagal) dan suara
+ * bawaannya adalah suara video itu sendiri. Urutan sumber suara untuk video:
  *   VN yang dibalas / VN yang sudah dipilih -> teks `.sa <teks>` (TTS)
  *   -> suara video itu sendiri.
  *
@@ -51,7 +51,7 @@ import config from '../../config.js';
 import mess from '../../strings.js';
 import { isOwner, isPremiumUser, findUser, updateUser } from '../../lib/users.js';
 import { findGroup } from '../../lib/group.js';
-import { imageToWebp, videoToWebp, writeExif } from '../../lib/exif.js';
+import { imageToWebp, videoKeStiker, writeExif, BATAS_STIKER_ANIMASI } from '../../lib/exif.js';
 import {
   downloadQuotedMedia,
   downloadMedia,
@@ -75,11 +75,12 @@ ff.setFfmpegPath(ffmpegPath);
 const webp = webpmux.default || webpmux;
 
 /**
- * Durasi maksimal suara stiker (detik); audio yang lebih panjang dipotong.
- * Sama dengan potongan videoToWebp di lib/exif.js (5 detik), supaya suara
- * dari video pas dengan gambarnya.
+ * Durasi maksimal stiker & suaranya (detik); yang lebih panjang dipotong.
+ * Batas animasi stiker WhatsApp 10 detik. Untuk VIDEO, durasi dipendekkan
+ * hanya bila gagal (lihat DURASI_COBA); suaranya ikut dipotong sepanjang
+ * stiker yang akhirnya dipakai.
  */
-const DURASI_MAKS = 5;
+const DURASI_MAKS = 10;
 
 /**
  * Stiker dari GAMBAR dibuat sebagai webp ANIMASI (2 frame identik) alih-alih
@@ -106,11 +107,11 @@ function hapus(...files) {
 
 /**
  * Ubah VN/audio/TTS -> ogg/opus mono (format voice WhatsApp), dipotong
- * DURASI_MAKS detik. `noVideo` membuang cover art yang sering ada di mp3.
+ * `maks` detik (default DURASI_MAKS). `noVideo` membuang cover art yang sering ada di mp3.
  * @param {string} label subjek untuk pesan error, mis. "Audio itu"
  * @returns {Promise<{ file: string, seconds: number }>}
  */
-function ekstrakAudio(inputPath, label) {
+function ekstrakAudio(inputPath, label, maks = DURASI_MAKS) {
   const out = fileSementara('ogg');
   let durasiInput = 0;
   const bisu = () => new Error(`${label} tidak punya suara.`);
@@ -125,7 +126,7 @@ function ekstrakAudio(inputPath, label) {
       .audioChannels(1)
       .audioFrequency(48000)
       .audioBitrate('64k')
-      .duration(DURASI_MAKS)
+      .duration(maks)
       .format('ogg')
       .on('codecData', (data) => {
         const [h = 0, m = 0, s = 0] = String(data?.duration || '0')
@@ -145,7 +146,7 @@ function ekstrakAudio(inputPath, label) {
         }
         const seconds = Math.max(
           1,
-          Math.round(durasiInput ? Math.min(durasiInput, DURASI_MAKS) : DURASI_MAKS),
+          Math.round(durasiInput ? Math.min(durasiInput, maks) : maks),
         );
         resolve({ file: out, seconds });
       })
@@ -214,14 +215,80 @@ async function stikerDariStiker(stickerPath, detikAudio) {
 }
 
 /**
- * Video/GIF -> stiker animasi 512x512 (dipotong 5 detik oleh videoToWebp,
- * jalur yang sama dengan .s untuk video) + paket stiker bot.
+ * Durasi stiker dari VIDEO dicoba dari yang PALING PANJANG. Durasi baru
+ * dipendekkan bila gagal: stiker tetap > BATAS_STIKER_ANIMASI walau kualitas
+ * sudah diturunkan sedikit, atau upload-nya ditolak server (413).
+ * Di durasi terakhir semua tingkat kualitas dicoba (sampai fps 6).
  */
-async function stikerDariVideo(videoPath) {
-  const webpBuffer = await videoToWebp(fs.readFileSync(videoPath));
-  if (!webpBuffer?.length) throw new Error('Gagal mengubah video menjadi stiker.');
-  return { ...(await pasangPaket(webpBuffer)), isAnimated: true };
+const DURASI_COBA = [DURASI_MAKS, 8, 6, 5];
+
+/** Tingkat kualitas per durasi (sebelum durasinya dipendekkan). */
+const KUALITAS_PER_DURASI = [
+  { fps: 15, q: 50, isi: 512 },
+  { fps: 12, q: 40, isi: 512 },
+  { fps: 10, q: 30, isi: 400 },
+  { fps: 8, q: 20, isi: 320 },
+];
+const KUALITAS_TERAKHIR = [...KUALITAS_PER_DURASI, { fps: 6, q: 15, isi: 256 }];
+
+/** Panjang animasi webp (detik), dari jumlah delay semua frame. */
+async function panjangAnimasi(webpBuffer) {
+  try {
+    const img = new webp.Image();
+    await img.load(webpBuffer);
+    return img.frames.reduce((a, f) => a + (f.delay || 0), 0) / 1000;
+  } catch {
+    return 0;
+  }
 }
+
+/**
+ * Video/GIF -> stiker animasi 512x512 + paket stiker bot, durasi sepanjang
+ * mungkin (lihat DURASI_COBA) dengan ukuran <= BATAS_STIKER_ANIMASI.
+ *
+ * Dulu durasinya dipatok 5 detik dan ukurannya tanpa batas: video ramai gerak
+ * jadi 1,2–1,4 MB -> "media upload failed with status 413" atau stiker
+ * terkirim tapi suaranya tidak bisa diputar.
+ *
+ * @param {number} [mulai] indeks DURASI_COBA yang dicoba pertama (dipakai
+ *   saat mengulang dengan durasi lebih pendek setelah upload ditolak)
+ * @returns {Promise<{ webpBuffer, tmp, isAnimated, durasi: number, indeks: number }>}
+ */
+async function stikerDariVideo(videoPath, mulai = 0) {
+  const media = fs.readFileSync(videoPath);
+  let panjangVideo = Infinity;
+
+  for (let i = mulai; i < DURASI_COBA.length; i++) {
+    const durasi = DURASI_COBA[i];
+    const terakhir = i === DURASI_COBA.length - 1;
+    // Video yang memang lebih pendek dari durasi ini hasilnya sama persis
+    // dengan percobaan sebelumnya -> lewati, langsung ke durasi yang lebih
+    // pendek dari panjang videonya.
+    if (!terakhir && durasi >= panjangVideo + 0.5) continue;
+
+    const tangga = (terakhir ? KUALITAS_TERAKHIR : KUALITAS_PER_DURASI).map((k) => ({ ...k, durasi }));
+    const { buffer } = await videoKeStiker(media, tangga);
+    if (!buffer?.length) throw new Error('Gagal mengubah video menjadi stiker.');
+
+    const panjang = await panjangAnimasi(buffer);
+    if (panjang > 0) panjangVideo = Math.min(panjangVideo, panjang);
+
+    if (buffer.length <= BATAS_STIKER_ANIMASI) {
+      const durasiAsli = panjang > 0 ? Math.min(durasi, panjang) : durasi;
+      return { ...(await pasangPaket(buffer)), isAnimated: true, durasi: durasiAsli, indeks: i };
+    }
+    if (terakhir) {
+      throw new Error(
+        `Video terlalu ramai, stikernya tetap ${Math.round(buffer.length / 1024)} KB ` +
+          `(batas WhatsApp ${BATAS_STIKER_ANIMASI / 1024} KB). Coba video yang lebih sederhana.`,
+      );
+    }
+  }
+  throw new Error('Durasi lebih pendek sudah habis dicoba, stiker tetap ditolak WhatsApp.');
+}
+
+/** Upload ditolak karena berkas terlalu besar? */
+const ditolakKebesaran = (error) => /\b413\b|too large|payload/i.test(String(error?.message || error));
 
 /**
  * Stiker/gambar yang dibalas oleh VN yang dibalas pesan ini (skenario 4).
@@ -628,19 +695,43 @@ async function handle(sock, messageInfo) {
     });
     sampah.push(audio.file);
 
-    stiker = await langkah(
-      `buat stiker dari ${jenisVisual}`,
-      mode.visual.jenis === 'video' ? 90_000 : 60_000,
-      () =>
-        mode.visual.jenis === 'video'
-          ? stikerDariVideo(visualPath)
-          : mode.visual.jenis === 'sticker'
-            ? stikerDariStiker(visualPath, audio.seconds)
-            : stikerDariGambar(visualPath, audio.seconds),
-    );
-    sampah.push(stiker.tmp);
+    const dariVideo = mode.visual.jenis === 'video';
+    let mulaiDurasi = 0;
 
-    await kirimStikerAudio(sock, remoteJid, message, stiker, audio, langkah);
+    // Video: stiker & kirim diulang dengan durasi lebih pendek bila upload
+    // ditolak karena kebesaran (413). Gambar/stiker tidak perlu diulang.
+    for (;;) {
+      stiker = await langkah(
+        `buat stiker dari ${jenisVisual}`,
+        dariVideo ? 150_000 : 60_000,
+        () =>
+          dariVideo
+            ? stikerDariVideo(visualPath, mulaiDurasi)
+            : mode.visual.jenis === 'sticker'
+              ? stikerDariStiker(visualPath, audio.seconds)
+              : stikerDariGambar(visualPath, audio.seconds),
+      );
+      sampah.push(stiker.tmp);
+
+      // Durasi stiker video dipendekkan -> suaranya ikut dipotong supaya pas.
+      if (dariVideo && audio.seconds > Math.ceil(stiker.durasi)) {
+        const pendek = await langkah('potong audio', 60_000, () =>
+          ekstrakAudio(audioPath, 'Audio itu', stiker.durasi),
+        );
+        sampah.push(pendek.file);
+        audio = pendek;
+      }
+
+      try {
+        await kirimStikerAudio(sock, remoteJid, message, stiker, audio, langkah);
+        break;
+      } catch (error) {
+        const masihAda = dariVideo && stiker.indeks < DURASI_COBA.length - 1;
+        if (!masihAda || !ditolakKebesaran(error)) throw error;
+        mulaiDurasi = stiker.indeks + 1; // ulangi dengan durasi lebih pendek
+      }
+    }
+
     jejak.berhasil(ringkas);
     // Pilihan dua langkah baru dihapus setelah BERHASIL: kalau unduh/kirim
     // gagal, user cukup mengulang langkah kedua tanpa memilih ulang.

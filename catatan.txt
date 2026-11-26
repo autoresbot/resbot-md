@@ -32,6 +32,10 @@ RINGKASAN
 - .sa: stiker yang dibalas FILE mp3 atau VN, lalu file/VN itu dibalas .sa,
   kini langsung jadi stiker bersuara (sebelumnya hanya membalas cara pakai).
   Log console .sa kini cukup 1 baris per proses
+- .sa kini hingga 10 DETIK (sebelumnya dipatok 5 detik). Untuk video,
+  durasi terpanjang dicoba dulu dan baru dipendekkan bila gagal
+- .s dan .sa dari VIDEO/GIF kini stabil: tidak lagi gagal "media upload
+  failed with status 413", dan suara .sa tidak lagi rusak/tidak bisa diputar
 - .sa / .vn tanpa APIKEY: suara teks langsung memakai Google TTS (tanpa
   jeda & warning "/api/tts gagal")
 - PERINTAH BARU npm run resetdb: mengosongkan seluruh isi database/bot.db
@@ -89,6 +93,42 @@ Catatan:
 
 DETAIL
 ======
+
+[UBAH] .sa: durasi hingga 10 detik, dipendekkan hanya bila gagal
+File   : plugins/MAKER/stickeraudio.js, lib/exif.js
+Sebelum: semua stiker .sa dipotong 5 detik.
+Sesudah: - gambar/stiker + VN/teks: suara hingga 10 detik.
+         - video: dicoba 10 -> 8 -> 6 -> 5 detik. Di tiap durasi kualitas
+           diturunkan sedikit dulu; durasi baru dipendekkan bila stiker
+           tetap > 500 KB, atau upload ditolak WhatsApp (413) -> otomatis
+           diulang dengan durasi lebih pendek. Suara ikut dipotong
+           sepanjang stiker yang dipakai.
+         - video yang memang pendek (mis. 4,8 dtk) tidak di-encode berulang.
+Hasil uji: video 15 dtk -> stiker 9,8 dtk (dulu 5); video 9,9 dtk yang
+         sangat ramai -> 8 dtk; video ~5-6 dtk -> durasi penuh.
+Catatan: video ramai gerak butuh waktu proses lebih lama (uji terberat
+         ~13 detik) karena beberapa durasi dicoba. .s tetap 5 detik.
+
+
+[BUG] .s / .sa dari video/GIF kadang gagal (413) atau suaranya rusak
+File   : lib/exif.js, plugins/MAKER/stickeraudio.js
+Gejala : - .s : "Terjadi kesalahan saat memproses stiker: Error: media upload
+           failed with status 413"
+         - .sa: "❌ Gagal membuat sticker audio. media upload failed with
+           status 413", atau stiker terkirim tapi suaranya tidak bisa diputar.
+         Video lain (lebih tenang/sederhana) berhasil normal.
+Sebab  : stiker animasi dari video/GIF dibuat tanpa batas ukuran. Video yang
+         ramai gerak menghasilkan stiker 1,2-1,4 MB, padahal batas stiker
+         animasi WhatsApp 500 KB. Yang berhasil selalu lebih kecil.
+Solusi : konversi video -> stiker (videoToWebp, dipakai .s, .sa, dll.) kini
+         dibatasi 500 KB: dicoba dari kualitas terbaik, lalu fps/kualitas/
+         ukuran isi diturunkan bertahap sampai muat. Video ringan tetap
+         kualitas penuh; video ramai gerak isinya tampil lebih kecil di
+         dalam kanvas 512x512. Video kecil tidak lagi diperbesar.
+         GIF kini lewat jalur yang sama (sebelumnya GIF berat tetap ~670 KB).
+         Hasil uji 5 video contoh + 1 GIF: semua 287-427 KB
+         (sebelumnya 545 KB - 1,4 MB).
+
 
 [BUG] .sa hanya membalas cara pakai saat membalas file mp3 / VN
 File   : plugins/MAKER/stickeraudio.js, lib/stickerAudioCache.js,
